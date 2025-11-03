@@ -61,48 +61,58 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
   const baseUrl = isDev ? 'http://localhost:3002' : (process.env.NEXT_PUBLIC_APP_URL || 'https://lorcana-store-ga.vercel.app')
 
   try {
-    const preference = await preferenceApi.create({
-      body: {
-        items: params.items.map(item => ({
-          id: item.id,
-          title: `${item.name} (${item.version === 'foil' ? 'Foil' : 'Normal'})`,
-          description: `Carta Lorcana: ${item.name}`,
-          picture_url: item.image.startsWith('http') ? item.image : `${baseUrl}${item.image}`,
-          category_id: 'trading_cards',
-          quantity: item.quantity,
-          // En CLP los precios deben ser enteros (sin decimales)
-          unit_price: Math.round(item.price),
-          currency_id: 'CLP',
-        })),
-        payer: params.customerEmail ? {
-          email: params.customerEmail,
-        } : undefined,
-        // Configuración de métodos de pago
-        payment_methods: {
-          // Excluir tarjeta Visa (requisito común del desafío)
-          excluded_payment_methods: [
-            { id: 'visa' }
-          ],
-          // Excluir pagos en efectivo (requisito común)
-          excluded_payment_types: [
-            { id: 'ticket' },
-            { id: 'atm' }
-          ],
-          // Máximo de cuotas: 6 (requisito del desafío)
-          installments: 6
-        },
-        back_urls: {
-          success: `${baseUrl}/payment/success`,
-          failure: `${baseUrl}/payment/failure`,
-          pending: `${baseUrl}/payment/pending`,
-        },
-        auto_return: 'approved' as const,
-        statement_descriptor: 'GA Company',
-        external_reference: `order-${Date.now()}`,
-        notification_url: `${baseUrl}/api/webhooks/mercadopago`,
-        // Integrator ID para el Programa de Partners (CRÍTICO para certificación)
-        integrator_id: process.env.MERCADOPAGO_INTEGRATOR_ID,
+    const preferenceBody: any = {
+      items: params.items.map(item => ({
+        id: item.id,
+        title: `${item.name} (${item.version === 'foil' ? 'Foil' : 'Normal'})`,
+        description: `Carta Lorcana: ${item.name}`,
+        picture_url: item.image.startsWith('http') ? item.image : `${baseUrl}${item.image}`,
+        category_id: 'trading_cards',
+        quantity: item.quantity,
+        // En CLP los precios deben ser enteros (sin decimales)
+        unit_price: Math.round(item.price),
+        currency_id: 'CLP',
+      })),
+      // URLs de retorno (DEBEN estar antes de auto_return)
+      back_urls: {
+        success: `${baseUrl}/payment/success`,
+        failure: `${baseUrl}/payment/failure`,
+        pending: `${baseUrl}/payment/pending`,
+      },
+      auto_return: 'approved' as const,
+      // Configuración de métodos de pago
+      payment_methods: {
+        // Excluir tarjeta Visa (requisito común del desafío)
+        excluded_payment_methods: [
+          { id: 'visa' }
+        ],
+        // Excluir pagos en efectivo (requisito común)
+        excluded_payment_types: [
+          { id: 'ticket' },
+          { id: 'atm' }
+        ],
+        // Máximo de cuotas: 6 (requisito del desafío)
+        installments: 6
+      },
+      statement_descriptor: 'GA Company',
+      external_reference: `order-${Date.now()}`,
+      notification_url: `${baseUrl}/api/webhooks/mercadopago`,
+    }
+
+    // Agregar payer si existe
+    if (params.customerEmail) {
+      preferenceBody.payer = {
+        email: params.customerEmail,
       }
+    }
+
+    // Agregar Integrator ID si existe (para Programa de Partners)
+    if (process.env.MERCADOPAGO_INTEGRATOR_ID) {
+      preferenceBody.integrator_id = process.env.MERCADOPAGO_INTEGRATOR_ID
+    }
+
+    const preference = await preferenceApi.create({
+      body: preferenceBody
     })
 
     return {
