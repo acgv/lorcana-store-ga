@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { AuthGuard } from "@/components/auth-guard"
+import { AdminHeader } from "@/components/admin-header"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -57,19 +58,17 @@ export default function ActivityLogsPage() {
   return (
     <AuthGuard>
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border/40 bg-background/95 backdrop-blur">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link href="/admin">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <h1 className="font-display text-3xl font-black tracking-wide">Activity Log</h1>
-          </div>
-        </div>
-      </header>
+      <AdminHeader title="Activity Log" />
+      
+      {/* Breadcrumb */}
+      <div className="container mx-auto px-4 py-4">
+        <Link href="/admin">
+          <Button variant="ghost" size="sm" className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Button>
+        </Link>
+      </div>
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">

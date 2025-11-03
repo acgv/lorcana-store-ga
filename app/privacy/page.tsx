@@ -470,6 +470,26 @@ export default function PrivacyPage() {
               </a>
             </div>
           </div>
+          
+          {/* Legal Information Section */}
+          <div className="mt-12 pt-8 border-t border-border/40">
+            <div className="text-center space-y-3">
+              <h3 className="font-serif text-lg font-bold text-foreground">
+                Información Legal
+              </h3>
+              <div className="space-y-2 max-w-2xl mx-auto">
+                <p className="text-sm font-medium text-foreground">
+                  © 2025 G&A Company SpA. Todos los derechos reservados.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  "CA Arte Gráfico Sublimable" es una marca registrada de G&A Company SpA en Chile.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  El dominio gacompany.cl es propiedad de G&A Company SpA.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
       <Footer />
