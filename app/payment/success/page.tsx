@@ -13,6 +13,8 @@ function SuccessContent() {
   const searchParams = useSearchParams()
   const paymentId = searchParams.get('payment_id')
   const externalReference = searchParams.get('external_reference')
+  const preferenceId = searchParams.get('preference_id')
+  const collectionId = searchParams.get('collection_id')
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -31,19 +33,35 @@ function SuccessContent() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {paymentId && (
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">ID de Pago</p>
-                <p className="font-mono text-sm mt-1">{paymentId}</p>
-              </div>
-            )}
-            
-            {externalReference && (
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">Número de Orden</p>
-                <p className="font-mono text-sm mt-1">{externalReference}</p>
-              </div>
-            )}
+            <div className="space-y-3">
+              {paymentId && (
+                <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary">
+                  <p className="text-sm font-semibold text-primary">Payment ID (Para Certificación)</p>
+                  <p className="font-mono text-lg mt-1 font-bold">{paymentId}</p>
+                </div>
+              )}
+              
+              {collectionId && collectionId !== paymentId && (
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">Collection ID</p>
+                  <p className="font-mono text-sm mt-1">{collectionId}</p>
+                </div>
+              )}
+              
+              {preferenceId && (
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">Preference ID</p>
+                  <p className="font-mono text-sm mt-1">{preferenceId}</p>
+                </div>
+              )}
+              
+              {externalReference && (
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">Número de Orden</p>
+                  <p className="font-mono text-sm mt-1">{externalReference}</p>
+                </div>
+              )}
+            </div>
 
             <div className="space-y-3">
               <div className="flex items-start gap-3">
