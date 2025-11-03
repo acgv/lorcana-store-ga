@@ -108,6 +108,7 @@ pnpm run dev
 | [🗄️ Supabase Setup](./docs/setup/SUPABASE_SETUP.md) | Configurar base de datos |
 | [📊 Importar Cartas](./docs/guides/QUICK_START_IMPORT.md) | Importar 1,837 cartas de Lorcana |
 
+
 ### 📖 **Por Categoría**
 
 | Categoría | Documentos | Descripción |

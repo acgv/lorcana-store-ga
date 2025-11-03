@@ -155,6 +155,7 @@ export default function InventoryPage() {
         title: "✅ Guardado",
         description: `Stock actualizado para ${data.card.name} (${source})`,
       })
+
     } catch (error) {
       console.error("❌ Error updating stock:", error)
       toast({
