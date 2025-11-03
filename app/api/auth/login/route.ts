@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/db"
+import { rateLimitApi, RateLimitPresets } from "@/lib/rate-limit"
 
 // POST: Login de admin
 export async function POST(request: Request) {
+  // Rate limiting: 5 intentos por minuto
+  const rateLimitResult = await rateLimitApi(request, RateLimitPresets.login)
+  if (!rateLimitResult.success) {
+    return rateLimitResult.response
+  }
+
+
   try {
     const { email, password } = await request.json()
 
