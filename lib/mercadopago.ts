@@ -77,6 +77,20 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
         payer: params.customerEmail ? {
           email: params.customerEmail,
         } : undefined,
+        // Configuración de métodos de pago
+        payment_methods: {
+          // Excluir tarjeta Visa (requisito común del desafío)
+          excluded_payment_methods: [
+            { id: 'visa' }
+          ],
+          // Excluir pagos en efectivo (requisito común)
+          excluded_payment_types: [
+            { id: 'ticket' },
+            { id: 'atm' }
+          ],
+          // Máximo de cuotas: 6 (requisito del desafío)
+          installments: 6
+        },
         back_urls: {
           success: `${baseUrl}/payment/success`,
           failure: `${baseUrl}/payment/failure`,
@@ -86,7 +100,7 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
         statement_descriptor: 'GA Company',
         external_reference: `order-${Date.now()}`,
         notification_url: `${baseUrl}/api/webhooks/mercadopago`,
-        // Integrator ID para el Programa de Partners
+        // Integrator ID para el Programa de Partners (CRÍTICO para certificación)
         integrator_id: process.env.MERCADOPAGO_INTEGRATOR_ID,
       }
     })
