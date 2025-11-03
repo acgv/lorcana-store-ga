@@ -73,13 +73,15 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
         unit_price: Math.round(item.price),
         currency_id: 'CLP',
       })),
-      // URLs de retorno (DEBEN estar antes de auto_return)
+      // URLs de retorno
       back_urls: {
         success: `${baseUrl}/payment/success`,
         failure: `${baseUrl}/payment/failure`,
         pending: `${baseUrl}/payment/pending`,
       },
-      auto_return: 'approved' as const,
+      // auto_return solo funciona con URLs públicas (no localhost)
+      // En producción: 'approved', en desarrollo: undefined
+      ...(isDev ? {} : { auto_return: 'approved' as const }),
       // Configuración de métodos de pago
       payment_methods: {
         // Excluir tarjeta Visa (requisito común del desafío)
@@ -110,6 +112,9 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
     if (process.env.MERCADOPAGO_INTEGRATOR_ID) {
       preferenceBody.integrator_id = process.env.MERCADOPAGO_INTEGRATOR_ID
     }
+
+    console.log('🔍 Preference Body being sent to Mercado Pago:')
+    console.log(JSON.stringify(preferenceBody, null, 2))
 
     const preference = await preferenceApi.create({
       body: preferenceBody
