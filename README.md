@@ -112,8 +112,8 @@ pnpm run dev
 
 | Categoría | Documentos | Descripción |
 |-----------|-----------|-------------|
-| **🔒 Seguridad** | [6 docs](./docs/security/) | Autenticación, RLS, políticas |
-| **⚙️ Setup** | [4 docs](./docs/setup/) | Supabase, ENV, deployment |
+| **🔒 Seguridad** | [6 docs](./docs/security/) | Auth, RLS, rate limiting, roles |
+| **⚙️ Setup** | [5 docs](./docs/setup/) | Supabase, ENV, deployment, production |
 | **📖 Guías** | [3 docs](./docs/guides/) | Tipografía, datos, import |
 | **✨ Features** | [1 doc](./docs/features/) | Filtros y funcionalidades |
 
@@ -353,6 +353,11 @@ curl -X POST http://localhost:3002/api/staging \
 - [x] Filtros avanzados en admin (Set, Tipo, Rareza, Stock)
 - [x] **Supabase database integration** con RLS
 - [x] Paginación para cargar 1,837+ cartas
+- [x] **Sistema de autenticación completo** con Supabase Auth
+- [x] **Roles de usuario** (admin, moderator, user)
+- [x] **Rate limiting** en API routes críticas
+- [x] **CORS y Security Headers** configurados
+- [x] Protección de rutas con proxy (Next.js 16)
 - [x] **Página educativa** sobre cómo jugar Lorcana
 - [x] **Página de noticias** con feeds de Instagram
 - [x] **Política de privacidad** completa
@@ -360,16 +365,16 @@ curl -X POST http://localhost:3002/api/staging \
 - [x] Spinners visuales durante guardado
 - [x] Precios ocultos para cartas sin stock
 - [x] Ordenamiento por número de carta por defecto
+- [x] Performance optimizations (card detail endpoint)
 - [x] Mobile app documentation
 - [x] Sistema de diseño mágico
 - [x] Tipografía limpia con Inter
 
 ### En Progreso 🚧
-- [ ] **Supabase Auth integration** (CRÍTICO para producción) 🔒
-- [ ] Proteger rutas `/admin` con middleware de auth
-- [ ] Implementar Service Role Key para API routes
 - [ ] Cloud image storage (Supabase Storage)
 - [ ] Submissions workflow (mobile → admin)
+- [ ] Payment integration (Stripe)
+- [ ] Email notifications
 
 ### Planeado 📋
 - [ ] OCR service integration
@@ -385,14 +390,15 @@ curl -X POST http://localhost:3002/api/staging \
 
 | Categoría | Tecnología |
 |-----------|-----------|
-| **Frontend** | Next.js 16, React 19, TypeScript |
+| **Frontend** | Next.js 16 (Turbopack), React 19, TypeScript |
 | **Styling** | Tailwind CSS 4, Shadcn UI |
 | **Mobile** | React Native, Expo |
 | **Database** | **Supabase (Postgres)** ✅ |
-| **Auth** | Supabase Auth (planeado) |
+| **Auth** | **Supabase Auth** ✅ |
+| **Security** | RLS Policies, Rate Limiting, CORS ✅ |
 | **Storage** | Supabase Storage (planeado) |
-| **API** | Next.js API Routes |
-| **Deployment** | Vercel, Expo EAS |
+| **API** | Next.js API Routes + Proxy |
+| **Deployment** | Vercel (HTTPS automático), Expo EAS |
 | **Package Manager** | pnpm |
 
 ---
@@ -411,6 +417,39 @@ curl -X POST http://localhost:3002/api/staging \
 - ⚠️ Requiere crear usuario admin en Supabase
 - ⚠️ Requiere aplicar políticas RLS seguras
 
+### ✅ Features de Seguridad Implementadas:
+
+- ✅ **Autenticación con Supabase Auth**
+  - Login con email/password
+  - Tokens JWT validados
+  - Session management con cookies
+
+- ✅ **Sistema de Roles**
+  - Admin: Acceso completo
+  - Moderator: Edición limitada
+  - User: Solo lectura
+
+- ✅ **Rate Limiting**
+  - Login: 5 intentos/minuto
+  - API Admin: 50 requests/minuto
+  - Previene brute force attacks
+
+- ✅ **Protección de Rutas**
+  - Proxy (Next.js 16) protege `/admin`
+  - AuthGuard en componentes client
+  - API routes verifican auth
+
+- ✅ **Security Headers**
+  - X-Frame-Options: DENY
+  - X-Content-Type-Options: nosniff
+  - Referrer-Policy configurado
+  - CORS configurado
+
+- ✅ **RLS Policies**
+  - Frontend: Solo lectura
+  - Backend: Service Role Key
+  - Verificación por roles
+
 ### 🚀 Configuración Rápida (15 minutos)
 
 Sigue esta guía paso a paso:
@@ -423,16 +462,18 @@ Sigue esta guía paso a paso:
 3. Habilitar Email Auth en Supabase
 4. Crear usuario admin
 5. Aplicar `scripts/secure-rls-policies.sql`
-6. Reiniciar servidor
+6. Aplicar `scripts/setup-user-roles.sql` (opcional)
+7. Reiniciar servidor
 
-**Resultado:** Proyecto seguro y listo para producción.
+**Resultado:** Proyecto 100% seguro y production-ready.
 
 ### 📚 Documentación Completa
 
 Ver [docs/security/README.md](./docs/security/README.md) para:
 - Guías detalladas de seguridad
 - Explicación de problemas RLS
-- Opciones de configuración
+- Rate limiting avanzado
+- Deployment a producción
 - Troubleshooting
 
 ---
