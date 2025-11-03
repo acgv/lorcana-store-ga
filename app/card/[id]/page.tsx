@@ -108,6 +108,9 @@ export default function CardDetailPage() {
     setBuyingNow(true)
     
     try {
+      // Obtener el dominio actual para que MP redirija al mismo dominio
+      const currentOrigin = typeof window !== 'undefined' ? window.location.origin : ''
+      
       // Crear preferencia de pago en Mercado Pago
       const response = await fetch('/api/payment/create-preference', {
         method: 'POST',
@@ -121,6 +124,7 @@ export default function CardDetailPage() {
             quantity,
             version,
           }],
+          origin: currentOrigin, // Enviar dominio actual
         }),
       })
 

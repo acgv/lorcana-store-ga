@@ -52,6 +52,7 @@ export interface CardItem {
 export interface CreatePreferenceParams {
   items: CardItem[]
   customerEmail?: string
+  origin?: string // Dominio desde el cual se originó la compra
 }
 
 /**
@@ -64,9 +65,12 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
     throw new Error('Mercado Pago no está configurado. Verifica MERCADOPAGO_ACCESS_TOKEN')
   }
 
-  // En desarrollo usar localhost, en producción usar la URL real
+  // Usar el dominio de origen si está disponible, sino fallback a defaults
   const isDev = process.env.NODE_ENV === 'development'
-  const baseUrl = isDev ? 'http://localhost:3002' : (process.env.NEXT_PUBLIC_APP_URL || 'https://lorcana-store-ga.vercel.app')
+  const defaultUrl = isDev ? 'http://localhost:3002' : (process.env.NEXT_PUBLIC_APP_URL || 'https://lorcana-store-ga.vercel.app')
+  const baseUrl = params.origin || defaultUrl
+  
+  console.log('🌐 Using base URL for redirects:', baseUrl)
 
   try {
     const preferenceBody: any = {
