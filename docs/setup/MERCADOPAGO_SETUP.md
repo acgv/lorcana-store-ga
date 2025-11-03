@@ -10,7 +10,23 @@ Agrega estas líneas a tu archivo `.env.local`:
 # Para producción, reemplaza con credenciales de producción
 NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY=APP_USR-e9d6abf9-87ea-411e-be9a-e392b5f17e42
 MERCADOPAGO_ACCESS_TOKEN=APP_USR-7375809123107592-110309-25767176459316882341e3e6438f989a-2963946354
+
+# Integrator ID (Programa de Partners)
+MERCADOPAGO_INTEGRATOR_ID=dev_24c65fb163bf11ea96500242ac130004
 ```
+
+## 🏆 Integrator ID (Programa de Partners)
+
+El `MERCADOPAGO_INTEGRATOR_ID` te identifica como partner de Mercado Pago.
+
+**Beneficios:**
+- ✅ Comisiones preferenciales
+- ✅ Soporte técnico prioritario
+- ✅ Dashboard de métricas
+- ✅ Certificación oficial
+- ✅ Visibilidad en marketplace de partners
+
+**Importante:** Siempre incluye tu Integrator ID en todas las preferencias de pago.
 
 ## 🔒 Seguridad
 

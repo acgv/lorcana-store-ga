@@ -83,6 +83,8 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
         statement_descriptor: 'GA Company',
         external_reference: `order-${Date.now()}`,
         notification_url: `${baseUrl}/api/webhooks/mercadopago`,
+        // Integrator ID para el Programa de Partners
+        integrator_id: process.env.MERCADOPAGO_INTEGRATOR_ID,
       }
     })
 
