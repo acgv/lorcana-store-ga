@@ -369,20 +369,23 @@ curl -X POST http://localhost:3002/api/staging \
 - [x] Mobile app documentation
 - [x] Sistema de diseño mágico
 - [x] Tipografía limpia con Inter
+- [x] **Integración de pagos con Mercado Pago** 💳
+- [x] **Certificación oficial Mercado Pago** 🏆
+- [x] Actualización automática de stock post-pago
+- [x] Webhooks para notificaciones de pago
+- [x] Tabla de órdenes y tracking
 
 ### En Progreso 🚧
 - [ ] Cloud image storage (Supabase Storage)
 - [ ] Submissions workflow (mobile → admin)
-- [ ] Payment integration (Stripe)
-- [ ] Email notifications
+- [ ] Email notifications para confirmación de compras
 
 ### Planeado 📋
 - [ ] OCR service integration
 - [ ] Push notifications
-- [ ] Payment integration (Stripe)
-- [ ] Email notifications
 - [ ] User accounts & order history
 - [ ] Analytics dashboard
+- [ ] Admin panel para gestión de órdenes
 
 ---
 
@@ -395,6 +398,7 @@ curl -X POST http://localhost:3002/api/staging \
 | **Mobile** | React Native, Expo |
 | **Database** | **Supabase (Postgres)** ✅ |
 | **Auth** | **Supabase Auth** ✅ |
+| **Payments** | **Mercado Pago Checkout Pro** ✅ 🏆 |
 | **Security** | RLS Policies, Rate Limiting, CORS ✅ |
 | **Storage** | Supabase Storage (planeado) |
 | **API** | Next.js API Routes + Proxy |
@@ -476,6 +480,57 @@ Ver [docs/security/README.md](./docs/security/README.md) para:
 - Rate limiting avanzado
 - Deployment a producción
 - Troubleshooting
+
+---
+
+## 💳 Pagos con Mercado Pago
+
+### 🏆 Certificación Oficial
+
+G&A Company es un **Desarrollador Certificado** en Mercado Pago Checkout Pro.
+- **Certificación:** Checkout Pro
+- **Fecha:** 3 de Noviembre, 2025
+- **Integrator ID:** `dev_7f02a687b8f511f08d0a26ae6bb5b74c`
+
+### ✅ Características Implementadas
+
+- ✅ **Botón "Comprar Ahora"** en cada carta
+- ✅ **Mercado Pago Checkout Pro** - Redirección segura
+- ✅ **Webhooks automáticos** - Notificaciones en tiempo real
+- ✅ **Actualización de stock** - Automática post-pago
+- ✅ **Tabla de órdenes** - Historial completo en Supabase
+- ✅ **Soporte Normal y Foil** - Precios y stock diferenciados
+- ✅ **Páginas de confirmación** - Success/Failure/Pending
+- ✅ **Configuración para producción** - Cuotas, métodos excluidos
+
+### 🚀 Configuración
+
+#### **Variables de Entorno Requeridas:**
+
+```bash
+# Mercado Pago (Producción o Prueba)
+NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY=APP_USR-xxxxx
+MERCADOPAGO_ACCESS_TOKEN=APP_USR-xxxxx
+MERCADOPAGO_INTEGRATOR_ID=dev_7f02a687b8f511f08d0a26ae6bb5b74c
+```
+
+#### **Documentación:**
+
+- 📖 [Configuración](./docs/setup/MERCADOPAGO_SETUP.md) - Setup completo
+- 🧪 [Testing](./docs/setup/TESTING_PAYMENTS.md) - Tarjetas de prueba
+- 🚀 [Deployment](./docs/setup/PRODUCTION_DEPLOYMENT.md) - Variables en Vercel
+
+#### **Flujo de Compra:**
+
+```
+Usuario → Carta → "Comprar Ahora" 
+  ↓
+Mercado Pago (pago seguro)
+  ↓
+Webhook → Actualiza stock → Crea orden
+  ↓
+Usuario vuelve con confirmación ✅
+```
 
 ---
 

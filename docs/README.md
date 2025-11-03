@@ -24,16 +24,17 @@
 | [Security Checklist](./security/SECURITY_CHECKLIST.md) | Verificar configuración | Antes de deploy |
 | [RLS Security](./security/RLS_SECURITY.md) | Problema de RLS explicado | Entender seguridad |
 | [Service Role Setup](./security/SERVICE_ROLE_SETUP.md) | Configurar Service Role | Referencia técnica |
-| [Auth Setup](./security/AUTH_SETUP.md) | Config avanzada completa | Referencia técnica |
 | [Índice Seguridad](./security/README.md) | Índice de docs de seguridad | Navegación |
 
 ### ⚙️ **Configuración Inicial**
 
 | Documento | Descripción | Cuándo leer |
 |-----------|-------------|-------------|
-| [Supabase Setup](./setup/SUPABASE_SETUP.md) | Configurar Supabase completo | Setup inicial |
+| [Supabase Setup](./setup/SUPABASE_SETUP.md) | Configurar base de datos | Setup inicial |
 | [ENV Example](./setup/ENV_EXAMPLE.md) | Variables de entorno | Setup inicial |
-| [Deployment](./setup/DEPLOYMENT.md) | Desplegar a Vercel/Railway | Antes de deploy |
+| [Production Deployment](./setup/PRODUCTION_DEPLOYMENT.md) | Desplegar a producción | Antes de deploy |
+| [Mercado Pago Setup](./setup/MERCADOPAGO_SETUP.md) | Configurar pagos | Integrar pagos |
+| [Testing Payments](./setup/TESTING_PAYMENTS.md) | Probar pagos | Testing |
 | [Mobile App Setup](./setup/MOBILE_APP_SETUP.md) | Configurar app móvil | Si usas mobile |
 
 ### 📖 **Guías de Usuario**
@@ -43,6 +44,13 @@
 | [Data Sources](./guides/DATA_SOURCES.md) | Obtener datos de Lorcana | Importar cartas |
 | [Quick Start Import](./guides/QUICK_START_IMPORT.md) | Importar cartas rápido | Primera vez |
 | [Typography Guide](./guides/TYPOGRAPHY_GUIDE.md) | Fuentes y estilos | Personalización |
+
+### 💳 **Pagos con Mercado Pago**
+
+| Documento | Descripción | Cuándo leer |
+|-----------|-------------|-------------|
+| [Mercado Pago Setup](./setup/MERCADOPAGO_SETUP.md) | Configurar integración | Setup de pagos |
+| [Testing Payments](./setup/TESTING_PAYMENTS.md) | Probar con tarjetas de prueba | Testing |
 
 ### ✨ **Features Implementadas**
 
@@ -63,8 +71,9 @@
 
 ### "Voy a desplegar a producción"
 1. [Security Checklist](./security/SECURITY_CHECKLIST.md)
-2. [Deployment](./setup/DEPLOYMENT.md)
+2. [Production Deployment](./setup/PRODUCTION_DEPLOYMENT.md)
 3. [ENV Example](./setup/ENV_EXAMPLE.md)
+4. [Mercado Pago Setup](./setup/MERCADOPAGO_SETUP.md)
 
 ### "Tengo un problema de seguridad"
 1. [Security README](./security/README.md)
@@ -74,6 +83,11 @@
 ### "Quiero importar cartas"
 1. [Data Sources](./guides/DATA_SOURCES.md)
 2. [Quick Start Import](./guides/QUICK_START_IMPORT.md)
+
+### "Quiero configurar pagos" 💳
+1. [Mercado Pago Setup](./setup/MERCADOPAGO_SETUP.md)
+2. [Testing Payments](./setup/TESTING_PAYMENTS.md)
+3. [Production Deployment](./setup/PRODUCTION_DEPLOYMENT.md) - Variables en Vercel
 
 ---
 
@@ -94,13 +108,13 @@ docs/
 │   ├── SECURITY_CHECKLIST.md
 │   ├── RLS_SECURITY.md
 │   ├── SERVICE_ROLE_SETUP.md
-│   ├── AUTH_SETUP.md
-│   ├── create-admin-user.sql
-│   └── verify-setup.mjs
+│   └── create-admin-user.sql
 └── setup/                            ← Configuración inicial
     ├── SUPABASE_SETUP.md
     ├── ENV_EXAMPLE.md
-    ├── DEPLOYMENT.md
+    ├── PRODUCTION_DEPLOYMENT.md
+    ├── MERCADOPAGO_SETUP.md         ← **Pagos**
+    ├── TESTING_PAYMENTS.md          ← **Testing pagos**
     └── MOBILE_APP_SETUP.md
 ```
 
