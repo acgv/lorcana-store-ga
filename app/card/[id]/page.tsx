@@ -8,7 +8,7 @@ import { useLanguage } from "@/components/language-provider"
 import { useCart } from "@/components/cart-provider"
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { ArrowLeft, Sparkles, Package, AlertCircle } from "lucide-react"
+import { ArrowLeft, Sparkles, Package, AlertCircle, ShoppingCart, CreditCard, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import type { Card } from "@/lib/types"
@@ -23,6 +23,7 @@ export default function CardDetailPage() {
   const [quantity, setQuantity] = useState(1)
   const [card, setCard] = useState<Card | null>(null)
   const [loading, setLoading] = useState(true)
+  const [buyingNow, setBuyingNow] = useState(false)
 
   // Cargar carta desde API
   useEffect(() => {
@@ -99,6 +100,44 @@ export default function CardDetailPage() {
       price,
       version,
     })
+  }
+
+  const handleBuyNow = async () => {
+    if (!card) return
+    
+    setBuyingNow(true)
+    
+    try {
+      // Crear preferencia de pago en Mercado Pago
+      const response = await fetch('/api/payment/create-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: [{
+            id: card.id,
+            name: card.name,
+            image: card.image,
+            price,
+            quantity,
+            version,
+          }],
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.initPoint) {
+        // Redirigir a Mercado Pago
+        window.location.href = data.initPoint
+      } else {
+        alert('Error al crear el pago. Intenta nuevamente.')
+      }
+    } catch (error) {
+      console.error('Error creating payment:', error)
+      alert('Error al procesar el pago. Intenta nuevamente.')
+    } finally {
+      setBuyingNow(false)
+    }
   }
 
   return (
@@ -201,20 +240,46 @@ export default function CardDetailPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-border">
-                  <div>
-                    <p className="text-sm text-muted-foreground font-sans">{t("priceRange")}</p>
-                    <p className="text-3xl font-bold text-primary font-display">${(price * quantity).toFixed(2)}</p>
-                    {quantity > 1 && <p className="text-xs text-muted-foreground">${price.toFixed(2)} each</p>}
+                <div className="pt-4 border-t border-border space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground font-sans">{t("priceRange")}</p>
+                      <p className="text-3xl font-bold text-primary font-display">${(price * quantity).toFixed(2)}</p>
+                      {quantity > 1 && <p className="text-xs text-muted-foreground">${price.toFixed(2)} each</p>}
+                    </div>
                   </div>
-                  <Button 
-                    size="lg" 
-                    onClick={handleAddToCart} 
-                    className="glow-border font-sans"
-                    disabled={!isInStock}
-                  >
-                    {isInStock ? t("addToCart") : "Out of Stock"}
-                  </Button>
+                  
+                  {/* Botones de compra */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button 
+                      size="lg" 
+                      variant="outline"
+                      onClick={handleAddToCart} 
+                      className="flex-1 font-sans"
+                      disabled={!isInStock}
+                    >
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+                      {isInStock ? t("addToCart") : "Out of Stock"}
+                    </Button>
+                    <Button 
+                      size="lg" 
+                      onClick={handleBuyNow} 
+                      className="flex-1 glow-border font-sans"
+                      disabled={!isInStock || buyingNow}
+                    >
+                      {buyingNow ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Procesando...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          Comprar Ahora
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : (
