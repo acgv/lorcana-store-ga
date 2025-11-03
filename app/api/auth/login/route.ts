@@ -10,6 +10,7 @@ export async function POST(request: Request) {
     return rateLimitResult.response
   }
 
+
   try {
     const { email, password } = await request.json()
 

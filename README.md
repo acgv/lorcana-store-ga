@@ -450,6 +450,7 @@ curl -X POST http://localhost:3002/api/staging \
   - Backend: Service Role Key
   - Verificación por roles
 
+
 ### 🚀 Configuración Rápida (15 minutos)
 
 Sigue esta guía paso a paso:
