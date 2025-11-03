@@ -6,11 +6,12 @@
 -- ============================================
 
 -- ⚠️ IMPORTANTE: Reemplaza estos valores con tus datos reales
+-- NO usar estos valores de ejemplo en producción
 -- ============================================
 
 -- OPCIÓN 1: Crear usuario admin directamente (más seguro)
 -- ============================================
--- Nota: Reemplaza 'TU_EMAIL_REAL' y 'TU_PASSWORD_SEGURO'
+-- Nota: Reemplaza 'YOUR_ADMIN_EMAIL@example.com' y 'YOUR_SECURE_PASSWORD'
 
 insert into auth.users (
   instance_id,
@@ -36,8 +37,8 @@ values (
   gen_random_uuid(),
   'authenticated',
   'authenticated',
-  'admin@gacompany.com',  -- ← Cambiar a tu email real
-  crypt('admin123', gen_salt('bf')),  -- ← Cambiar a un password seguro
+  'YOUR_ADMIN_EMAIL@example.com',  -- ← REEMPLAZAR: tu email real
+  crypt('YOUR_SECURE_PASSWORD', gen_salt('bf')),  -- ← REEMPLAZAR: password seguro (12+ caracteres)
   now(),
   null,
   null,
@@ -52,13 +53,13 @@ values (
 );
 
 -- ============================================
--- OPCIÓN 2: Usar Supabase Dashboard (más fácil)
+-- OPCIÓN 2: Usar Supabase Dashboard (más fácil) ⭐ RECOMENDADO
 -- ============================================
 -- 1. Ve a Supabase Dashboard
 -- 2. Authentication → Users
 -- 3. Click "Add User"
--- 4. Email: admin@gacompany.com (o tu email)
--- 5. Password: (un password seguro)
+-- 4. Email: tu-email@ejemplo.com (tu email real)
+-- 5. Password: (un password seguro de 12+ caracteres)
 -- 6. Auto Confirm User: ✅ (activar)
 -- 7. Click "Create User"
 
@@ -72,7 +73,7 @@ select
   email_confirmed_at,
   created_at
 from auth.users
-where email = 'admin@gacompany.com';  -- ← Tu email
+where email = 'YOUR_ADMIN_EMAIL@example.com';  -- ← REEMPLAZAR: tu email
 
 -- ============================================
 -- (OPCIONAL) CREAR TABLA DE ROLES
@@ -114,7 +115,7 @@ create policy "Only admins can manage roles"
 insert into public.user_roles (user_id, role)
 select id, 'admin'
 from auth.users
-where email = 'admin@gacompany.com'  -- ← Tu email
+where email = 'YOUR_ADMIN_EMAIL@example.com'  -- ← REEMPLAZAR: tu email
 on conflict (user_id) do update set role = 'admin';
 
 -- ============================================
@@ -126,7 +127,7 @@ select
   r.created_at
 from auth.users u
 join public.user_roles r on r.user_id = u.id
-where u.email = 'admin@gacompany.com';  -- ← Tu email
+where u.email = 'YOUR_ADMIN_EMAIL@example.com';  -- ← REEMPLAZAR: tu email
 
 -- ============================================
 -- NOTAS IMPORTANTES
@@ -144,6 +145,6 @@ where u.email = 'admin@gacompany.com';  -- ← Tu email
 -- Solo usar si creaste el usuario por error:
 /*
 delete from auth.users 
-where email = 'admin@gacompany.com';
+where email = 'YOUR_ADMIN_EMAIL@example.com';  -- ← REEMPLAZAR: tu email
 */
 

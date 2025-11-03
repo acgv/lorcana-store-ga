@@ -110,14 +110,19 @@ $$;
 -- ============================================
 -- 5. ASIGNAR ROL DE ADMIN AL USUARIO EXISTENTE
 -- ============================================
--- Reemplaza el email con el tuyo
+-- ⚠️ IMPORTANTE: Reemplaza 'YOUR_ADMIN_EMAIL@example.com' con tu email real
+-- Este usuario debe existir en Supabase Auth primero
+-- Puedes crearlo en: Supabase Dashboard → Authentication → Users
 
 insert into public.user_roles (user_id, role)
 select id, 'admin'
 from auth.users
-where email = 'acgv.24.10@gmail.com'  -- ← Tu email de admin
+where email = 'YOUR_ADMIN_EMAIL@example.com'  -- ← REEMPLAZAR CON TU EMAIL
 on conflict (user_id) 
 do update set role = 'admin', updated_at = now();
+
+-- Ejemplo de uso:
+-- where email = 'admin@yourcompany.com'
 
 -- ============================================
 -- 6. ACTUALIZAR POLÍTICAS DE CARDS PARA USAR ROLES
