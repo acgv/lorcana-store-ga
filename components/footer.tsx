@@ -39,7 +39,7 @@ export function Footer() {
           </div>
           <div>
             <h4 className="font-medium mb-4">Follow Us</h4>
-            <div className="flex gap-4">
+            <div className="flex gap-4 mb-4">
               <a 
                 href="https://instagram.com/arte.grafico.sublimable" 
                 target="_blank" 
@@ -75,34 +75,30 @@ export function Footer() {
                 <Phone className="h-5 w-5" />
               </a>
             </div>
-            <div className="mt-4">
+            
+            {/* Certification Badge */}
+            <div className="mb-4">
+              <a
+                href="/mercadopago-certificate.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block group transition-transform hover:scale-105"
+                title="Desarrollador Certificado por Mercado Pago - Ver Certificado"
+              >
+                <Image
+                  src="/mercadopago-certified-badge.png"
+                  alt="Desarrollador Certificado Mercado Pago - Checkout Pro"
+                  width={150}
+                  height={50}
+                  className="opacity-90 group-hover:opacity-100 transition-opacity"
+                />
+              </a>
+            </div>
+            
+            <div>
               <LanguageSelector />
             </div>
           </div>
-        </div>
-        
-        {/* Certification Badge */}
-        <div className="mt-8 pt-8 border-t border-border/40">
-          <div className="flex justify-center">
-            <a
-              href="/mercadopago-certificate.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group transition-transform hover:scale-105"
-              title="Desarrollador Certificado por Mercado Pago - Ver Certificado"
-            >
-              <Image
-                src="/mercadopago-certified-badge.png"
-                alt="Desarrollador Certificado Mercado Pago - Checkout Pro"
-                width={180}
-                height={60}
-                className="opacity-90 group-hover:opacity-100 transition-opacity"
-              />
-            </a>
-          </div>
-          <p className="text-xs text-center text-muted-foreground mt-2">
-            Desarrollador Certificado en Checkout Pro
-          </p>
         </div>
         
         {/* Legal Information */}
