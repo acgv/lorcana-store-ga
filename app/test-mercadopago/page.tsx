@@ -14,19 +14,24 @@ export default function MercadoPagoCertificationTest() {
     setResult(null)
 
     try {
-      const response = await fetch('/api/payment/certification-test', {
+      // Usar endpoint directo con fetch (no SDK)
+      const response = await fetch('/api/payment/certification-direct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })
 
       const data = await response.json()
 
+      console.log('🔍 Response from certification endpoint:', data)
+
       if (data.success && data.initPoint) {
         setResult(data)
+        console.log('🎯 Integrator ID Debug:', data.debug)
         // Redirigir a Mercado Pago
         window.location.href = data.initPoint
       } else {
         alert('Error: ' + (data.error || 'Unknown error'))
+        console.error('Full error:', data)
       }
     } catch (error) {
       console.error('Error:', error)
