@@ -1,8 +1,15 @@
 /**
  * Simple Rate Limiting Implementation
  * 
- * Para producción, considera usar Upstash Redis:
+ * Compatible con entornos serverless (Vercel) usando lazy cleanup.
+ * Para alta escala en producción, considera usar Upstash Redis:
  * https://github.com/upstash/ratelimit
+ * 
+ * Características:
+ * - ✅ Sin setInterval (compatible con serverless)
+ * - ✅ Lazy cleanup bajo demanda
+ * - ✅ Protección contra memory overflow
+ * - ✅ Sin memory leaks en hot-reloading
  */
 
 interface RateLimitStore {
@@ -16,15 +23,35 @@ interface RateLimitStore {
 // Para producción, usa Redis (Upstash)
 const store: RateLimitStore = {}
 
-// Limpiar store cada hora
-setInterval(() => {
+// Límite de entradas para prevenir uso excesivo de memoria
+const MAX_STORE_SIZE = 10000
+
+/**
+ * Lazy cleanup: Limpia entradas expiradas solo cuando se necesita
+ * Esto es compatible con entornos serverless (Vercel) y previene memory leaks
+ * en desarrollo con hot-reloading.
+ */
+function cleanupExpiredEntries() {
   const now = Date.now()
-  Object.keys(store).forEach(key => {
+  const keys = Object.keys(store)
+  
+  // Solo hacer cleanup si el store está creciendo demasiado
+  if (keys.length < MAX_STORE_SIZE / 2) {
+    return
+  }
+  
+  let cleaned = 0
+  for (const key of keys) {
     if (store[key].resetAt < now) {
       delete store[key]
+      cleaned++
     }
-  })
-}, 60 * 60 * 1000)
+  }
+  
+  if (process.env.NODE_ENV === 'development' && cleaned > 0) {
+    console.log(`🧹 Rate limit cleanup: removed ${cleaned} expired entries`)
+  }
+}
 
 export interface RateLimitConfig {
   /**
@@ -47,6 +74,9 @@ export interface RateLimitResult {
 /**
  * Rate limiter simple en memoria
  * 
+ * Usa lazy cleanup para ser compatible con serverless (Vercel).
+ * Las entradas expiradas se limpian bajo demanda, no con setInterval.
+ * 
  * @example
  * const result = await rateLimit('login:192.168.1.1', { limit: 5, windowSeconds: 60 })
  * if (!result.success) {
@@ -60,6 +90,31 @@ export async function rateLimit(
   const now = Date.now()
   const windowMs = config.windowSeconds * 1000
   const key = identifier
+
+  // Lazy cleanup: Limpiar entradas antiguas periódicamente
+  // Esto previene memory leaks en serverless y desarrollo
+  cleanupExpiredEntries()
+  
+  // Safeguard: Si el store está muy grande, hacer cleanup agresivo
+  if (Object.keys(store).length >= MAX_STORE_SIZE) {
+    console.warn(`⚠️ Rate limit store at capacity (${MAX_STORE_SIZE}), forcing cleanup`)
+    const keys = Object.keys(store)
+    for (const k of keys) {
+      if (store[k].resetAt < now) {
+        delete store[k]
+      }
+    }
+    
+    // Si aún está lleno, eliminar las entradas más antiguas
+    if (Object.keys(store).length >= MAX_STORE_SIZE) {
+      const sorted = Object.entries(store).sort((a, b) => a[1].resetAt - b[1].resetAt)
+      const toRemove = sorted.slice(0, Math.floor(MAX_STORE_SIZE / 2))
+      for (const [k] of toRemove) {
+        delete store[k]
+      }
+      console.warn(`⚠️ Removed ${toRemove.length} oldest entries to prevent memory overflow`)
+    }
+  }
 
   // Obtener o crear entrada
   if (!store[key] || store[key].resetAt < now) {
