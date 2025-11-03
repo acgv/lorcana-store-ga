@@ -79,8 +79,20 @@ export function Footer() {
             </div>
           </div>
         </div>
-        <div className="mt-8 pt-8 border-t border-border/40 text-center text-sm text-muted-foreground">
-          {t("copyright")}
+        
+        {/* Legal Information */}
+        <div className="mt-8 pt-8 border-t border-border/40">
+          <div className="text-center space-y-2">
+            <p className="text-sm font-medium text-foreground">
+              © 2025 G&A Company SpA. Todos los derechos reservados.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              "CA Arte Gráfico Sublimable" es una marca registrada de G&A Company SpA en Chile.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              El dominio gacompany.cl es propiedad de G&A Company SpA.
+            </p>
+          </div>
         </div>
       </div>
     </footer>
