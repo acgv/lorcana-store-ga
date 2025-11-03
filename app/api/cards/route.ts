@@ -20,34 +20,79 @@ export async function GET(request: NextRequest) {
 
     // Intentar leer desde Supabase si está configurado
     let cards: Card[] | null = null
-    if (source !== "mock" && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      const query = supabase
-        .from("cards")
-        .select("*")
-        .eq("status", filters.status)
+    let dataSource = "mock"
+    
+    if (source !== "mock" && supabase) {
+      try {
+        let allCards: any[] = []
+        let page = 0
+        const pageSize = 1000
+        let hasMore = true
 
-      if (filters.type) query.eq("type", filters.type)
-      if (filters.set) query.eq("set", filters.set)
-      if (filters.rarity) query.eq("rarity", filters.rarity)
-      if (filters.language) query.eq("language", filters.language)
+        // Obtener todas las cartas usando paginación
+        while (hasMore) {
+          const from = page * pageSize
+          const to = from + pageSize - 1
+          
+          let query = supabase
+            .from("cards")
+            .select("*", { count: "exact" })
+            .eq("status", filters.status)
+            .range(from, to)
 
-      const { data, error } = await query
-      if (!error && Array.isArray(data)) {
-        // Si no hay datos en Supabase, caer al mock
-        if (data.length > 0) {
-          cards = data as unknown as Card[]
+          if (filters.type) query = query.eq("type", filters.type)
+          if (filters.set) query = query.eq("set", filters.set)
+          if (filters.rarity) query = query.eq("rarity", filters.rarity)
+          if (filters.language) query = query.eq("language", filters.language)
+
+          const { data, error, count } = await query
+          
+          if (error) {
+            console.log(`⚠ GET /api/cards - Supabase error: ${error.message}, using MOCK`)
+            break
+          }
+          
+          if (data && data.length > 0) {
+            allCards = [...allCards, ...data]
+          }
+          
+          // Verificar si hay más páginas
+          hasMore = data && data.length === pageSize && (count === null || allCards.length < count)
+          page++
+          
+          // Safety limit: no más de 10 páginas (10,000 cartas máximo)
+          if (page >= 10) break
         }
+
+        if (allCards.length > 0) {
+          cards = allCards as unknown as Card[]
+          dataSource = "supabase"
+          console.log(`✓ GET /api/cards - Using SUPABASE (${cards.length} cards from ${page} pages)`)
+        } else {
+          console.log("⚠ GET /api/cards - Supabase returned empty, using MOCK")
+        }
+      } catch (err) {
+        console.log(`⚠ GET /api/cards - Supabase connection error: ${err instanceof Error ? err.message : "unknown"}, using MOCK`)
       }
       // Si la tabla no existe (error de esquema) o cualquier error, caerá al mock
+    } else {
+      console.log("ℹ GET /api/cards - Supabase not configured or forced mock, using MOCK")
     }
 
     if (!cards) {
       cards = await Database.getCards(filters)
+      if (dataSource !== "supabase") {
+        console.log(`✓ GET /api/cards - Using MOCK (${cards.length} cards)`)
+      }
     }
 
     const response: ApiResponse<Card[]> = {
       success: true,
       data: cards,
+      meta: {
+        source: dataSource,
+        count: cards.length,
+      } as any,
     }
 
     return NextResponse.json(response)
@@ -77,7 +122,10 @@ export async function POST(request: NextRequest) {
 
     // Intentar crear en Supabase si está configurado
     let newCard: Card | null = null
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    let dataSource = "mock"
+    
+    if (supabase) {
+      try {
       const row: any = {
         id: card.id || `card_${Date.now()}`,
         name: card.name,
@@ -100,6 +148,8 @@ export async function POST(request: NextRequest) {
       const { data, error } = await supabase.from("cards").insert(row).select("*").single()
       if (!error && data) {
         newCard = data as unknown as Card
+        dataSource = "supabase"
+        console.log(`✓ POST /api/cards - Created in SUPABASE: ${newCard.id}`)
         // Crear log
         await supabase.from("logs").insert({
           id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -109,12 +159,20 @@ export async function POST(request: NextRequest) {
           entityId: row.id,
           details: { source: "api" },
         })
+      } else {
+        console.log(`⚠ POST /api/cards - Supabase error: ${error?.message || "unknown"}, using MOCK`)
       }
+      } catch (err) {
+        console.log(`⚠ POST /api/cards - Supabase connection error: ${err instanceof Error ? err.message : "unknown"}, using MOCK`)
+      }
+    } else {
+      console.log("ℹ POST /api/cards - Supabase not configured, using MOCK")
     }
 
     // Fallback mock
     if (!newCard) {
       newCard = await Database.createCard(card)
+      console.log(`✓ POST /api/cards - Created in MOCK: ${newCard.id}`)
       await Database.createLog({
         userId: "system",
         action: "card_created",
@@ -127,6 +185,9 @@ export async function POST(request: NextRequest) {
       success: true,
       data: newCard,
       message: "Card created successfully",
+      meta: {
+        source: dataSource,
+      } as any,
     }
 
     return NextResponse.json(response)

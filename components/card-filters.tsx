@@ -164,12 +164,12 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
       {/* View Mode */}
       <div className="space-y-3">
         <Label className="text-sm font-semibold text-foreground/90">View</Label>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2">
           <Button
             variant={viewMode === "grid" ? "default" : "outline"}
             size="sm"
             onClick={() => setViewMode("grid")}
-            className="flex-1 transition-all"
+            className="transition-all justify-start w-full"
           >
             <Grid className="h-4 w-4 mr-2" />
             {t("gridView")}
@@ -178,7 +178,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
             variant={viewMode === "list" ? "default" : "outline"}
             size="sm"
             onClick={() => setViewMode("list")}
-            className="flex-1 transition-all"
+            className="transition-all justify-start w-full"
           >
             <List className="h-4 w-4 mr-2" />
             {t("listView")}

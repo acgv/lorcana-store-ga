@@ -1,28 +1,53 @@
 "use client"
 
-import { use } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/components/language-provider"
 import { useCart } from "@/components/cart-provider"
-import { mockCards } from "@/lib/mock-data"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { ArrowLeft, Sparkles, Package, AlertCircle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import type { Card } from "@/lib/types"
 
-export default function CardDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function CardDetailPage() {
+  const params = useParams()
+  const id = params?.id as string
   const { t } = useLanguage()
   const { addToCart } = useCart()
   const router = useRouter()
   const [version, setVersion] = useState<"normal" | "foil">("normal")
   const [quantity, setQuantity] = useState(1)
+  const [card, setCard] = useState<Card | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const card = mockCards.find((c) => c.id === id)
+  // Cargar carta desde API
+  useEffect(() => {
+    const loadCard = async () => {
+      try {
+        const response = await fetch(`/api/cards`)
+        const result = await response.json()
+        
+        console.log(`🔍 Buscando carta con ID: "${id}"`)
+        console.log(`📦 Total de cartas cargadas: ${result.data?.length || 0}`)
+        
+        if (result.success && result.data) {
+          const foundCard = result.data.find((c: Card) => c.id === id)
+          console.log(`✅ Carta encontrada:`, foundCard ? `${foundCard.name} (${foundCard.id})` : "❌ No encontrada")
+          setCard(foundCard || null)
+        }
+      } catch (error) {
+        console.error("Error loading card:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadCard()
+  }, [id])
   
   // Stock management
   const normalStock = card?.normalStock || 0
@@ -31,12 +56,32 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
   const isInStock = currentStock > 0
   const isLowStock = currentStock < 5 && currentStock > 0
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Loading card...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
   if (!card) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 container mx-auto px-4 py-8">
-          <p>Card not found</p>
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold mb-4">Card not found</h2>
+            <p className="text-muted-foreground mb-6">The card you're looking for doesn't exist.</p>
+            <Button onClick={() => router.push('/catalog')}>
+              Go to Catalog
+            </Button>
+          </div>
         </main>
         <Footer />
       </div>
@@ -114,62 +159,77 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
               )}
             </div>
 
-            <div className="space-y-4 p-6 rounded-lg bg-card border border-border">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block font-sans">{t("version")}</label>
-                  <Select value={version} onValueChange={(v) => setVersion(v as "normal" | "foil")}>
-                    <SelectTrigger className="font-sans">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal" className="font-sans" disabled={normalStock === 0}>
-                        {t("normal")} - ${card.price.toFixed(2)} {normalStock === 0 && "(Out of Stock)"}
-                      </SelectItem>
-                      <SelectItem value="foil" className="font-sans" disabled={foilStock === 0}>
-                        {t("foil")} - ${card.foilPrice.toFixed(2)} {foilStock === 0 && "(Out of Stock)"}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+            {(normalStock > 0 || foilStock > 0) ? (
+              <div className="space-y-4 p-6 rounded-lg bg-card border border-border">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block font-sans">{t("version")}</label>
+                    <Select value={version} onValueChange={(v) => setVersion(v as "normal" | "foil")}>
+                      <SelectTrigger className="font-sans">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal" className="font-sans" disabled={normalStock === 0}>
+                          {t("normal")} {normalStock > 0 && `- $${card.price.toFixed(2)}`} {normalStock === 0 && "(Out of Stock)"}
+                        </SelectItem>
+                        <SelectItem value="foil" className="font-sans" disabled={foilStock === 0}>
+                          {t("foil")} {foilStock > 0 && `- $${card.foilPrice.toFixed(2)}`} {foilStock === 0 && "(Out of Stock)"}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block font-sans">Quantity</label>
+                    <Select 
+                      value={quantity.toString()} 
+                      onValueChange={(v) => setQuantity(parseInt(v))}
+                      disabled={!isInStock}
+                    >
+                      <SelectTrigger className="font-sans">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: Math.min(currentStock, 10) }, (_, i) => i + 1).map((num) => (
+                          <SelectItem key={num} value={num.toString()} className="font-sans">
+                            {num}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium mb-2 block font-sans">Quantity</label>
-                  <Select 
-                    value={quantity.toString()} 
-                    onValueChange={(v) => setQuantity(parseInt(v))}
+                <div className="flex items-center justify-between pt-4 border-t border-border">
+                  <div>
+                    <p className="text-sm text-muted-foreground font-sans">{t("priceRange")}</p>
+                    <p className="text-3xl font-bold text-primary font-display">${(price * quantity).toFixed(2)}</p>
+                    {quantity > 1 && <p className="text-xs text-muted-foreground">${price.toFixed(2)} each</p>}
+                  </div>
+                  <Button 
+                    size="lg" 
+                    onClick={handleAddToCart} 
+                    className="glow-border font-sans"
                     disabled={!isInStock}
                   >
-                    <SelectTrigger className="font-sans">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: Math.min(currentStock, 10) }, (_, i) => i + 1).map((num) => (
-                        <SelectItem key={num} value={num.toString()} className="font-sans">
-                          {num}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {isInStock ? t("addToCart") : "Out of Stock"}
+                  </Button>
                 </div>
               </div>
-
-              <div className="flex items-center justify-between pt-4 border-t border-border">
-                <div>
-                  <p className="text-sm text-muted-foreground font-sans">{t("priceRange")}</p>
-                  <p className="text-3xl font-bold text-primary font-display">${(price * quantity).toFixed(2)}</p>
-                  {quantity > 1 && <p className="text-xs text-muted-foreground">${price.toFixed(2)} each</p>}
-                </div>
+            ) : (
+              <div className="p-6 rounded-lg bg-card border border-border text-center">
+                <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <h3 className="text-xl font-semibold mb-2">Out of Stock</h3>
+                <p className="text-muted-foreground mb-4">This card is currently unavailable in all versions.</p>
                 <Button 
-                  size="lg" 
-                  onClick={handleAddToCart} 
-                  className="glow-border font-sans"
-                  disabled={!isInStock}
+                  variant="outline"
+                  onClick={() => router.push('/catalog')}
+                  className="font-sans"
                 >
-                  {isInStock ? t("addToCart") : "Out of Stock"}
+                  Browse Catalog
                 </Button>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </main>

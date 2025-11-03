@@ -5,9 +5,17 @@ import type { Card, CardSubmission, ActivityLog } from "./types"
 import { createClient } from "@supabase/supabase-js"
 
 // Supabase client (usa variables definidas en .env.local)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Solo se crea si las variables están configuradas
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+export const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+      },
+    })
+  : null
 
 // Mock database para desarrollo (reemplazar con Supabase/Firebase)
 export class Database {

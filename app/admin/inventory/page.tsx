@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Package, Search, Save, AlertCircle } from "lucide-react"
+import { Package, Search, Save, AlertCircle, Loader2 } from "lucide-react"
 import Image from "next/image"
 
 interface InventoryItem {
@@ -37,8 +37,11 @@ export default function InventoryPage() {
     type: "all",
     rarity: "all",
     stockStatus: "all", // all, inStock, outOfStock, lowStock
+    stockType: "all", // all, hasNormal, hasFoil, hasBoth
   })
-  const [editedCards, setEditedCards] = useState<Map<string, { normalStock?: number; foilStock?: number }>>(new Map())
+  const [editedCards, setEditedCards] = useState<Map<string, { normalStock?: number; foilStock?: number; price?: number; foilPrice?: number }>>(new Map())
+  const [savingCard, setSavingCard] = useState<string | null>(null) // ID de la carta que se está guardando
+  const [savingAll, setSavingAll] = useState(false) // Estado para Save All
   const { toast } = useToast()
 
   // Fetch inventory on mount
@@ -84,9 +87,26 @@ export default function InventoryPage() {
     }
   }
 
+  const handlePriceChange = (cardId: string, type: 'normal' | 'foil', value: string) => {
+    const numValue = parseFloat(value) || 0
+    const current = editedCards.get(cardId) || {}
+    
+    if (type === 'normal') {
+      setEditedCards(new Map(editedCards.set(cardId, { ...current, price: numValue })))
+    } else {
+      setEditedCards(new Map(editedCards.set(cardId, { ...current, foilPrice: numValue })))
+    }
+  }
+
   const handleSaveStock = async (cardId: string) => {
     const changes = editedCards.get(cardId)
-    if (!changes) return
+    if (!changes) {
+      console.log("⚠️ No hay cambios para guardar")
+      return
+    }
+
+    console.log(`💾 Guardando stock para ${cardId}:`, changes)
+    setSavingCard(cardId) // Marcar esta carta como "guardando"
 
     try {
       const response = await fetch("/api/inventory", {
@@ -96,38 +116,56 @@ export default function InventoryPage() {
       })
 
       const data = await response.json()
+      console.log(`📥 Respuesta del servidor:`, data)
 
-      if (data.success) {
-        // Update local state
-        setInventory(prev => prev.map(item => 
-          item.id === cardId 
-            ? { ...item, normalStock: changes.normalStock ?? item.normalStock, foilStock: changes.foilStock ?? item.foilStock }
-            : item
-        ))
-        
-        // Remove from edited cards
-        const newEdited = new Map(editedCards)
-        newEdited.delete(cardId)
-        setEditedCards(newEdited)
-
-        toast({
-          title: "Success",
-          description: `Stock updated for ${data.card.name}`,
-        })
-      } else {
+      if (!response.ok || !data.success) {
+        // Error del servidor
+        const errorMsg = data.error || "Failed to update stock"
+        const hint = data.hint ? `\n\n💡 ${data.hint}` : ""
+        console.error("❌ Error del servidor:", data)
         toast({
           variant: "destructive",
-          title: "Error",
-          description: data.error || "Failed to update stock",
+          title: "Error al guardar",
+          description: `${errorMsg}${hint}`,
         })
+        return
       }
+
+      // Éxito - actualizar estado local
+      setInventory(prev => prev.map(item => 
+        item.id === cardId 
+          ? { 
+              ...item, 
+              normalStock: changes.normalStock ?? item.normalStock, 
+              foilStock: changes.foilStock ?? item.foilStock,
+              price: changes.price ?? item.price,
+              foilPrice: changes.foilPrice ?? item.foilPrice
+            }
+          : item
+      ))
+      
+      // Remover de edited cards
+      const newEdited = new Map(editedCards)
+      newEdited.delete(cardId)
+      setEditedCards(newEdited)
+
+      const source = data.meta?.source || "unknown"
+      toast({
+        title: "✅ Guardado",
+        description: `Stock actualizado para ${data.card.name} (${source})`,
+      })
+      
+      // Recargar inventario para verificar cambios
+      setTimeout(() => fetchInventory(), 1000)
     } catch (error) {
-      console.error("Error updating stock:", error)
+      console.error("❌ Error updating stock:", error)
       toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to update stock",
       })
+    } finally {
+      setSavingCard(null) // Limpiar estado de guardado
     }
   }
 
@@ -145,6 +183,8 @@ export default function InventoryPage() {
       ...changes
     }))
 
+    setSavingAll(true) // Marcar como "guardando todo"
+
     try {
       const response = await fetch("/api/inventory", {
         method: "PATCH",
@@ -160,7 +200,13 @@ export default function InventoryPage() {
           if (result.success) {
             setInventory(prev => prev.map(item => 
               item.id === result.cardId 
-                ? { ...item, normalStock: result.normalStock, foilStock: result.foilStock }
+                ? { 
+                    ...item, 
+                    normalStock: result.normalStock, 
+                    foilStock: result.foilStock,
+                    price: result.price ?? item.price,
+                    foilPrice: result.foilPrice ?? item.foilPrice
+                  }
                 : item
             ))
           }
@@ -170,7 +216,7 @@ export default function InventoryPage() {
 
         toast({
           title: "Success",
-          description: `Updated stock for ${data.results.filter((r: any) => r.success).length} cards`,
+          description: `Updated ${data.results.filter((r: any) => r.success).length} cards`,
         })
       } else {
         toast({
@@ -186,6 +232,8 @@ export default function InventoryPage() {
         title: "Error",
         description: "Failed to update stock",
       })
+    } finally {
+      setSavingAll(false) // Limpiar estado de guardado
     }
   }
 
@@ -228,6 +276,28 @@ export default function InventoryPage() {
         return true
       })
     }
+
+    // Stock type filter (Normal/Foil)
+    if (filters.stockType !== "all") {
+      filtered = filtered.filter(item => {
+        const hasNormal = item.normalStock > 0
+        const hasFoil = item.foilStock > 0
+        if (filters.stockType === "hasNormal") return hasNormal
+        if (filters.stockType === "hasFoil") return hasFoil
+        if (filters.stockType === "hasBoth") return hasNormal && hasFoil
+        return true
+      })
+    }
+
+    // Ordenar por set y luego por número de carta
+    filtered.sort((a, b) => {
+      // Primero ordenar por set
+      if (a.set !== b.set) {
+        return a.set.localeCompare(b.set)
+      }
+      // Luego por número de carta
+      return (a.number || 0) - (b.number || 0)
+    })
 
     return filtered
   }, [inventory, searchTerm, filters])
@@ -319,7 +389,7 @@ export default function InventoryPage() {
           </div>
 
           {/* Second Row: Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             {/* Set Filter */}
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">Set</Label>
@@ -394,6 +464,22 @@ export default function InventoryPage() {
               </Select>
             </div>
 
+            {/* Stock Type Filter (Normal/Foil) */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Stock Type</Label>
+              <Select value={filters.stockType} onValueChange={(value) => setFilters({ ...filters, stockType: value })}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="hasNormal">Has Normal Stock</SelectItem>
+                  <SelectItem value="hasFoil">Has Foil Stock</SelectItem>
+                  <SelectItem value="hasBoth">Has Both</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Clear Filters Button */}
             <div className="flex items-end">
               <Button 
@@ -406,6 +492,7 @@ export default function InventoryPage() {
                     type: "all",
                     rarity: "all",
                     stockStatus: "all",
+                    stockType: "all",
                   })
                 }}
                 className="h-9 w-full"
@@ -423,11 +510,20 @@ export default function InventoryPage() {
           </p>
           <Button 
             onClick={handleSaveAll} 
-            disabled={editedCards.size === 0}
+            disabled={editedCards.size === 0 || savingAll}
             className="whitespace-nowrap"
           >
-            <Save className="h-4 w-4 mr-2" />
-            Save All Changes ({editedCards.size})
+            {savingAll ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save All Changes ({editedCards.size})
+              </>
+            )}
           </Button>
         </div>
 
@@ -454,7 +550,11 @@ export default function InventoryPage() {
                   const changes = editedCards.get(item.id)
                   const displayNormalStock = changes?.normalStock !== undefined ? changes.normalStock : item.normalStock
                   const displayFoilStock = changes?.foilStock !== undefined ? changes.foilStock : item.foilStock
-                  const isLowStock = displayNormalStock + displayFoilStock < 5
+                  const displayPrice = changes?.price !== undefined ? changes.price : item.price
+                  const displayFoilPrice = changes?.foilPrice !== undefined ? changes.foilPrice : item.foilPrice
+                  const totalStock = displayNormalStock + displayFoilStock
+                  const isOutOfStock = totalStock === 0
+                  const isLowStock = totalStock > 0 && totalStock < 5
 
                   return (
                     <tr key={item.id} className={`border-b border-primary/10 hover:bg-card/30 ${hasChanges ? 'bg-primary/5' : ''}`}>
@@ -470,8 +570,14 @@ export default function InventoryPage() {
                           </div>
                           <div>
                             <div className="font-semibold">{item.name}</div>
-                            {isLowStock && (
+                            {isOutOfStock && (
                               <Badge variant="destructive" className="mt-1">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                Out of Stock
+                              </Badge>
+                            )}
+                            {isLowStock && (
+                              <Badge className="mt-1 bg-orange-500 hover:bg-orange-600 text-white border-orange-600">
                                 <AlertCircle className="h-3 w-3 mr-1" />
                                 Low Stock
                               </Badge>
@@ -491,10 +597,30 @@ export default function InventoryPage() {
                       <td className="p-4 text-center">
                         <span className="font-mono text-sm">{item.cardNumber || `#${item.number}`}</span>
                       </td>
-                      <td className="p-4 text-right">
-                        <div className="space-y-1">
-                          <div className="text-sm">${item.price.toFixed(2)}</div>
-                          <div className="text-xs text-muted-foreground">Foil: ${item.foilPrice.toFixed(2)}</div>
+                      <td className="p-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">Normal:</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={displayPrice}
+                              onChange={(e) => handlePriceChange(item.id, 'normal', e.target.value)}
+                              className="w-20 h-7 text-sm"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">Foil:</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={displayFoilPrice}
+                              onChange={(e) => handlePriceChange(item.id, 'foil', e.target.value)}
+                              className="w-20 h-7 text-sm"
+                            />
+                          </div>
                         </div>
                       </td>
                       <td className="p-4">
@@ -519,10 +645,17 @@ export default function InventoryPage() {
                         <Button
                           size="sm"
                           onClick={() => handleSaveStock(item.id)}
-                          disabled={!hasChanges}
+                          disabled={!hasChanges || savingCard === item.id}
                           variant={hasChanges ? "default" : "outline"}
                         >
-                          Save
+                          {savingCard === item.id ? (
+                            <>
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            "Save"
+                          )}
                         </Button>
                       </td>
                     </tr>

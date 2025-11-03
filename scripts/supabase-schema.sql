@@ -57,13 +57,15 @@ alter table public.submissions enable row level security;
 alter table public.logs enable row level security;
 
 -- Public read for approved cards
-create policy if not exists "Read approved cards"
+drop policy if exists "Read approved cards" on public.cards;
+create policy "Read approved cards"
   on public.cards
   for select
   using (status = 'approved');
 
 -- Submissions: read own by anon (adjust as needed); for now allow read all
-create policy if not exists "Read submissions"
+drop policy if exists "Read submissions" on public.submissions;
+create policy "Read submissions"
   on public.submissions
   for select
   using (true);

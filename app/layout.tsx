@@ -25,6 +25,9 @@ export const metadata: Metadata = {
   title: "Lorcana Singles - Find Your Perfect Card",
   description: "Discover, filter and collect your favorite Disney Lorcana TCG single cards",
   generator: "v0.app",
+  icons: {
+    icon: '/logo-ga.jpg',
+  },
 }
 
 export default function RootLayout({

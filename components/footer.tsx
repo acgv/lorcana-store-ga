@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Facebook, Twitter, Instagram, Youtube } from "lucide-react"
+import { Instagram, Music2, Mail, Phone } from "lucide-react"
 import { useLanguage } from "@/components/language-provider"
 import { LanguageSelector } from "@/components/language-selector"
 
@@ -39,18 +39,40 @@ export function Footer() {
           <div>
             <h4 className="font-medium mb-4">Follow Us</h4>
             <div className="flex gap-4">
-              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                <Facebook className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                <Twitter className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
+              <a 
+                href="https://instagram.com/arte.grafico.sublimable" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition-colors"
+                title="Instagram"
+              >
                 <Instagram className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                <Youtube className="h-5 w-5" />
-              </Link>
+              </a>
+              <a 
+                href="https://tiktok.com/@arte.grafico.sublimable" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition-colors"
+                title="TikTok"
+              >
+                <Music2 className="h-5 w-5" />
+              </a>
+              <a 
+                href="mailto:ga.company.contact@gmail.com"
+                className="text-muted-foreground hover:text-primary transition-colors"
+                title="Email"
+              >
+                <Mail className="h-5 w-5" />
+              </a>
+              <a 
+                href="https://wa.me/56951830357"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition-colors"
+                title="WhatsApp"
+              >
+                <Phone className="h-5 w-5" />
+              </a>
             </div>
             <div className="mt-4">
               <LanguageSelector />

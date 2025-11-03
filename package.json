@@ -11,7 +11,7 @@
     "load:db": "node scripts/load-to-db.js",
     "seed:all": "npm run import:cards && npm run load:db",
     "db:setup": "echo Run this SQL in Supabase SQL editor: scripts/supabase-schema.sql",
-    "db:seed": "tsx scripts/seed-supabase.ts"
+    "db:seed": "node scripts/seed-supabase.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
