@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { mockCards } from "@/lib/mock-data"
 import { supabase, supabaseAdmin } from "@/lib/db"
+import { rateLimitApi, RateLimitPresets } from "@/lib/rate-limit"
 
 // GET: Obtener todas las cartas con su stock
 export async function GET() {
@@ -93,6 +94,12 @@ export async function GET() {
 
 // POST: Actualizar stock y/o precio de una carta específica
 export async function POST(request: Request) {
+  // Rate limiting: 50 requests por minuto para operaciones admin
+  const rateLimitResult = await rateLimitApi(request, RateLimitPresets.admin)
+  if (!rateLimitResult.success) {
+    return rateLimitResult.response
+  }
+
   try {
     const body = await request.json()
     const { cardId, normalStock, foilStock, price, foilPrice } = body
