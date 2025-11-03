@@ -8,9 +8,21 @@ import { createClient } from "@supabase/supabase-js"
 // Solo se crea si las variables están configuradas
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
+// Cliente público (solo lectura) - Para frontend y lectura de cartas
 export const supabase = supabaseUrl && supabaseAnonKey
   ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+      },
+    })
+  : null
+
+// Cliente admin (bypass RLS) - SOLO para API routes (server-side)
+// ⚠️ NUNCA exponer en frontend, usa solo en app/api/**
+export const supabaseAdmin = supabaseUrl && supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         persistSession: false,
       },

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { AuthGuard } from "@/components/auth-guard"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -93,6 +94,7 @@ export default function SubmissionsPage() {
   }
 
   return (
+    <AuthGuard>
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/40 bg-background/95 backdrop-blur">
@@ -252,6 +254,7 @@ export default function SubmissionsPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </AuthGuard>
   )
 }
 

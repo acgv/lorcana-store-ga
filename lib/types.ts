@@ -23,6 +23,8 @@ export interface Card {
   language?: CardLanguage
   condition?: string
   stock?: number
+  normalStock?: number
+  foilStock?: number
   status?: CardStatus
   createdAt?: string
   updatedAt?: string
