@@ -39,7 +39,7 @@ export function Footer() {
           </div>
           <div>
             <h4 className="font-medium mb-4">Follow Us</h4>
-            <div className="flex gap-4 mb-4">
+            <div className="flex items-center gap-4 flex-wrap mb-4">
               <a 
                 href="https://instagram.com/arte.grafico.sublimable" 
                 target="_blank" 
@@ -74,10 +74,8 @@ export function Footer() {
               >
                 <Phone className="h-5 w-5" />
               </a>
-            </div>
-            
-            {/* Certification Badge */}
-            <div className="mb-4">
+              
+              {/* Certification Badge - inline with social icons */}
               <a
                 href="/mercadopago-certificate.pdf"
                 target="_blank"
@@ -87,9 +85,9 @@ export function Footer() {
               >
                 <Image
                   src="/mercadopago-certified-badge.png"
-                  alt="Desarrollador Certificado Mercado Pago - Checkout Pro"
-                  width={150}
-                  height={50}
+                  alt="Certificado Mercado Pago"
+                  width={80}
+                  height={27}
                   className="opacity-90 group-hover:opacity-100 transition-opacity"
                 />
               </a>
