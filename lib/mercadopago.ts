@@ -56,7 +56,9 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
     throw new Error('Mercado Pago no está configurado. Verifica MERCADOPAGO_ACCESS_TOKEN')
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'
+  // En desarrollo usar localhost, en producción usar la URL real
+  const isDev = process.env.NODE_ENV === 'development'
+  const baseUrl = isDev ? 'http://localhost:3002' : (process.env.NEXT_PUBLIC_APP_URL || 'https://lorcana-store-ga.vercel.app')
 
   try {
     const preference = await preferenceApi.create({
