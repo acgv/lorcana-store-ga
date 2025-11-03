@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import { AuthGuard } from "@/components/auth-guard"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -154,9 +155,7 @@ export default function InventoryPage() {
         title: "✅ Guardado",
         description: `Stock actualizado para ${data.card.name} (${source})`,
       })
-      
-      // Recargar inventario para verificar cambios
-      setTimeout(() => fetchInventory(), 1000)
+
     } catch (error) {
       console.error("❌ Error updating stock:", error)
       toast({
@@ -324,9 +323,10 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-1 container mx-auto px-4 py-8">
+    <AuthGuard>
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="font-sans text-4xl font-bold mb-4 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
@@ -674,6 +674,7 @@ export default function InventoryPage() {
       </main>
       <Footer />
     </div>
+    </AuthGuard>
   )
 }
 

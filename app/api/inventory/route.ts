@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { mockCards } from "@/lib/mock-data"
-import { supabase } from "@/lib/db"
+import { supabase, supabaseAdmin } from "@/lib/db"
 
 // GET: Obtener todas las cartas con su stock
 export async function GET() {
@@ -106,8 +106,8 @@ export async function POST(request: Request) {
       )
     }
 
-    // Si Supabase está configurado, actualizar allí
-    if (supabase) {
+    // Si Supabase Admin está configurado, actualizar allí (con service role)
+    if (supabaseAdmin) {
       try {
         const updates: any = { updatedAt: new Date().toISOString() }
         if (normalStock !== undefined) updates.normalStock = Math.max(0, Number(normalStock) || 0)
@@ -115,9 +115,9 @@ export async function POST(request: Request) {
         if (price !== undefined) updates.price = Math.max(0, Number(price) || 0)
         if (foilPrice !== undefined) updates.foilPrice = Math.max(0, Number(foilPrice) || 0)
 
-        console.log(`📝 POST /api/inventory - Updating Supabase:`, updates)
+        console.log(`📝 POST /api/inventory - Updating Supabase (admin):`, updates)
 
-        const { data, error } = await supabase
+        const { data, error } = await supabaseAdmin
           .from("cards")
           .update(updates)
           .eq("id", cardId)
@@ -220,8 +220,8 @@ export async function PATCH(request: Request) {
       )
     }
 
-    // Si Supabase configurado, intentar batch (iterativo)
-    if (supabase) {
+    // Si Supabase Admin configurado, intentar batch (iterativo) con service role
+    if (supabaseAdmin) {
       try {
         const results: any[] = []
         for (const update of updates) {
@@ -230,7 +230,7 @@ export async function PATCH(request: Request) {
           if (update.foilStock !== undefined) changes.foilStock = Math.max(0, Number(update.foilStock) || 0)
           if (update.price !== undefined) changes.price = Math.max(0, Number(update.price) || 0)
           if (update.foilPrice !== undefined) changes.foilPrice = Math.max(0, Number(update.foilPrice) || 0)
-          const { data, error } = await supabase
+          const { data, error } = await supabaseAdmin
             .from("cards")
             .update(changes)
             .eq("id", update.cardId)

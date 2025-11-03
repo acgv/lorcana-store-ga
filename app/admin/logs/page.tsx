@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { AuthGuard } from "@/components/auth-guard"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -54,6 +55,7 @@ export default function ActivityLogsPage() {
   }
 
   return (
+    <AuthGuard>
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/40 bg-background/95 backdrop-blur">
@@ -124,6 +126,7 @@ export default function ActivityLogsPage() {
         )}
       </main>
     </div>
+    </AuthGuard>
   )
 }
 

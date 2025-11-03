@@ -98,27 +98,25 @@ pnpm run dev
 
 ## 📚 Documentación
 
-### 📖 Guías de Usuario
+👉 **Índice completo:** [docs/README.md](./docs/README.md)
+
+### 🚀 **Empezar Aquí**
 
 | Documento | Descripción |
 |-----------|-------------|
-| [🎨 Guía de Tipografía](./docs/guides/TYPOGRAPHY_GUIDE.md) | Fuentes, estilos y mejores prácticas |
-| [📊 Fuentes de Datos](./docs/guides/DATA_SOURCES.md) | Cómo obtener datos reales de Lorcana |
+| [🔒 Quick Start Auth](./docs/security/QUICK_START_AUTH.md) | Configurar seguridad en 15 minutos |
+| [🗄️ Supabase Setup](./docs/setup/SUPABASE_SETUP.md) | Configurar base de datos |
+| [📊 Importar Cartas](./docs/guides/QUICK_START_IMPORT.md) | Importar 1,837 cartas de Lorcana |
 
-### ⚙️ Configuración
 
-| Documento | Descripción |
-|-----------|-------------|
-| [🗄️ Supabase Setup](./docs/setup/SUPABASE_SETUP.md) | **Guía completa de configuración de Supabase** |
-| [📱 Setup Mobile App](./docs/setup/MOBILE_APP_SETUP.md) | Guía completa React Native/Expo |
-| [🚀 Deployment](./docs/setup/DEPLOYMENT.md) | Desplegar en Vercel/Railway/Expo |
-| [🔐 Variables de Entorno](./docs/setup/.env.example) | Configuración de API keys y DB |
+### 📖 **Por Categoría**
 
-### ✨ Features Implementados
-
-| Documento | Descripción |
-|-----------|-------------|
-| [🎴 Filtro de Stock](./docs/features/STOCK_FILTER_GUIDE.md) | Filtrar por Normal/Foil/Ambos |
+| Categoría | Documentos | Descripción |
+|-----------|-----------|-------------|
+| **🔒 Seguridad** | [6 docs](./docs/security/) | Autenticación, RLS, políticas |
+| **⚙️ Setup** | [4 docs](./docs/setup/) | Supabase, ENV, deployment |
+| **📖 Guías** | [3 docs](./docs/guides/) | Tipografía, datos, import |
+| **✨ Features** | [1 doc](./docs/features/) | Filtros y funcionalidades |
 
 ### 🔧 Documentación Técnica
 
@@ -368,7 +366,9 @@ curl -X POST http://localhost:3002/api/staging \
 - [x] Tipografía limpia con Inter
 
 ### En Progreso 🚧
-- [ ] Firebase Auth integration
+- [ ] **Supabase Auth integration** (CRÍTICO para producción) 🔒
+- [ ] Proteger rutas `/admin` con middleware de auth
+- [ ] Implementar Service Role Key para API routes
 - [ ] Cloud image storage (Supabase Storage)
 - [ ] Submissions workflow (mobile → admin)
 
@@ -395,6 +395,46 @@ curl -X POST http://localhost:3002/api/staging \
 | **API** | Next.js API Routes |
 | **Deployment** | Vercel, Expo EAS |
 | **Package Manager** | pnpm |
+
+---
+
+## 🔒 Seguridad
+
+### ⚠️ ACCIÓN REQUERIDA: Configurar Autenticación
+
+**El sistema de autenticación está implementado pero requiere configuración.**
+
+🚨 **ESTADO ACTUAL:**
+- ✅ Login page creado (`/admin/login`)
+- ✅ Proxy protegiendo rutas `/admin` (Next.js 16)
+- ✅ Service Role Key implementado en código
+- ⚠️ Requiere agregar `SUPABASE_SERVICE_ROLE_KEY` a `.env.local`
+- ⚠️ Requiere crear usuario admin en Supabase
+- ⚠️ Requiere aplicar políticas RLS seguras
+
+### 🚀 Configuración Rápida (15 minutos)
+
+Sigue esta guía paso a paso:
+
+👉 **[Quick Start Auth Guide](./docs/security/QUICK_START_AUTH.md)** 👈
+
+**Pasos:**
+1. Obtener Service Role Key de Supabase
+2. Agregar a `.env.local`
+3. Habilitar Email Auth en Supabase
+4. Crear usuario admin
+5. Aplicar `scripts/secure-rls-policies.sql`
+6. Reiniciar servidor
+
+**Resultado:** Proyecto seguro y listo para producción.
+
+### 📚 Documentación Completa
+
+Ver [docs/security/README.md](./docs/security/README.md) para:
+- Guías detalladas de seguridad
+- Explicación de problemas RLS
+- Opciones de configuración
+- Troubleshooting
 
 ---
 

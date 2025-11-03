@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { AuthGuard } from "@/components/auth-guard"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FileText, CheckCircle, XCircle, Clock, Activity, Package } from "lucide-react"
@@ -33,6 +34,7 @@ export default function AdminDashboard() {
   }, [])
 
   return (
+    <AuthGuard>
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/40 bg-background/95 backdrop-blur">
@@ -168,6 +170,7 @@ export default function AdminDashboard() {
         </div>
       </main>
     </div>
+    </AuthGuard>
   )
 }
 

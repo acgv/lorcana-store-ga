@@ -28,19 +28,20 @@ export default function CardDetailPage() {
   useEffect(() => {
     const loadCard = async () => {
       try {
-        const response = await fetch(`/api/cards`)
+        console.log(`🔍 Cargando carta con ID: "${id}"`)
+        const response = await fetch(`/api/cards/${id}`)
         const result = await response.json()
         
-        console.log(`🔍 Buscando carta con ID: "${id}"`)
-        console.log(`📦 Total de cartas cargadas: ${result.data?.length || 0}`)
-        
         if (result.success && result.data) {
-          const foundCard = result.data.find((c: Card) => c.id === id)
-          console.log(`✅ Carta encontrada:`, foundCard ? `${foundCard.name} (${foundCard.id})` : "❌ No encontrada")
-          setCard(foundCard || null)
+          console.log(`✅ Carta encontrada: ${result.data.name} (${result.data.id})`)
+          setCard(result.data)
+        } else {
+          console.log(`❌ Carta no encontrada`)
+          setCard(null)
         }
       } catch (error) {
         console.error("Error loading card:", error)
+        setCard(null)
       } finally {
         setLoading(false)
       }
