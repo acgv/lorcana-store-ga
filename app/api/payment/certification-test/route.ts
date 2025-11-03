@@ -58,15 +58,13 @@ export async function POST(request: Request) {
       notification_url: `${baseUrl}/api/webhooks/mercadopago`,
     }
 
-    // Agregar Integrator ID (probar ambos formatos)
+    // Agregar Integrator ID
     if (integratorId) {
       preferenceBody.integrator_id = integratorId
-      // Algunos endpoints esperan metadata
+      // También en metadata para asegurar que MP lo detecte
       preferenceBody.metadata = {
         integrator_id: integratorId
       }
-      // O en sponsor_id para partners
-      preferenceBody.sponsor_id = integratorId
     }
 
     console.log('🎓 CERTIFICATION TEST - Creating preference with specs:')

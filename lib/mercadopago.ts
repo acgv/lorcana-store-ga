@@ -109,16 +109,13 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
     }
 
     // Agregar Integrator ID si existe (para Programa de Partners)
-    // Probar múltiples formatos para asegurar compatibilidad
     if (process.env.MERCADOPAGO_INTEGRATOR_ID) {
       const intId = process.env.MERCADOPAGO_INTEGRATOR_ID
       preferenceBody.integrator_id = intId
-      // También en metadata por si acaso
+      // También en metadata para asegurar que MP lo detecte
       preferenceBody.metadata = {
         integrator_id: intId
       }
-      // Y en sponsor_id para partners program
-      preferenceBody.sponsor_id = intId
     }
 
     console.log('🔍 Preference Body being sent to Mercado Pago:')
