@@ -68,7 +68,8 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
           picture_url: item.image.startsWith('http') ? item.image : `${baseUrl}${item.image}`,
           category_id: 'trading_cards',
           quantity: item.quantity,
-          unit_price: item.price,
+          // En CLP los precios deben ser enteros (sin decimales)
+          unit_price: Math.round(item.price),
           currency_id: 'CLP',
         })),
         payer: params.customerEmail ? {
