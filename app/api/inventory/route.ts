@@ -1,10 +1,66 @@
 import { NextResponse } from "next/server"
 import { mockCards } from "@/lib/mock-data"
+import { supabase } from "@/lib/db"
 
 // GET: Obtener todas las cartas con su stock
 export async function GET() {
   try {
-    // Devolver todas las cartas con información de stock
+    let dataSource = "mock"
+    
+    // Intentar desde Supabase primero si hay configuración
+    if (supabase) {
+      try {
+        let allInventory: any[] = []
+        let page = 0
+        const pageSize = 1000
+        let hasMore = true
+
+        // Obtener todas las cartas usando paginación
+        while (hasMore) {
+          const from = page * pageSize
+          const to = from + pageSize - 1
+          
+          const { data, error, count } = await supabase
+            .from("cards")
+            .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image", { count: "exact" })
+            .range(from, to)
+          
+          if (error) {
+            console.log(`⚠ GET /api/inventory - Supabase error: ${error.message}, using MOCK`)
+            break
+          }
+          
+          if (data && data.length > 0) {
+            allInventory = [...allInventory, ...data]
+          }
+          
+          // Verificar si hay más páginas
+          hasMore = data && data.length === pageSize && (count === null || allInventory.length < count)
+          page++
+          
+          // Safety limit: no más de 10 páginas (10,000 cartas máximo)
+          if (page >= 10) break
+        }
+
+        if (allInventory.length > 0) {
+          dataSource = "supabase"
+          console.log(`✓ GET /api/inventory - Using SUPABASE (${allInventory.length} items from ${page} pages)`)
+          return NextResponse.json({ 
+            success: true, 
+            inventory: allInventory,
+            meta: { source: dataSource, count: allInventory.length } 
+          })
+        } else {
+          console.log("⚠ GET /api/inventory - Supabase returned empty, using MOCK")
+        }
+      } catch (err) {
+        console.log(`⚠ GET /api/inventory - Supabase connection error: ${err instanceof Error ? err.message : "unknown"}, using MOCK`)
+      }
+    } else {
+      console.log("ℹ GET /api/inventory - Supabase not configured, using MOCK")
+    }
+
+    // Fallback a mock
     const inventory = mockCards.map(card => ({
       id: card.id,
       name: card.name,
@@ -20,7 +76,12 @@ export async function GET() {
       image: card.image,
     }))
 
-    return NextResponse.json({ success: true, inventory })
+    console.log(`✓ GET /api/inventory - Using MOCK (${inventory.length} items)`)
+    return NextResponse.json({ 
+      success: true, 
+      inventory,
+      meta: { source: dataSource, count: inventory.length }
+    })
   } catch (error) {
     console.error("Error fetching inventory:", error)
     return NextResponse.json(
@@ -30,11 +91,13 @@ export async function GET() {
   }
 }
 
-// POST: Actualizar stock de una carta específica
+// POST: Actualizar stock y/o precio de una carta específica
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { cardId, normalStock, foilStock } = body
+    const { cardId, normalStock, foilStock, price, foilPrice } = body
+
+    console.log(`📝 POST /api/inventory - Request:`, { cardId, normalStock, foilStock, price, foilPrice })
 
     if (!cardId) {
       return NextResponse.json(
@@ -43,7 +106,55 @@ export async function POST(request: Request) {
       )
     }
 
-    // Buscar la carta en el array
+    // Si Supabase está configurado, actualizar allí
+    if (supabase) {
+      try {
+        const updates: any = { updatedAt: new Date().toISOString() }
+        if (normalStock !== undefined) updates.normalStock = Math.max(0, Number(normalStock) || 0)
+        if (foilStock !== undefined) updates.foilStock = Math.max(0, Number(foilStock) || 0)
+        if (price !== undefined) updates.price = Math.max(0, Number(price) || 0)
+        if (foilPrice !== undefined) updates.foilPrice = Math.max(0, Number(foilPrice) || 0)
+
+        console.log(`📝 POST /api/inventory - Updating Supabase:`, updates)
+
+        const { data, error } = await supabase
+          .from("cards")
+          .update(updates)
+          .eq("id", cardId)
+          .select("id,name,normalStock,foilStock,price,foilPrice")
+          .single()
+
+        if (!error && data) {
+          console.log(`✓ POST /api/inventory - Updated in SUPABASE:`, data)
+          return NextResponse.json({ success: true, card: data, meta: { source: "supabase" } })
+        } else {
+          // Si Supabase está configurado pero falla, retornar error en lugar de usar mock
+          console.log(`⚠ POST /api/inventory - Supabase error:`, error)
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: error?.message || "Failed to update in Supabase",
+              details: error?.details || null,
+              hint: error?.hint || "Check Supabase RLS policies for UPDATE permission"
+            },
+            { status: 500 }
+          )
+        }
+      } catch (err) {
+        console.log(`⚠ POST /api/inventory - Supabase connection error:`, err)
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: err instanceof Error ? err.message : "Connection error",
+            hint: "Supabase may be unreachable or misconfigured"
+          },
+          { status: 500 }
+        )
+      }
+    }
+
+    // Solo usar mock si Supabase NO está configurado
+    console.log("ℹ POST /api/inventory - Supabase not configured, using MOCK")
     const cardIndex = mockCards.findIndex(card => card.id === cardId)
     
     if (cardIndex === -1) {
@@ -53,15 +164,28 @@ export async function POST(request: Request) {
       )
     }
 
-    // Actualizar el stock
+    // Actualizar el stock y precios
     if (normalStock !== undefined) {
       mockCards[cardIndex].normalStock = Math.max(0, normalStock)
     }
     if (foilStock !== undefined) {
       mockCards[cardIndex].foilStock = Math.max(0, foilStock)
     }
+    if (price !== undefined) {
+      mockCards[cardIndex].price = Math.max(0, price)
+    }
+    if (foilPrice !== undefined) {
+      mockCards[cardIndex].foilPrice = Math.max(0, foilPrice)
+    }
     mockCards[cardIndex].updatedAt = new Date().toISOString()
 
+    console.log(`✓ POST /api/inventory - Updated in MOCK:`, {
+      id: mockCards[cardIndex].id,
+      normalStock: mockCards[cardIndex].normalStock,
+      foilStock: mockCards[cardIndex].foilStock,
+      price: mockCards[cardIndex].price,
+      foilPrice: mockCards[cardIndex].foilPrice,
+    })
     return NextResponse.json({
       success: true,
       card: {
@@ -69,7 +193,10 @@ export async function POST(request: Request) {
         name: mockCards[cardIndex].name,
         normalStock: mockCards[cardIndex].normalStock,
         foilStock: mockCards[cardIndex].foilStock,
-      }
+        price: mockCards[cardIndex].price,
+        foilPrice: mockCards[cardIndex].foilPrice,
+      },
+      meta: { source: "mock" }
     })
   } catch (error) {
     console.error("Error updating inventory:", error)
@@ -80,11 +207,11 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH: Actualizar stock en lote (múltiples cartas)
+// PATCH: Actualizar stock y/o precios en lote (múltiples cartas)
 export async function PATCH(request: Request) {
   try {
     const body = await request.json()
-    const { updates } = body // Array de { cardId, normalStock?, foilStock? }
+    const { updates } = body // Array de { cardId, normalStock?, foilStock?, price?, foilPrice? }
 
     if (!Array.isArray(updates)) {
       return NextResponse.json(
@@ -93,6 +220,43 @@ export async function PATCH(request: Request) {
       )
     }
 
+    // Si Supabase configurado, intentar batch (iterativo)
+    if (supabase) {
+      try {
+        const results: any[] = []
+        for (const update of updates) {
+          const changes: any = { updatedAt: new Date().toISOString() }
+          if (update.normalStock !== undefined) changes.normalStock = Math.max(0, Number(update.normalStock) || 0)
+          if (update.foilStock !== undefined) changes.foilStock = Math.max(0, Number(update.foilStock) || 0)
+          if (update.price !== undefined) changes.price = Math.max(0, Number(update.price) || 0)
+          if (update.foilPrice !== undefined) changes.foilPrice = Math.max(0, Number(update.foilPrice) || 0)
+          const { data, error } = await supabase
+            .from("cards")
+            .update(changes)
+            .eq("id", update.cardId)
+            .select("id,normalStock,foilStock,price,foilPrice")
+            .single()
+          if (error) {
+            results.push({ cardId: update.cardId, success: false, error: error.message })
+          } else {
+            results.push({ 
+              cardId: update.cardId, 
+              success: true, 
+              normalStock: data?.normalStock, 
+              foilStock: data?.foilStock,
+              price: data?.price,
+              foilPrice: data?.foilPrice
+            })
+          }
+        }
+        console.log(`✓ PATCH /api/inventory - Updated ${results.filter(r => r.success).length}/${results.length} in SUPABASE`)
+        return NextResponse.json({ success: true, results })
+      } catch (err) {
+        console.log(`⚠ PATCH /api/inventory - Supabase connection error: ${err instanceof Error ? err.message : "unknown"}`)
+      }
+    }
+
+    // Fallback a mock
     const results = updates.map(update => {
       const cardIndex = mockCards.findIndex(card => card.id === update.cardId)
       
@@ -106,6 +270,12 @@ export async function PATCH(request: Request) {
       if (update.foilStock !== undefined) {
         mockCards[cardIndex].foilStock = Math.max(0, update.foilStock)
       }
+      if (update.price !== undefined) {
+        mockCards[cardIndex].price = Math.max(0, update.price)
+      }
+      if (update.foilPrice !== undefined) {
+        mockCards[cardIndex].foilPrice = Math.max(0, update.foilPrice)
+      }
       mockCards[cardIndex].updatedAt = new Date().toISOString()
 
       return {
@@ -113,6 +283,8 @@ export async function PATCH(request: Request) {
         success: true,
         normalStock: mockCards[cardIndex].normalStock,
         foilStock: mockCards[cardIndex].foilStock,
+        price: mockCards[cardIndex].price,
+        foilPrice: mockCards[cardIndex].foilPrice,
       }
     })
 

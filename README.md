@@ -1,10 +1,10 @@
-# 🎴 Lorcana TCG Singles Ecosystem
+# 🎴 Lorcana TCG Singles Store - GA Company
 
 <div align="center">
 
-**Ecosistema completo para gestionar singles de Disney Lorcana TCG**
+**Tienda online completa para singles de Disney Lorcana TCG**
 
-[🚀 Quick Start](#-quick-start) • [📚 Documentación](#-documentación) • [🎨 Features](#-features) • [🌐 Demo](http://localhost:3002)
+[🚀 Quick Start](#-quick-start) • [📚 Documentación](#-documentación) • [🎨 Features](#-features) • [📧 Contacto](#-contacto)
 
 </div>
 
@@ -26,20 +26,35 @@
 
 ```bash
 # 1. Instalar dependencias
-npm install --legacy-peer-deps
+pnpm install
 
-# 2. Importar datos reales de Lorcana (1,837 cartas)
-npm run import:cards
+# 2. Configurar variables de entorno
+cp .env.example .env.local
+# Edita .env.local con tus credenciales de Supabase
 
-# 3. Iniciar servidor de desarrollo
-npm run dev
+# 3. Configurar base de datos (Supabase)
+# Ejecuta scripts/supabase-schema.sql en Supabase SQL Editor
+# Ejecuta scripts/fix-inventory-update-permissions.sql en Supabase SQL Editor
+
+# 4. Importar datos reales de Lorcana (1,837 cartas)
+pnpm run import:cards
+
+# 5. Sembrar base de datos (opcional)
+pnpm run db:seed
+
+# 6. Iniciar servidor de desarrollo
+pnpm run dev
 # Abre http://localhost:3002
 ```
 
 **Acceso rápido:**
-- 🏠 Web Store: http://localhost:3002
+- 🏠 Home: http://localhost:3002
+- 🎴 Catálogo: http://localhost:3002/catalog
 - 🎛️ Admin Dashboard: http://localhost:3002/admin
-- 📖 API Docs: http://localhost:3002/api
+- 📖 Aprende a Jugar: http://localhost:3002/about
+- 📰 Noticias: http://localhost:3002/news
+- 📧 Contacto: http://localhost:3002/contact
+- 🔒 Privacidad: http://localhost:3002/privacy
 
 ---
 
@@ -52,6 +67,12 @@ npm run dev
 ✅ Carrito de compras  
 ✅ Tema oscuro mágico con efectos foil  
 ✅ Diseño responsive mobile-first  
+✅ **Página educativa** completa sobre cómo jugar Lorcana  
+✅ **Noticias** con feeds de Instagram (@disneylorcana, @ravensburgerna)  
+✅ **Contacto** con enlaces a redes sociales y WhatsApp  
+✅ **Política de Privacidad** completa y legal  
+✅ Precios ocultos para cartas sin stock  
+✅ Ordenamiento por número de carta por defecto  
 
 ### Mobile App
 ✅ Escaneo con cámara + OCR  
@@ -63,10 +84,15 @@ npm run dev
 ### Admin Dashboard
 ✅ Revisar envíos pendientes desde mobile  
 ✅ Editar y aprobar/rechazar datos  
-✅ Gestionar inventario de cartas  
+✅ Gestionar inventario de cartas (stock **Y precios**)  
+✅ Filtros avanzados: Set, Tipo, Rareza, Estado de Stock, **Normal/Foil**  
+✅ Edición en masa con "Save All Changes"  
+✅ **Spinners visuales** durante guardado  
+✅ **Validación de errores** de Supabase en tiempo real  
 ✅ Log de actividad con timestamps  
 ✅ Autenticación segura  
 ✅ Dashboard de estadísticas en tiempo real  
+✅ Integración con **Supabase** en tiempo real  
 
 ---
 
@@ -83,6 +109,7 @@ npm run dev
 
 | Documento | Descripción |
 |-----------|-------------|
+| [🗄️ Supabase Setup](./docs/setup/SUPABASE_SETUP.md) | **Guía completa de configuración de Supabase** |
 | [📱 Setup Mobile App](./docs/setup/MOBILE_APP_SETUP.md) | Guía completa React Native/Expo |
 | [🚀 Deployment](./docs/setup/DEPLOYMENT.md) | Desplegar en Vercel/Railway/Expo |
 | [🔐 Variables de Entorno](./docs/setup/.env.example) | Configuración de API keys y DB |
@@ -103,36 +130,50 @@ lorcana-store/
 ├── 📱 app/
 │   ├── page.tsx                    # Home
 │   ├── catalog/page.tsx            # Catálogo de cartas
+│   ├── about/page.tsx              # Aprende a Jugar Lorcana
+│   ├── news/page.tsx               # Noticias (feeds Instagram)
+│   ├── contact/page.tsx            # Contacto (redes sociales)
+│   ├── privacy/page.tsx            # Política de Privacidad
 │   ├── admin/                      # Dashboard admin
 │   │   ├── page.tsx
+│   │   ├── inventory/page.tsx      # Gestión de inventario
 │   │   ├── submissions/page.tsx
 │   │   └── logs/page.tsx
 │   └── api/
 │       ├── cards/route.ts          # GET cartas públicas
+│       ├── inventory/route.ts      # POST/PATCH stock y precios
 │       ├── staging/route.ts        # POST desde mobile
 │       ├── submissions/            # Admin review
 │       ├── updateCards/route.ts    # Bulk update
 │       └── logs/route.ts
 ├── 🧩 components/
 │   ├── header.tsx
+│   ├── footer.tsx                  # Con redes sociales
 │   ├── card-item.tsx
 │   ├── card-filters.tsx
+│   ├── language-provider.tsx       # Multi-idioma
 │   └── ui/                         # Shadcn UI
 ├── 📚 lib/
 │   ├── types.ts
-│   ├── mock-data.ts               # 1,837 cartas
-│   ├── imported-cards.json        # Datos de API
+│   ├── db.ts                       # Supabase client
+│   ├── mock-data.ts               # Fallback data
+│   ├── imported-cards.json        # 1,837 cartas de API
 │   └── utils.ts
-├── 🎨 styles/
-│   └── globals.css                # Sistema de diseño
 ├── 📜 scripts/
-│   ├── import-lorcana-data.js     # Importar API
-│   └── load-to-db.js              # Cargar a DB
+│   ├── import-lorcana-data.js               # Importar de API Lorcana
+│   ├── load-to-db.js                        # Cargar a DB local
+│   ├── seed-supabase.mjs                    # Sembrar Supabase
+│   ├── supabase-schema.sql                  # Schema inicial
+│   └── fix-inventory-update-permissions.sql # Permisos RLS
 ├── 📖 docs/
 │   ├── guides/                    # Guías de usuario
 │   ├── setup/                     # Configuración
 │   └── features/                  # Features docs
-└── 🖼️ public/                      # Imágenes de cartas
+├── 🔧 types/
+│   └── social-embeds.d.ts         # TypeScript definitions
+└── 🖼️ public/
+    ├── logo-ga.jpg                # Logo de GA Company
+    └── placeholder*.{svg,png,jpg} # Placeholders
 ```
 </details>
 
@@ -146,16 +187,18 @@ lorcana-store/
   name: string
   image: string
   set: string
-  rarity: "common" | "uncommon" | "rare" | "superRare" | "legendary"
-  type: "character" | "action" | "item" | "location" | "song"
+  rarity: "common" | "uncommon" | "rare" | "superRare" | "legendary" | "enchanted"
+  type: "character" | "action" | "item" | "song"
+  number: number
   cardNumber: string
   price: number
-  foilPrice?: number
+  foilPrice: number
   description: string
   version: "normal" | "foil"
   language: "en" | "fr" | "de" | "es"
-  status: "pending" | "approved" | "rejected"
-  stock: number
+  status: "approved" | "pending" | "rejected"
+  normalStock: number
+  foilStock: number
   createdAt: string
   updatedAt: string
 }
@@ -184,19 +227,30 @@ lorcana-store/
 <summary><b>🔌 API Endpoints</b></summary>
 
 ### Públicos
-- `GET /api/cards` - Obtener cartas aprobadas
-- `GET /api/cards?type=character&rarity=legendary`
+- `GET /api/cards` - Obtener cartas aprobadas (soporta paginación automática)
+- `GET /api/cards?type=character&rarity=legendary` - Filtros
+
+### Admin (requiere auth)
+- `GET /api/inventory` - Ver inventario completo (stock + precios)
+- `POST /api/inventory` - Actualizar stock/precio de una carta
+  ```json
+  {
+    "cardId": "ari-1",
+    "normalStock": 12,
+    "foilStock": 3,
+    "price": 7.99,
+    "foilPrice": 14.99
+  }
+  ```
+- `PATCH /api/inventory` - Actualización masiva (batch)
+- `GET /api/submissions` - Ver envíos pendientes
+- `POST /api/submissions/{id}/approve` - Aprobar
+- `POST /api/submissions/{id}/reject` - Rechazar
+- `GET /api/logs` - Ver logs de actividad
 
 ### Mobile App (requiere API key)
 - `POST /api/staging` - Enviar carta para revisión
 - `GET /api/staging?id={id}` - Verificar estado
-
-### Admin (requiere auth)
-- `GET /api/submissions` - Ver envíos pendientes
-- `POST /api/submissions/{id}/approve` - Aprobar
-- `POST /api/submissions/{id}/reject` - Rechazar
-- `POST /api/updateCards` - Actualización masiva
-- `GET /api/logs` - Ver logs de actividad
 
 Ver [documentación completa de API](./docs/setup/DEPLOYMENT.md#api-reference)
 </details>
@@ -212,9 +266,7 @@ Ver [documentación completa de API](./docs/setup/DEPLOYMENT.md#api-reference)
 ```
 
 **Tipografía:**
-- **Display**: Playfair Display (títulos)
-- **Serif**: EB Garamond (contenido)
-- **Sans**: Inter (UI)
+- **Sans**: Inter (todo el sitio - limpio y moderno)
 
 Ver [Guía de Tipografía](./docs/guides/TYPOGRAPHY_GUIDE.md)
 
@@ -265,11 +317,23 @@ Ver [Guía de Fuentes de Datos](./docs/guides/DATA_SOURCES.md) para más informa
 ## 🧪 Testing
 
 ```bash
-# Test API
+# Test API pública
 curl http://localhost:3002/api/cards | jq
-
-# Test con filtros
 curl "http://localhost:3002/api/cards?type=character&rarity=legendary" | jq
+
+# Test inventario (muestra 3 primeras cartas)
+curl http://localhost:3002/api/inventory | jq '.inventory[0:3]'
+
+# Test actualizar stock (ejemplo)
+curl -X POST http://localhost:3002/api/inventory \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cardId": "ari-1",
+    "normalStock": 15,
+    "foilStock": 3,
+    "price": 8.99,
+    "foilPrice": 15.99
+  }' | jq
 
 # Test submission (mobile)
 curl -X POST http://localhost:3002/api/staging \
@@ -284,18 +348,29 @@ curl -X POST http://localhost:3002/api/staging \
 
 ### Completado ✅
 - [x] Web store con catálogo y filtros
-- [x] Filtro de versión Normal/Foil
+- [x] Filtro de versión Normal/Foil en catálogo y admin
 - [x] 1,837 cartas reales de Lorcana
 - [x] API endpoints completos
-- [x] Admin dashboard
+- [x] Admin dashboard con gestión de inventario
+- [x] Edición de precios (Normal y Foil) en admin
+- [x] Filtros avanzados en admin (Set, Tipo, Rareza, Stock)
+- [x] **Supabase database integration** con RLS
+- [x] Paginación para cargar 1,837+ cartas
+- [x] **Página educativa** sobre cómo jugar Lorcana
+- [x] **Página de noticias** con feeds de Instagram
+- [x] **Política de privacidad** completa
+- [x] **Página de contacto** con redes sociales
+- [x] Spinners visuales durante guardado
+- [x] Precios ocultos para cartas sin stock
+- [x] Ordenamiento por número de carta por defecto
 - [x] Mobile app documentation
 - [x] Sistema de diseño mágico
-- [x] Tipografía estilo Lorcana
+- [x] Tipografía limpia con Inter
 
 ### En Progreso 🚧
 - [ ] Firebase Auth integration
-- [ ] Supabase database connection
-- [ ] Cloud image storage
+- [ ] Cloud image storage (Supabase Storage)
+- [ ] Submissions workflow (mobile → admin)
 
 ### Planeado 📋
 - [ ] OCR service integration
@@ -314,11 +389,12 @@ curl -X POST http://localhost:3002/api/staging \
 | **Frontend** | Next.js 16, React 19, TypeScript |
 | **Styling** | Tailwind CSS 4, Shadcn UI |
 | **Mobile** | React Native, Expo |
-| **Database** | Supabase / Firebase |
-| **Auth** | Firebase Auth |
-| **Storage** | Supabase Storage |
+| **Database** | **Supabase (Postgres)** ✅ |
+| **Auth** | Supabase Auth (planeado) |
+| **Storage** | Supabase Storage (planeado) |
 | **API** | Next.js API Routes |
 | **Deployment** | Vercel, Expo EAS |
+| **Package Manager** | pnpm |
 
 ---
 
@@ -329,8 +405,8 @@ curl -X POST http://localhost:3002/api/staging \
 
 ```bash
 rm -rf .next node_modules
-npm install --legacy-peer-deps
-npm run dev
+pnpm install
+pnpm dev
 ```
 </details>
 
@@ -345,9 +421,12 @@ npm run dev
 <details>
 <summary><b>❌ No se ven las cartas</b></summary>
 
-1. Importa datos: `npm run import:cards`
+1. Importa datos: `pnpm import:cards`
 2. Verifica `lib/imported-cards.json` existe
-3. Reinicia servidor
+3. Configura Supabase en `.env.local`
+4. Siembra la base de datos: `pnpm db:seed`
+5. Verifica que las políticas RLS estén configuradas (ver scripts SQL)
+6. Reinicia servidor
 </details>
 
 <details>
@@ -358,21 +437,48 @@ npm run dev
 3. O usa ngrok para testing público
 </details>
 
+<details>
+<summary><b>❌ Supabase: Error al guardar cambios en inventario</b></summary>
+
+1. Verifica que ejecutaste `scripts/fix-inventory-update-permissions.sql` en Supabase
+2. Verifica que `.env.local` tiene las credenciales correctas:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. Verifica en Supabase Dashboard → Authentication → Policies que existe la política "Allow update stock"
+4. Reinicia el servidor después de cambiar `.env.local`
+</details>
+
+<details>
+<summary><b>❌ Solo se cargan 1000 cartas en lugar de 1837</b></summary>
+
+1. Verifica que el código de paginación esté activo en `/api/cards` y `/api/inventory`
+2. Revisa la consola del servidor para ver cuántas páginas se cargaron
+3. Si el problema persiste, verifica que todas las cartas existen en Supabase usando SQL:
+   ```sql
+   SELECT COUNT(*) FROM cards WHERE status = 'approved';
+   ```
+</details>
+
 ---
 
 ## 📝 Scripts Disponibles
 
 ```bash
 # Desarrollo
-npm run dev              # Servidor en puerto 3002
-npm run build            # Build de producción
-npm run start            # Servidor de producción
-npm run lint             # ESLint
+pnpm dev                # Servidor en puerto 3002
+pnpm build              # Build de producción
+pnpm start              # Servidor de producción
+pnpm lint               # ESLint
 
 # Datos
-npm run import:cards     # Importar 1,837 cartas de API
-npm run load:db          # Cargar a database (requiere .env)
-npm run seed:all         # Import + Load en uno
+pnpm import:cards       # Importar 1,837 cartas de API
+pnpm load:db            # Cargar a database local (requiere .env)
+pnpm seed:all           # Import + Load en uno
+pnpm db:seed            # Sembrar cartas en Supabase (requiere .env.local)
+
+# Base de datos
+# Ejecuta scripts/supabase-schema.sql en Supabase SQL Editor (setup inicial)
+# Ejecuta scripts/fix-inventory-update-permissions.sql en Supabase SQL Editor (permisos)
 ```
 
 ---
@@ -407,10 +513,25 @@ Inspirado por **Disney Lorcana TCG** ✨
 
 ---
 
+## 📧 Contacto
+
+**GA Company** - Tienda de singles de Disney Lorcana TCG
+
+- 📧 Email: [ga.company.contact@gmail.com](mailto:ga.company.contact@gmail.com)
+- 📱 WhatsApp: [+56 9 5183 0357](https://wa.me/56951830357)
+- 📸 Instagram: [@arte.grafico.sublimable](https://instagram.com/arte.grafico.sublimable)
+- 🎵 TikTok: [@arte.grafico.sublimable](https://tiktok.com/@arte.grafico.sublimable)
+
+**Horario de Atención:**  
+Lunes a Sábado: 10:00 AM - 8:00 PM  
+Domingo: Cerrado
+
+---
+
 <div align="center">
 
 **🎴 Happy card collecting! 🎴**
 
-[⬆ Volver arriba](#-lorcana-tcg-singles-ecosystem)
+[⬆ Volver arriba](#-lorcana-tcg-singles-store---ga-company)
 
 </div>

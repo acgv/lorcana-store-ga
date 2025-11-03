@@ -2,6 +2,20 @@
 // Para uso con Supabase o Firebase
 
 import type { Card, CardSubmission, ActivityLog } from "./types"
+import { createClient } from "@supabase/supabase-js"
+
+// Supabase client (usa variables definidas en .env.local)
+// Solo se crea si las variables están configuradas
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+export const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+      },
+    })
+  : null
 
 // Mock database para desarrollo (reemplazar con Supabase/Firebase)
 export class Database {
@@ -46,6 +60,7 @@ export class Database {
 
   static async createCard(card: Card): Promise<Card> {
     const newCard = {
+      id: (card as any).id || `card_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       ...card,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

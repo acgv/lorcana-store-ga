@@ -10,9 +10,10 @@ import { Badge } from "@/components/ui/badge"
 interface CardItemProps {
   card: Card
   viewMode: "grid" | "list"
+  priority?: boolean
 }
 
-export function CardItem({ card, viewMode }: CardItemProps) {
+export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
   const { t } = useLanguage()
 
   // Check version availability and stock
@@ -28,7 +29,7 @@ export function CardItem({ card, viewMode }: CardItemProps) {
       <Link href={`/card/${card.id}`}>
         <div className="flex gap-4 p-4 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
           <div className="relative h-32 w-24 flex-shrink-0 rounded overflow-hidden foil-effect">
-            <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
+            <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" priority={priority} />
             {/* Card Number Badge */}
             <div className="absolute top-2 left-2 bg-background/90 backdrop-blur-sm px-2 py-1 rounded-md border border-primary/30">
               <span className="text-xs font-bold text-primary font-mono">#{card.number}</span>
@@ -72,16 +73,22 @@ export function CardItem({ card, viewMode }: CardItemProps) {
               )}
             </div>
             <p className="text-sm text-muted-foreground mb-2 line-clamp-2 font-sans">{card.description}</p>
-            <div className="flex items-center gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground font-sans">{t("normal")}</p>
-                <p className="text-lg font-bold text-primary font-display">${card.price.toFixed(2)}</p>
+            {(hasNormalStock || hasFoilStock) && (
+              <div className="flex items-center gap-4">
+                {hasNormalStock && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-sans">{t("normal")}</p>
+                    <p className="text-lg font-bold text-primary font-display">${card.price.toFixed(2)}</p>
+                  </div>
+                )}
+                {hasFoilStock && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-sans">{t("foil")}</p>
+                    <p className="text-lg font-bold text-accent font-display">${card.foilPrice.toFixed(2)}</p>
+                  </div>
+                )}
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-sans">{t("foil")}</p>
-                <p className="text-lg font-bold text-accent font-display">${card.foilPrice.toFixed(2)}</p>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </Link>
@@ -97,6 +104,7 @@ export function CardItem({ card, viewMode }: CardItemProps) {
             alt={card.name}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
+            priority={priority}
           />
           {/* Card Number Badge */}
           <div className="absolute top-2 left-2 bg-background/90 backdrop-blur-sm px-2 py-1 rounded-md border border-primary/30">
@@ -141,16 +149,22 @@ export function CardItem({ card, viewMode }: CardItemProps) {
               </Badge>
             )}
           </div>
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-xs text-muted-foreground font-sans">{t("normal")}</p>
-              <p className="font-bold text-primary font-display">${card.price.toFixed(2)}</p>
+          {(hasNormalStock || hasFoilStock) && (
+            <div className="flex justify-between items-center">
+              {hasNormalStock && (
+                <div>
+                  <p className="text-xs text-muted-foreground font-sans">{t("normal")}</p>
+                  <p className="font-bold text-primary font-display">${card.price.toFixed(2)}</p>
+                </div>
+              )}
+              {hasFoilStock && (
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground font-sans">{t("foil")}</p>
+                  <p className="font-bold text-accent font-display">${card.foilPrice.toFixed(2)}</p>
+                </div>
+              )}
             </div>
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground font-sans">{t("foil")}</p>
-              <p className="font-bold text-accent font-display">${card.foilPrice.toFixed(2)}</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </Link>

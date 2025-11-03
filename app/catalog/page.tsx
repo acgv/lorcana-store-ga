@@ -8,11 +8,17 @@ import { CardGrid } from "@/components/card-grid"
 import { CardFilters } from "@/components/card-filters"
 import { mockCards } from "@/lib/mock-data"
 import { useLanguage } from "@/components/language-provider"
+import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { SlidersHorizontal } from "lucide-react"
 
 export default function CatalogPage() {
   const { t } = useLanguage()
   const searchParams = useSearchParams()
   const router = useRouter()
+  
+  const [cards, setCards] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   
   // Inicializar filtros desde URL
   const [filters, setFilters] = useState({
@@ -20,12 +26,39 @@ export default function CatalogPage() {
     set: searchParams.get("set") || "all",
     rarity: searchParams.get("rarity") || "all",
     minPrice: Number(searchParams.get("minPrice")) || 0,
-    maxPrice: Number(searchParams.get("maxPrice")) || 100,
+    maxPrice: Number(searchParams.get("maxPrice")) || 10000, // Aumentado a $10,000 para incluir todas las cartas
     version: searchParams.get("version") || "all",
     search: searchParams.get("search") || "",
   })
-  const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "nameAZ")
+  const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "cardNumberLowHigh")
   const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
+
+  // Cargar cartas desde API (solo cuando cambian filtros que se envían al servidor)
+  useEffect(() => {
+    const loadCards = async () => {
+      setLoading(true)
+      try {
+        // Cargar todas las cartas aprobadas (sin filtros de servidor para permitir filtrado en cliente)
+        const response = await fetch(`/api/cards`)
+        const result = await response.json()
+        
+        if (result.success) {
+          setCards(result.data || [])
+          console.log(`✅ Cartas cargadas: ${result.data?.length || 0} desde ${result.meta?.source || "mock"}`)
+        } else {
+          // Fallback a mock si API falla
+          setCards(mockCards)
+        }
+      } catch (error) {
+        console.error("Error loading cards:", error)
+        setCards(mockCards)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadCards()
+  }, []) // Solo cargar una vez al montar
   
   // Actualizar URL cuando cambien los filtros
   useEffect(() => {
@@ -35,10 +68,10 @@ export default function CatalogPage() {
     if (filters.set !== "all") params.set("set", filters.set)
     if (filters.rarity !== "all") params.set("rarity", filters.rarity)
     if (filters.minPrice !== 0) params.set("minPrice", filters.minPrice.toString())
-    if (filters.maxPrice !== 100) params.set("maxPrice", filters.maxPrice.toString())
+    if (filters.maxPrice !== 10000) params.set("maxPrice", filters.maxPrice.toString())
     if (filters.version !== "all") params.set("version", filters.version)
     if (filters.search) params.set("search", filters.search)
-    if (sortBy !== "nameAZ") params.set("sortBy", sortBy)
+    if (sortBy !== "cardNumberLowHigh") params.set("sortBy", sortBy)
     if (viewMode !== "grid") params.set("viewMode", viewMode)
     
     const queryString = params.toString()
@@ -48,7 +81,12 @@ export default function CatalogPage() {
   }, [filters, sortBy, viewMode, router])
 
   const filteredCards = useMemo(() => {
-    const filtered = mockCards.filter((card) => {
+    if (cards.length === 0) {
+      console.log("⚠️ No hay cartas cargadas")
+      return []
+    }
+    
+    const filtered = cards.filter((card) => {
       // Type filter (skip if "all" or empty)
       if (filters.type && filters.type !== "all" && card.type !== filters.type) return false
       
@@ -58,13 +96,15 @@ export default function CatalogPage() {
       // Rarity filter (skip if "all" or empty)
       if (filters.rarity && filters.rarity !== "all" && card.rarity !== filters.rarity) return false
       
-      // Price range filter
-      if (card.price < filters.minPrice || card.price > filters.maxPrice) return false
+      // Price range filter (manejar null/undefined)
+      const cardPrice = Number(card.price) || 0
+      // Filtrar por precio solo si está dentro del rango
+      if (cardPrice < filters.minPrice || cardPrice > filters.maxPrice) return false
       
       // Version filter (Normal/Foil availability)
       if (filters.version && filters.version !== "all") {
-        const hasNormalStock = (card.stock || 0) > 0
-        const hasFoilStock = card.foilPrice && card.foilPrice > 0
+        const hasNormalStock = (card.normalStock || card.stock || 0) > 0
+        const hasFoilStock = (card.foilStock || 0) > 0 || (card.foilPrice && Number(card.foilPrice) > 0)
         
         if (filters.version === "normal" && !hasNormalStock) return false
         if (filters.version === "foil" && !hasFoilStock) return false
@@ -104,20 +144,26 @@ export default function CatalogPage() {
       }
     })
 
+    console.log(`🔍 Filtros aplicados: ${cards.length} → ${filtered.length} cartas`)
     return filtered
-  }, [filters, sortBy])
+  }, [cards, filters, sortBy])
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <h1 className="font-display text-5xl md:text-7xl font-black mb-10 text-balance tracking-tight leading-none">
-          <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-            {t("catalog")}
-          </span>
-        </h1>
-        <div className="flex flex-col lg:flex-row gap-8">
-          <aside className="lg:w-64 flex-shrink-0">
+      <main className="flex-1 container mx-auto px-4 py-4 md:py-8">
+        {/* Header con título */}
+        <div className="mb-4 md:mb-6">
+          <h1 className="font-display text-4xl md:text-5xl lg:text-7xl font-black text-balance tracking-tight leading-none">
+            <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+              {t("catalog")}
+            </span>
+          </h1>
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
+          {/* Filtros Desktop (ocultos en mobile) */}
+          <aside className="hidden lg:block lg:w-64 flex-shrink-0">
             <CardFilters
               filters={filters}
               setFilters={setFilters}
@@ -127,30 +173,56 @@ export default function CatalogPage() {
               setViewMode={setViewMode}
             />
           </aside>
-          <div className="flex-1">
-            <div className="mb-4 space-y-3">
+
+          {/* Contenido principal */}
+          <div className="flex-1 min-w-0">
+            {/* Barra de acciones mobile */}
+            <div className="flex items-center justify-between mb-4 lg:hidden">
               <div className="text-sm text-muted-foreground">
-                {filteredCards.length} {filteredCards.length === 1 ? "card" : "cards"} found
+                {!loading && `${filteredCards.length} ${filteredCards.length === 1 ? "card" : "cards"}`}
               </div>
               
-              {/* 🔍 DEBUG INFO - VISIBLE */}
-              <div className="p-4 rounded-lg bg-accent/10 border border-accent/30 space-y-2">
-                <div className="text-xs font-bold text-accent uppercase">🔍 Debug Info</div>
-                <div className="font-mono text-xs space-y-1">
-                  <div>📊 Total Cards: <span className="text-primary font-bold">{filteredCards.length}</span></div>
-                  {filteredCards.length > 0 && (
-                    <>
-                      <div>🔢 Card Numbers: <span className="text-accent">{filteredCards[0]?.number}</span> → <span className="text-accent">{filteredCards[filteredCards.length - 1]?.number}</span></div>
-                      <div>🎯 Set Filter: <span className="text-secondary font-bold">{filters.set}</span></div>
-                      <div>🔄 Sort: <span className="text-secondary font-bold">{sortBy}</span></div>
-                      <div>🎨 Type: <span className="text-muted-foreground">{filters.type}</span></div>
-                      <div>⭐ Rarity: <span className="text-muted-foreground">{filters.rarity}</span></div>
-                    </>
-                  )}
-                </div>
-              </div>
+              {/* Botón de filtros mobile */}
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <SlidersHorizontal className="h-4 w-4 mr-2" />
+                    Filters
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-full sm:w-80 overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>Filters & Sort</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6">
+                    <CardFilters
+                      filters={filters}
+                      setFilters={setFilters}
+                      sortBy={sortBy}
+                      setSortBy={setSortBy}
+                      viewMode={viewMode}
+                      setViewMode={setViewMode}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
-            <CardGrid cards={filteredCards} viewMode={viewMode} />
+
+            {loading ? (
+              <div className="text-center py-12 text-muted-foreground">
+                Cargando cartas...
+              </div>
+            ) : (
+              <>
+                {/* Contador desktop */}
+                <div className="hidden lg:block mb-4">
+                  <div className="text-sm text-muted-foreground">
+                    {filteredCards.length} {filteredCards.length === 1 ? "card" : "cards"} found
+                  </div>
+                </div>
+                <CardGrid cards={filteredCards} viewMode={viewMode} />
+              </>
+            )}
           </div>
         </div>
       </main>
