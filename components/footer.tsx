@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Instagram, Music2, Mail, Phone } from "lucide-react"
 import { useLanguage } from "@/components/language-provider"
 import { LanguageSelector } from "@/components/language-selector"
@@ -80,8 +81,32 @@ export function Footer() {
           </div>
         </div>
         
-        {/* Legal Information */}
+        {/* Certification Badge */}
         <div className="mt-8 pt-8 border-t border-border/40">
+          <div className="flex justify-center">
+            <a
+              href="/mercadopago-certificate.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group transition-transform hover:scale-105"
+              title="Desarrollador Certificado por Mercado Pago - Ver Certificado"
+            >
+              <Image
+                src="/mercadopago-certified-badge.png"
+                alt="Desarrollador Certificado Mercado Pago - Checkout Pro"
+                width={180}
+                height={60}
+                className="opacity-90 group-hover:opacity-100 transition-opacity"
+              />
+            </a>
+          </div>
+          <p className="text-xs text-center text-muted-foreground mt-2">
+            Desarrollador Certificado en Checkout Pro
+          </p>
+        </div>
+        
+        {/* Legal Information */}
+        <div className="mt-6 pt-6 border-t border-border/40">
           <div className="text-center space-y-2">
             <p className="text-sm font-medium text-foreground">
               © 2025 G&A Company SpA. Todos los derechos reservados.
