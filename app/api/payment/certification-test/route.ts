@@ -65,12 +65,15 @@ export async function POST(request: Request) {
 
     console.log('🎓 CERTIFICATION TEST - Creating preference with specs:')
     console.log(JSON.stringify(preferenceBody, null, 2))
+    console.log('🔍 Integrator ID being sent:', integratorId)
+    console.log('🔍 Variable value:', process.env.MERCADOPAGO_INTEGRATOR_ID)
 
     const preference = await preferenceApi.create({
       body: preferenceBody
     })
 
     console.log('✅ Certification preference created:', preference.id)
+    console.log('📊 Full preference response:', JSON.stringify(preference, null, 2))
 
     return NextResponse.json({
       success: true,
