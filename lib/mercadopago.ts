@@ -12,12 +12,20 @@ let preferenceClient: Preference | null = null
 
 function getClient() {
   if (!client && process.env.MERCADOPAGO_ACCESS_TOKEN) {
-    client = new MercadoPagoConfig({
+    const config: any = {
       accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
       options: {
         timeout: 5000,
       }
-    })
+    }
+    
+    // Agregar integrator_id a nivel de cliente si existe
+    if (process.env.MERCADOPAGO_INTEGRATOR_ID) {
+      config.options.integratorId = process.env.MERCADOPAGO_INTEGRATOR_ID
+      config.options.platformId = process.env.MERCADOPAGO_INTEGRATOR_ID
+    }
+    
+    client = new MercadoPagoConfig(config)
   }
   return client
 }

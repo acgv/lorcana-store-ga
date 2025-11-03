@@ -59,6 +59,9 @@ export async function POST(request: Request) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`,
+        // Intentar enviar integrator_id también en headers
+        'x-integrator-id': integratorId || '',
+        'x-product-id': integratorId || '',
       },
       body: JSON.stringify(preferenceBody)
     })
