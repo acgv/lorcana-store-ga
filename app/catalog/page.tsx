@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { SlidersHorizontal } from "lucide-react"
 
-export default function CatalogPage() {
+function CatalogContent() {
   const { t } = useLanguage()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -228,5 +228,30 @@ export default function CatalogPage() {
       </main>
       <Footer />
     </div>
+  )
+}
+
+export default function CatalogPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-4 md:py-8">
+          <div className="mb-4 md:mb-6">
+            <h1 className="font-display text-4xl md:text-5xl lg:text-7xl font-black text-balance tracking-tight leading-none">
+              <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                Catalog
+              </span>
+            </h1>
+          </div>
+          <div className="text-center py-12 text-muted-foreground">
+            Cargando...
+          </div>
+        </main>
+        <Footer />
+      </div>
+    }>
+      <CatalogContent />
+    </Suspense>
   )
 }
