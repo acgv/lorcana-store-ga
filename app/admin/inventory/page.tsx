@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Header } from "@/components/header"
+import { AdminHeader } from "@/components/admin-header"
 import { Footer } from "@/components/footer"
 import { AuthGuard } from "@/components/auth-guard"
 import { Button } from "@/components/ui/button"
@@ -312,7 +312,7 @@ export default function InventoryPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <AdminHeader title="Inventory Management" />
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="text-center">Loading inventory...</div>
         </main>
@@ -324,7 +324,7 @@ export default function InventoryPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <AdminHeader title="Inventory Management" />
         <main className="flex-1 container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
