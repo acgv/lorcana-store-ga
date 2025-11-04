@@ -31,35 +31,38 @@ export function useAuth() {
       return
     }
 
-    // ✅ Validar token con nuestra API custom (no con Supabase Auth)
+    // ✅ Simple token check - if exists, consider authenticated
+    // The actual token validation happens on API routes (server-side)
     try {
-      const response = await fetch("/api/auth/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-      })
-
-      const data = await response.json()
-
-      if (data.success && data.user) {
-        setUser({
-          id: data.user.id,
-          email: data.user.email,
-        })
-      } else {
-        // Token inválido - limpiar solo si no estamos en la página de login
-        if (!window.location.pathname.includes('/admin/login')) {
-          console.log("Token inválido o expirado, limpiando sesión")
+      // Decode JWT to get user info (basic check, no cryptographic validation)
+      const tokenParts = token.split('.')
+      if (tokenParts.length === 3) {
+        const payload = JSON.parse(atob(tokenParts[1]))
+        
+        // Check if token is expired
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          console.log("Token expired, clearing session")
           localStorage.removeItem("admin_token")
           document.cookie = "admin_token=; path=/; max-age=0"
+          setUser(null)
+        } else {
+          // Token is valid (not expired), set user
+          setUser({
+            id: payload.sub || payload.user_id || "admin",
+            email: payload.email || "admin",
+          })
         }
+      } else {
+        // Invalid token format
+        localStorage.removeItem("admin_token")
+        document.cookie = "admin_token=; path=/; max-age=0"
         setUser(null)
       }
     } catch (err) {
-      // Error de red o servidor - no limpiar token, solo marcar como no autenticado
-      console.error("Error validando token:", err)
+      // Error parsing token - treat as invalid
+      console.log("Invalid token format, clearing session")
+      localStorage.removeItem("admin_token")
+      document.cookie = "admin_token=; path=/; max-age=0"
       setUser(null)
     }
     
