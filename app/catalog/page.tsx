@@ -249,12 +249,12 @@ export default function CatalogPage() {
           <div className="mb-4 md:mb-6">
             <h1 className="font-display text-4xl md:text-5xl lg:text-7xl font-black text-balance tracking-tight leading-none">
               <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                {t("catalog")}
+                Catalog
               </span>
             </h1>
           </div>
           <div className="text-center py-12 text-muted-foreground">
-            {t("loadingText")}
+            Loading...
           </div>
         </main>
         <Footer />

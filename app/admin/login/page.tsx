@@ -138,7 +138,7 @@ export default function AdminLoginPage() {
             </div>
             <CardTitle className="text-2xl">Admin Login</CardTitle>
             <CardDescription>
-              {t("loadingText")}
+              Loading...
             </CardDescription>
           </CardHeader>
         </Card>
