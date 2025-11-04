@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
+import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
 import { LogOut, User, Package, ShoppingBag, FileText, Activity } from "lucide-react"
 import { usePathname } from "next/navigation"
@@ -20,6 +21,7 @@ interface AdminHeaderProps {
 
 export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
   const { user, logout } = useAuth()
+  const { t } = useLanguage()
   const pathname = usePathname()
 
   const handleLogout = () => {
@@ -31,10 +33,10 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
   }
 
   const navItems = [
-    { href: "/admin/inventory", label: "Inventario", icon: Package },
-    { href: "/admin/orders", label: "Órdenes", icon: ShoppingBag },
-    { href: "/admin/submissions", label: "Submissions", icon: FileText },
-    { href: "/admin/logs", label: "Logs", icon: Activity },
+    { href: "/admin/inventory", labelKey: "catalog", icon: Package },
+    { href: "/admin/orders", labelKey: "orders", icon: ShoppingBag },
+    { href: "/admin/submissions", labelKey: "products", icon: FileText },
+    { href: "/admin/logs", labelKey: "actions", icon: Activity },
   ]
 
   return (
@@ -49,7 +51,7 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
           <nav className="flex items-center gap-4">
             <Link href="/">
               <Button variant="ghost" className="font-sans">
-                View Store
+                {t("viewStore")}
               </Button>
             </Link>
             
@@ -93,7 +95,7 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
                   className="gap-2 whitespace-nowrap"
                 >
                   <Icon className="h-4 w-4" />
-                  {item.label}
+                  {t(item.labelKey)}
                 </Button>
               </Link>
             )

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { AuthGuard } from "@/components/auth-guard"
 import { AdminHeader } from "@/components/admin-header"
+import { useLanguage } from "@/components/language-provider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -41,6 +42,7 @@ interface Order {
 }
 
 export default function OrdersPage() {
+  const { t } = useLanguage()
   const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -86,18 +88,18 @@ export default function OrdersPage() {
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: any; label: string }> = {
-      approved: { variant: "default", label: "Aprobado" },
-      pending: { variant: "secondary", label: "Pendiente" },
-      rejected: { variant: "destructive", label: "Rechazado" },
-      cancelled: { variant: "outline", label: "Cancelado" },
-      refunded: { variant: "outline", label: "Reembolsado" },
+    const variants: Record<string, { variant: any; labelKey: string }> = {
+      approved: { variant: "default", labelKey: "approved" },
+      pending: { variant: "secondary", labelKey: "pending" },
+      rejected: { variant: "destructive", labelKey: "rejected" },
+      cancelled: { variant: "outline", labelKey: "cancelled" },
+      refunded: { variant: "outline", labelKey: "refunded" },
     }
 
-    const config = variants[status] || { variant: "outline", label: status }
+    const config = variants[status] || { variant: "outline", labelKey: status }
     return (
       <Badge variant={config.variant as any} className="capitalize">
-        {config.label}
+        {t(config.labelKey)}
       </Badge>
     )
   }
@@ -134,9 +136,9 @@ export default function OrdersPage() {
 
         <main className="container mx-auto px-4 py-8">
           <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">Órdenes de Compra</h1>
+            <h1 className="text-4xl font-bold mb-2">{t("orders")}</h1>
             <p className="text-muted-foreground">
-              Gestiona y revisa todas las órdenes realizadas en la tienda
+              {t("ordersDescription")}
             </p>
           </div>
 
@@ -144,31 +146,31 @@ export default function OrdersPage() {
           <div className="grid gap-4 md:grid-cols-3 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Órdenes</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("totalOrders")}</CardTitle>
                 <ShoppingBag className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{getTotalOrders()}</div>
-                <p className="text-xs text-muted-foreground">Órdenes aprobadas</p>
+                <p className="text-xs text-muted-foreground">{t("approvedOrders")}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Revenue Total</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("totalRevenue")}</CardTitle>
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
                   ${Math.floor(getTotalRevenue()).toLocaleString()}
                 </div>
-                <p className="text-xs text-muted-foreground">Ventas aprobadas</p>
+                <p className="text-xs text-muted-foreground">{t("approvedOrders")}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Productos Vendidos</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("productsSold")}</CardTitle>
                 <Package className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -182,7 +184,7 @@ export default function OrdersPage() {
                       )
                     }, 0)}
                 </div>
-                <p className="text-xs text-muted-foreground">Cartas vendidas</p>
+                <p className="text-xs text-muted-foreground">{t("soldCards")}</p>
               </CardContent>
             </Card>
           </div>
@@ -194,7 +196,7 @@ export default function OrdersPage() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="search"
-                  placeholder="Buscar por email, payment ID o referencia..."
+                  placeholder={t("searchOrders")}
                   className="pl-9"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -206,26 +208,26 @@ export default function OrdersPage() {
           {/* Orders Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Todas las Órdenes ({filteredOrders.length})</CardTitle>
+              <CardTitle>{t("allOrders")} ({filteredOrders.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-8 text-muted-foreground">Cargando órdenes...</div>
+                <div className="text-center py-8 text-muted-foreground">{t("loadingOrders")}</div>
               ) : filteredOrders.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  {searchTerm ? "No se encontraron órdenes" : "No hay órdenes aún"}
+                  {searchTerm ? t("noOrdersFound") : t("noOrders")}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left p-4 font-medium">Fecha</th>
-                        <th className="text-left p-4 font-medium">Cliente</th>
-                        <th className="text-left p-4 font-medium">Items</th>
-                        <th className="text-left p-4 font-medium">Total</th>
-                        <th className="text-left p-4 font-medium">Estado</th>
-                        <th className="text-left p-4 font-medium">Acciones</th>
+                        <th className="text-left p-4 font-medium">{t("date")}</th>
+                        <th className="text-left p-4 font-medium">{t("customer")}</th>
+                        <th className="text-left p-4 font-medium">{t("items")}</th>
+                        <th className="text-left p-4 font-medium">{t("total")}</th>
+                        <th className="text-left p-4 font-medium">{t("status")}</th>
+                        <th className="text-left p-4 font-medium">{t("actions")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -252,7 +254,7 @@ export default function OrdersPage() {
                               onClick={() => openOrderDetails(order)}
                             >
                               <Eye className="h-4 w-4 mr-2" />
-                              Ver
+                              {t("view")}
                             </Button>
                           </td>
                         </tr>
@@ -269,9 +271,9 @@ export default function OrdersPage() {
         <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Detalles de la Orden</DialogTitle>
+              <DialogTitle>{t("orderDetails")}</DialogTitle>
               <DialogDescription>
-                Información completa de la orden #{selectedOrder?.external_reference}
+                #{selectedOrder?.external_reference}
               </DialogDescription>
             </DialogHeader>
 
@@ -279,7 +281,7 @@ export default function OrdersPage() {
               <div className="space-y-6">
                 {/* Customer Info */}
                 <div>
-                  <h3 className="font-semibold mb-2">Cliente</h3>
+                  <h3 className="font-semibold mb-2">{t("customer")}</h3>
                   <div className="space-y-1 text-sm">
                     <p>
                       <span className="text-muted-foreground">Email:</span> {selectedOrder.customer_email}
@@ -294,7 +296,7 @@ export default function OrdersPage() {
 
                 {/* Payment Info */}
                 <div>
-                  <h3 className="font-semibold mb-2">Información de Pago</h3>
+                  <h3 className="font-semibold mb-2">{t("paymentInfo")}</h3>
                   <div className="space-y-1 text-sm">
                     <p>
                       <span className="text-muted-foreground">Payment ID:</span> {selectedOrder.payment_id}
@@ -322,7 +324,7 @@ export default function OrdersPage() {
 
                 {/* Items */}
                 <div>
-                  <h3 className="font-semibold mb-2">Productos</h3>
+                  <h3 className="font-semibold mb-2">{t("products")}</h3>
                   <div className="space-y-2">
                     {selectedOrder.items.map((item, index) => (
                       <div
@@ -346,7 +348,7 @@ export default function OrdersPage() {
                 {/* Total */}
                 <div className="border-t pt-4">
                   <div className="flex justify-between items-center text-lg font-bold">
-                    <span>Total</span>
+                    <span>{t("total")}</span>
                     <span className="text-green-600">
                       ${Math.floor(Number(selectedOrder.total_amount)).toLocaleString()}{" "}
                       {selectedOrder.currency}

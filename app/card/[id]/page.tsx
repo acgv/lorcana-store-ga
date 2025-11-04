@@ -64,7 +64,7 @@ export default function CardDetailPage() {
         <Header />
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading card...</p>
+            <p className="text-muted-foreground">{t("loading")}</p>
           </div>
         </main>
         <Footer />
@@ -221,17 +221,17 @@ export default function CardDetailPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="normal" className="font-sans" disabled={normalStock === 0}>
-                          {t("normal")} {normalStock > 0 && `- $${Math.floor(card.price)}`} {normalStock === 0 && "(Out of Stock)"}
+                          {t("normal")} {normalStock > 0 && `- $${Math.floor(card.price)}`} {normalStock === 0 && `(${t("outOfStock")})`}
                         </SelectItem>
                         <SelectItem value="foil" className="font-sans" disabled={foilStock === 0}>
-                          {t("foil")} {foilStock > 0 && `- $${Math.floor(card.foilPrice)}`} {foilStock === 0 && "(Out of Stock)"}
+                          {t("foil")} {foilStock > 0 && `- $${Math.floor(card.foilPrice)}`} {foilStock === 0 && `(${t("outOfStock")})`}
                         </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block font-sans">Quantity</label>
+                    <label className="text-sm font-medium mb-2 block font-sans">{t("quantity")}</label>
                     <Select 
                       value={quantity.toString()} 
                       onValueChange={(v) => setQuantity(parseInt(v))}
@@ -256,7 +256,7 @@ export default function CardDetailPage() {
                     <div>
                       <p className="text-sm text-muted-foreground font-sans">{t("priceRange")}</p>
                       <p className="text-3xl font-bold text-primary font-display">${Math.floor(price * quantity).toLocaleString()}</p>
-                      {quantity > 1 && <p className="text-xs text-muted-foreground">${Math.floor(price).toLocaleString()} each</p>}
+                      {quantity > 1 && <p className="text-xs text-muted-foreground">${Math.floor(price).toLocaleString()} {t("each")}</p>}
                     </div>
                   </div>
                   
@@ -286,7 +286,7 @@ export default function CardDetailPage() {
                       ) : (
                         <>
                           <CreditCard className="mr-2 h-4 w-4" />
-                          Comprar Ahora
+                          {t("buyNow")}
                         </>
                       )}
                     </Button>
