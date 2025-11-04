@@ -255,8 +255,8 @@ export default function CardDetailPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground font-sans">{t("priceRange")}</p>
-                      <p className="text-3xl font-bold text-primary font-display">${Math.floor(price * quantity)}</p>
-                      {quantity > 1 && <p className="text-xs text-muted-foreground">${Math.floor(price)} each</p>}
+                      <p className="text-3xl font-bold text-primary font-display">${Math.floor(price * quantity).toLocaleString()}</p>
+                      {quantity > 1 && <p className="text-xs text-muted-foreground">${Math.floor(price).toLocaleString()} each</p>}
                     </div>
                   </div>
                   

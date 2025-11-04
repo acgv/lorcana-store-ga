@@ -74,7 +74,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
               <div className="border-t border-border pt-4 space-y-4">
                 <div className="flex justify-between text-lg font-bold">
                   <span>{t("total")}</span>
-                  <span className="text-primary">${Math.floor(totalPrice)}</span>
+                  <span className="text-primary">${Math.floor(totalPrice).toLocaleString()}</span>
                 </div>
                 <Button className="w-full" size="lg">
                   {t("checkout")}
