@@ -255,7 +255,7 @@ export default function InventoryPage() {
       if (data.success) {
         toast({
           title: "✅ Import Successful",
-          description: `Imported ${data.stats.imported} cards from Lorcana API. Stock and prices set to 0.`,
+          description: `Imported ${data.stats.imported} NEW cards. ${data.stats.skipped} existing cards preserved (not modified).`,
         })
         
         // Refresh inventory

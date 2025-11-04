@@ -142,39 +142,60 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Transformed ${transformedCards.length} cards`)
 
-    // Insertar en Supabase usando upsert (actualiza si existe, inserta si no)
-    let imported = 0
-    let updated = 0
-    
-    // Insertar en lotes de 100 para no sobrecargar
-    const batchSize = 100
-    for (let i = 0; i < transformedCards.length; i += batchSize) {
-      const batch = transformedCards.slice(i, i + batchSize)
-      
-      const { data, error } = await supabaseAdmin
-        .from('cards')
-        .upsert(batch, { 
-          onConflict: 'id',
-          ignoreDuplicates: false // Actualizar si existe
-        })
-        .select()
+    // ⚠️ IMPORTANTE: Solo insertar cartas NUEVAS, NO actualizar existentes
+    // Paso 1: Obtener IDs de todas las cartas existentes
+    const { data: existingCards, error: fetchError } = await supabaseAdmin
+      .from('cards')
+      .select('id')
 
-      if (error) {
-        console.error(`Error inserting batch ${i / batchSize + 1}:`, error)
-        errors++
-      } else {
-        imported += data?.length || 0
-        console.log(`📦 Batch ${i / batchSize + 1}: Processed ${batch.length} cards`)
+    if (fetchError) {
+      console.error('Error fetching existing cards:', fetchError)
+      throw new Error('Failed to fetch existing cards')
+    }
+
+    const existingIds = new Set(existingCards?.map(c => c.id) || [])
+    console.log(`📋 Found ${existingIds.size} existing cards in database`)
+
+    // Paso 2: Filtrar solo las cartas NUEVAS (que no existen)
+    const newCards = transformedCards.filter(card => !existingIds.has(card.id))
+    const skippedCards = transformedCards.length - newCards.length
+
+    console.log(`✅ ${newCards.length} new cards to import`)
+    console.log(`⏭️  ${skippedCards} existing cards skipped (not modified)`)
+
+    // Paso 3: Insertar SOLO las cartas nuevas (sin upsert)
+    let imported = 0
+    
+    if (newCards.length > 0) {
+      // Insertar en lotes de 100 para no sobrecargar
+      const batchSize = 100
+      for (let i = 0; i < newCards.length; i += batchSize) {
+        const batch = newCards.slice(i, i + batchSize)
+        
+        const { data, error } = await supabaseAdmin
+          .from('cards')
+          .insert(batch) // ⭐ INSERT (no upsert) - solo nuevas
+          .select()
+
+        if (error) {
+          console.error(`Error inserting batch ${i / batchSize + 1}:`, error)
+          errors++
+        } else {
+          imported += data?.length || 0
+          console.log(`📦 Batch ${i / batchSize + 1}: Inserted ${batch.length} new cards`)
+        }
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: `Successfully imported ${transformedCards.length} cards`,
+      message: `Successfully imported ${imported} new cards. ${skippedCards} existing cards preserved.`,
       stats: {
         total: lorcanaCards.length,
         transformed: transformedCards.length,
-        imported: transformedCards.length,
+        new: newCards.length,
+        imported: imported,
+        skipped: skippedCards,
         errors: errors,
       }
     })
