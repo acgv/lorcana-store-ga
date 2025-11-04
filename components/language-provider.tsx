@@ -146,6 +146,9 @@ const translations: Record<Language, Record<string, string>> = {
     password: "Password",
     emailPlaceholder: "admin@example.com",
     passwordPlaceholder: "••••••••",
+    login: "Login",
+    loggingIn: "Logging in...",
+    loginNote: "If you don't have an admin account, contact the system administrator.",
     // Admin Submissions
     enterRejectionReason: "Enter rejection reason...",
     // Admin Inventory
@@ -326,6 +329,9 @@ const translations: Record<Language, Record<string, string>> = {
     password: "Mot de passe",
     emailPlaceholder: "admin@exemple.com",
     passwordPlaceholder: "••••••••",
+    login: "Connexion",
+    loggingIn: "Connexion en cours...",
+    loginNote: "Si vous n'avez pas de compte admin, contactez l'administrateur système.",
     // Admin Submissions
     enterRejectionReason: "Entrez la raison du rejet...",
     // Admin Inventory
@@ -506,6 +512,9 @@ const translations: Record<Language, Record<string, string>> = {
     password: "Passwort",
     emailPlaceholder: "admin@beispiel.com",
     passwordPlaceholder: "••••••••",
+    login: "Anmelden",
+    loggingIn: "Anmeldung läuft...",
+    loginNote: "Wenn Sie kein Admin-Konto haben, wenden Sie sich an den Systemadministrator.",
     // Admin Submissions
     enterRejectionReason: "Ablehnungsgrund eingeben...",
     // Admin Inventory
@@ -686,6 +695,9 @@ const translations: Record<Language, Record<string, string>> = {
     password: "Contraseña",
     emailPlaceholder: "admin@ejemplo.com",
     passwordPlaceholder: "••••••••",
+    login: "Iniciar Sesión",
+    loggingIn: "Iniciando sesión...",
+    loginNote: "Si no tienes cuenta de admin, contacta al administrador del sistema.",
     // Admin Submissions
     enterRejectionReason: "Ingresa la razón del rechazo...",
     // Admin Inventory

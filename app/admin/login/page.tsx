@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Shield, Loader2 } from "lucide-react"
+import { useLanguage } from "@/components/language-provider"
 
 function AdminLoginForm() {
+  const { t } = useLanguage()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
@@ -105,18 +107,17 @@ function AdminLoginForm() {
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Logging in...
+                  {t("loggingIn")}
                 </>
               ) : (
-                "Login"
+                t("login")
               )}
             </Button>
           </form>
 
           <div className="mt-6 p-4 bg-muted rounded-lg">
             <p className="text-xs text-muted-foreground text-center">
-              <strong className="text-foreground">Nota:</strong> Si no tienes cuenta de admin,
-              contacta al administrador del sistema.
+              {t("loginNote")}
             </p>
           </div>
         </CardContent>
