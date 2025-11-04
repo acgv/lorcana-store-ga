@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/db"
 
 interface User {
   id: string
@@ -32,30 +31,33 @@ export function useAuth() {
       return
     }
 
-    // Validar token con Supabase Auth
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.auth.getUser(token)
-        
-        if (error || !data.user) {
-          console.log("Token inválido o expirado, limpiando sesión")
-          localStorage.removeItem("admin_token")
-          setUser(null)
-        } else {
-          setUser({
-            id: data.user.id,
-            email: data.user.email!,
-          })
-        }
-      } catch (err) {
-        console.error("Error validando token:", err)
+    // ✅ Validar token con nuestra API custom (no con Supabase Auth)
+    try {
+      const response = await fetch("/api/auth/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.user) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email,
+        })
+      } else {
+        console.log("Token inválido o expirado, limpiando sesión")
         localStorage.removeItem("admin_token")
+        document.cookie = "admin_token=; path=/; max-age=0"
         setUser(null)
       }
-    } else {
-      // Si Supabase no está configurado, limpiar sesión
-      console.warn("Supabase no configurado, no se puede validar token")
+    } catch (err) {
+      console.error("Error validando token:", err)
       localStorage.removeItem("admin_token")
+      document.cookie = "admin_token=; path=/; max-age=0"
       setUser(null)
     }
     
