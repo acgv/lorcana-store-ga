@@ -6,7 +6,7 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/components/language-provider"
 import Link from "next/link"
-import { Sparkles } from "lucide-react"
+import { Sparkles, Send } from "lucide-react"
 
 export default function HomePage() {
   const { t } = useLanguage()
@@ -106,6 +106,26 @@ export default function HomePage() {
               <p className="text-muted-foreground text-sm leading-relaxed font-sans">
                 {t("advancedFiltersDesc")}
               </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Call to Action - Submit Card */}
+        <section className="container mx-auto px-4 py-16 md:py-20">
+          <div className="max-w-3xl mx-auto text-center">
+            <div className="p-8 md:p-12 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/10 to-primary/10 border border-primary/20">
+              <h2 className="font-display text-3xl md:text-4xl font-black mb-4 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                {t("haveACard")}
+              </h2>
+              <p className="text-muted-foreground text-lg mb-6 font-sans">
+                {t("haveACardDesc")}
+              </p>
+              <Link href="/submit-card">
+                <Button size="lg" className="font-sans text-base px-8 py-6 glow-border">
+                  <Send className="mr-2 h-5 w-5" />
+                  {t("submitCard")}
+                </Button>
+              </Link>
             </div>
           </div>
         </section>

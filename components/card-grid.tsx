@@ -3,6 +3,9 @@
 import type { Card } from "@/lib/mock-data"
 import { CardItem } from "@/components/card-item"
 import { useLanguage } from "@/components/language-provider"
+import { Button } from "@/components/ui/button"
+import { Send } from "lucide-react"
+import Link from "next/link"
 
 interface CardGridProps {
   cards: Card[]
@@ -13,7 +16,17 @@ export function CardGrid({ cards, viewMode }: CardGridProps) {
   const { t } = useLanguage()
   
   if (cards.length === 0) {
-    return <div className="text-center py-12 text-muted-foreground">{t("noCardsFound")}</div>
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground mb-6">{t("noCardsFound")}</p>
+        <Link href="/submit-card">
+          <Button variant="outline" className="gap-2">
+            <Send className="h-4 w-4" />
+            {t("submitCardInstead")}
+          </Button>
+        </Link>
+      </div>
+    )
   }
 
   if (viewMode === "list") {

@@ -22,6 +22,7 @@ const translations: Record<Language, Record<string, string>> = {
     foundText: "found",
     noCardsFound: "No cards found matching your filters",
     noCardsSearch: "No cards found matching your search.",
+    submitCardInstead: "Submit Your Card Instead",
     news: "News",
     contact: "Contact",
     search: "Search by name or number...",
@@ -29,6 +30,8 @@ const translations: Record<Language, Record<string, string>> = {
     heroTitle: "Find your perfect Lorcana card",
     heroSubtitle: "Discover, filter and collect your favorite cards",
     browseCatalog: "Browse Cards",
+    haveACard: "Have a Card to Sell?",
+    haveACardDesc: "Submit your Lorcana cards to our catalog and we'll review them for inclusion in our store.",
     error: "Error",
     cancel: "Cancel",
     // Submit Card Form
@@ -608,6 +611,7 @@ const translations: Record<Language, Record<string, string>> = {
     foundText: "encontradas",
     noCardsFound: "No se encontraron cartas que coincidan con tus filtros",
     noCardsSearch: "No se encontraron cartas que coincidan con tu búsqueda.",
+    submitCardInstead: "Envía Tu Carta en su Lugar",
     news: "Noticias",
     contact: "Contacto",
     search: "Buscar por nombre o número...",
@@ -615,6 +619,8 @@ const translations: Record<Language, Record<string, string>> = {
     heroTitle: "Encuentra tu carta Lorcana perfecta",
     heroSubtitle: "Descubre, filtra y colecciona tus cartas favoritas",
     browseCatalog: "Explorar cartas",
+    haveACard: "¿Tienes una Carta para Vender?",
+    haveACardDesc: "Envía tus cartas Lorcana a nuestro catálogo y las revisaremos para incluirlas en nuestra tienda.",
     error: "Error",
     cancel: "Cancelar",
     // Submit Card Form

@@ -35,6 +35,11 @@ export function Footer() {
                   {t("privacy")}
                 </Link>
               </li>
+              <li>
+                <Link href="/submit-card" className="text-primary hover:text-primary/80 transition-colors font-medium">
+                  {t("submitCard")} ✨
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
