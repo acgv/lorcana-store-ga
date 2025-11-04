@@ -164,6 +164,8 @@ const translations: Record<Language, Record<string, string>> = {
     // Inventory
     inventoryManagement: "Inventory Management",
     inventoryDescription: "Manage stock and prices for all cards",
+    importCards: "Import Cards from API",
+    importing: "Importing...",
     totalCards: "Total Cards",
     normalStock: "Normal Stock",
     foilStock: "Foil Stock",
@@ -347,6 +349,8 @@ const translations: Record<Language, Record<string, string>> = {
     // Inventory
     inventoryManagement: "Gestion de l'Inventaire",
     inventoryDescription: "Gérer le stock et les prix de toutes les cartes",
+    importCards: "Importer des Cartes depuis l'API",
+    importing: "Importation...",
     totalCards: "Total Cartes",
     normalStock: "Stock Normal",
     foilStock: "Stock Foil",
@@ -530,6 +534,8 @@ const translations: Record<Language, Record<string, string>> = {
     // Inventory
     inventoryManagement: "Bestandsverwaltung",
     inventoryDescription: "Verwalten Sie Lagerbestände und Preise aller Karten",
+    importCards: "Karten von API Importieren",
+    importing: "Importierung...",
     totalCards: "Gesamt Karten",
     normalStock: "Normaler Bestand",
     foilStock: "Foil Bestand",
@@ -713,6 +719,8 @@ const translations: Record<Language, Record<string, string>> = {
     // Inventory
     inventoryManagement: "Gestión de Inventario",
     inventoryDescription: "Gestiona stock y precios de todas las cartas",
+    importCards: "Importar Cartas desde API",
+    importing: "Importando...",
     totalCards: "Total Cartas",
     normalStock: "Stock Normal",
     foilStock: "Stock Foil",

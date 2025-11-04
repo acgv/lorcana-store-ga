@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Package, Search, Save, AlertCircle, Loader2 } from "lucide-react"
+import { Package, Search, Save, AlertCircle, Loader2, Download } from "lucide-react"
 import Image from "next/image"
 
 interface InventoryItem {
@@ -45,6 +45,7 @@ export default function InventoryPage() {
   const [editedCards, setEditedCards] = useState<Map<string, { normalStock?: number; foilStock?: number; price?: number; foilPrice?: number }>>(new Map())
   const [savingCard, setSavingCard] = useState<string | null>(null) // ID de la carta que se está guardando
   const [savingAll, setSavingAll] = useState(false) // Estado para Save All
+  const [importing, setImporting] = useState(false) // Estado para importación de cartas
   const { toast } = useToast()
 
   // Fetch inventory on mount
@@ -234,6 +235,47 @@ export default function InventoryPage() {
       })
     } finally {
       setSavingAll(false) // Limpiar estado de guardado
+    }
+  }
+
+  // Import cards from Lorcana API
+  const handleImportCards = async () => {
+    setImporting(true)
+    
+    try {
+      const response = await fetch('/api/admin/import-cards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "✅ Import Successful",
+          description: `Imported ${data.stats.imported} cards from Lorcana API. Stock and prices set to 0.`,
+        })
+        
+        // Refresh inventory
+        await fetchInventory()
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: data.error || "Failed to import cards",
+        })
+      }
+    } catch (error) {
+      console.error("Error importing cards:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to import cards from API",
+      })
+    } finally {
+      setImporting(false)
     }
   }
 
@@ -509,23 +551,43 @@ export default function InventoryPage() {
           <p className="text-sm text-muted-foreground">
             {t("showingCards")} {filteredInventory.length} {t("ofCards")} {inventory.length} {t("cards")}
           </p>
-          <Button 
-            onClick={handleSaveAll} 
-            disabled={editedCards.size === 0 || savingAll}
-            className="whitespace-nowrap"
-          >
-            {savingAll ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {t("saving")}
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                {t("saveAll")} ({editedCards.size})
-              </>
-            )}
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              onClick={handleImportCards} 
+              disabled={importing}
+              variant="outline"
+              className="whitespace-nowrap"
+            >
+              {importing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t("importing")}
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  {t("importCards")}
+                </>
+              )}
+            </Button>
+            <Button 
+              onClick={handleSaveAll} 
+              disabled={editedCards.size === 0 || savingAll}
+              className="whitespace-nowrap"
+            >
+              {savingAll ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t("saving")}
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  {t("saveAll")} ({editedCards.size})
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Inventory Table */}
