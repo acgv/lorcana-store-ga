@@ -33,7 +33,8 @@
 | [Supabase Setup](./setup/SUPABASE_SETUP.md) | Configurar base de datos | Setup inicial |
 | [ENV Example](./setup/ENV_EXAMPLE.md) | Variables de entorno | Setup inicial |
 | [Production Deployment](./setup/PRODUCTION_DEPLOYMENT.md) | Desplegar a producción | Antes de deploy |
-| [Mercado Pago Setup](./setup/MERCADOPAGO_SETUP.md) | Configurar pagos | Integrar pagos |
+| [Mercado Pago Setup](./setup/MERCADOPAGO_SETUP.md) | Quick start pagos | Integrar pagos |
+| [MP Dual Credentials](./setup/MERCADOPAGO_DUAL_CREDENTIALS.md) | Sistema test/producción | Configurar MP |
 | [Testing Payments](./setup/TESTING_PAYMENTS.md) | Probar pagos | Testing |
 | [Mobile App Setup](./setup/MOBILE_APP_SETUP.md) | Configurar app móvil | Si usas mobile |
 
@@ -49,8 +50,9 @@
 
 | Documento | Descripción | Cuándo leer |
 |-----------|-------------|-------------|
-| [Mercado Pago Setup](./setup/MERCADOPAGO_SETUP.md) | Configurar integración | Setup de pagos |
-| [Testing Payments](./setup/TESTING_PAYMENTS.md) | Probar con tarjetas de prueba | Testing |
+| [Mercado Pago Setup](./setup/MERCADOPAGO_SETUP.md) | Quick start pagos | Empezar aquí |
+| [MP Dual Credentials](./setup/MERCADOPAGO_DUAL_CREDENTIALS.md) | Sistema test/producción | Setup completo |
+| [Testing Payments](./setup/TESTING_PAYMENTS.md) | Tarjetas de prueba | Testing |
 
 ### ✨ **Features Implementadas**
 
@@ -85,9 +87,10 @@
 2. [Quick Start Import](./guides/QUICK_START_IMPORT.md)
 
 ### "Quiero configurar pagos" 💳
-1. [Mercado Pago Setup](./setup/MERCADOPAGO_SETUP.md)
-2. [Testing Payments](./setup/TESTING_PAYMENTS.md)
-3. [Production Deployment](./setup/PRODUCTION_DEPLOYMENT.md) - Variables en Vercel
+1. [Mercado Pago Setup](./setup/MERCADOPAGO_SETUP.md) - Quick start
+2. [MP Dual Credentials](./setup/MERCADOPAGO_DUAL_CREDENTIALS.md) - Sistema completo
+3. [Testing Payments](./setup/TESTING_PAYMENTS.md) - Pruebas
+4. [Production Deployment](./setup/PRODUCTION_DEPLOYMENT.md) - Variables en Vercel
 
 ---
 

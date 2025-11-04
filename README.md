@@ -112,8 +112,8 @@ pnpm run dev
 
 | Categoría | Documentos | Descripción |
 |-----------|-----------|-------------|
-| **🔒 Seguridad** | [6 docs](./docs/security/) | Auth, RLS, rate limiting, roles |
-| **⚙️ Setup** | [5 docs](./docs/setup/) | Supabase, ENV, deployment, production |
+| **🔒 Seguridad** | [5 docs](./docs/security/) | Auth, RLS, rate limiting, roles |
+| **⚙️ Setup** | [7 docs](./docs/setup/) | Supabase, ENV, MP (dual), deployment |
 | **📖 Guías** | [3 docs](./docs/guides/) | Tipografía, datos, import |
 | **✨ Features** | [1 doc](./docs/features/) | Filtros y funcionalidades |
 
@@ -371,9 +371,11 @@ curl -X POST http://localhost:3002/api/staging \
 - [x] Tipografía limpia con Inter
 - [x] **Integración de pagos con Mercado Pago** 💳
 - [x] **Certificación oficial Mercado Pago** 🏆
+- [x] **Sistema dual de credenciales MP** (test/producción)
 - [x] Actualización automática de stock post-pago
 - [x] Webhooks para notificaciones de pago
 - [x] Tabla de órdenes y tracking
+- [x] Multi-dominio (gacompany.cl + vercel.app)
 
 ### En Progreso 🚧
 - [ ] Cloud image storage (Supabase Storage)
@@ -505,20 +507,34 @@ G&A Company es un **Desarrollador Certificado** en Mercado Pago Checkout Pro.
 
 ### 🚀 Configuración
 
-#### **Variables de Entorno Requeridas:**
+#### **Sistema Dual de Credenciales:**
+
+Este proyecto usa un sistema que permite tener credenciales de **prueba** y **producción** simultáneamente:
 
 ```bash
-# Mercado Pago (Producción o Prueba)
-NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY=APP_USR-xxxxx
-MERCADOPAGO_ACCESS_TOKEN=APP_USR-xxxxx
+# Switch principal (test o production)
+MERCADOPAGO_MODE=test
+
+# Credenciales de PRUEBA
+NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY_TEST=APP_USR-xxxxx
+MERCADOPAGO_ACCESS_TOKEN_TEST=APP_USR-xxxxx
+
+# Credenciales de PRODUCCIÓN
+NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY_PROD=APP_USR-xxxxx
+MERCADOPAGO_ACCESS_TOKEN_PROD=APP_USR-xxxxx
+
+# Integrator ID (solo en desarrollo local)
 MERCADOPAGO_INTEGRATOR_ID=dev_7f02a687b8f511f08d0a26ae6bb5b74c
 ```
 
+**Ventaja:** Solo cambias `MERCADOPAGO_MODE` para alternar entre test y producción. Sin copiar/pegar credenciales.
+
 #### **Documentación:**
 
-- 📖 [Configuración](./docs/setup/MERCADOPAGO_SETUP.md) - Setup completo
+- ⚡ [Quick Start](./docs/setup/MERCADOPAGO_SETUP.md) - Setup rápido
+- 🔧 [Sistema Dual](./docs/setup/MERCADOPAGO_DUAL_CREDENTIALS.md) - Credenciales duales completo
 - 🧪 [Testing](./docs/setup/TESTING_PAYMENTS.md) - Tarjetas de prueba
-- 🚀 [Deployment](./docs/setup/PRODUCTION_DEPLOYMENT.md) - Variables en Vercel
+- 🚀 [Deployment](./docs/setup/PRODUCTION_DEPLOYMENT.md) - Vercel production
 
 #### **Flujo de Compra:**
 
