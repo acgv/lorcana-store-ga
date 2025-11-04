@@ -37,13 +37,13 @@ cp .env.example .env.local
 # Ejecuta scripts/fix-inventory-update-permissions.sql en Supabase SQL Editor
 
 # 4. Importar datos reales de Lorcana (1,837 cartas)
-pnpm run import:cards
+pnpm import:cards
 
-# 5. Sembrar base de datos (opcional)
-pnpm run db:seed
+# 5. Sembrar base de datos en Supabase
+pnpm db:seed
 
 # 6. Iniciar servidor de desarrollo
-pnpm run dev
+pnpm dev
 # Abre http://localhost:3002
 ```
 
@@ -82,6 +82,7 @@ pnpm run dev
 ✅ Notificaciones push de estado de revisión  
 
 ### Admin Dashboard
+✅ **Gestión de Órdenes** - Ver compras, clientes, revenue ⭐ NEW  
 ✅ Revisar envíos pendientes desde mobile  
 ✅ Editar y aprobar/rechazar datos  
 ✅ Gestionar inventario de cartas (stock **Y precios**)  
@@ -90,8 +91,10 @@ pnpm run dev
 ✅ **Spinners visuales** durante guardado  
 ✅ **Validación de errores** de Supabase en tiempo real  
 ✅ Log de actividad con timestamps  
-✅ Autenticación segura  
+✅ Autenticación segura con logout  
 ✅ Dashboard de estadísticas en tiempo real  
+✅ **Navegación con tabs** entre secciones  
+✅ **Multi-idioma completo** (EN, ES, FR, DE)  
 ✅ Integración con **Supabase** en tiempo real  
 
 ---
@@ -374,13 +377,18 @@ curl -X POST http://localhost:3002/api/staging \
 - [x] **Sistema dual de credenciales MP** (test/producción)
 - [x] Actualización automática de stock post-pago
 - [x] Webhooks para notificaciones de pago
-- [x] Tabla de órdenes y tracking
+- [x] **Admin Panel de Órdenes** - Tracking completo ⭐ NEW
 - [x] Multi-dominio (gacompany.cl + vercel.app)
+- [x] **Menú hamburguesa móvil** - Navegación responsive ⭐ NEW
+- [x] **Sistema i18n completo** - 4 idiomas sin mezclas ⭐ NEW
+- [x] **Precios sin decimales** - Formato CLP limpio ⭐ NEW
+- [x] **Priorización por stock** - Cartas disponibles primero ⭐ NEW
 
 ### En Progreso 🚧
 - [ ] Cloud image storage (Supabase Storage)
 - [ ] Submissions workflow (mobile → admin)
 - [ ] Email notifications para confirmación de compras
+- [ ] Activación completa de app en Mercado Pago
 
 ### Planeado 📋
 - [ ] OCR service integration
@@ -623,9 +631,7 @@ pnpm start              # Servidor de producción
 pnpm lint               # ESLint
 
 # Datos
-pnpm import:cards       # Importar 1,837 cartas de API
-pnpm load:db            # Cargar a database local (requiere .env)
-pnpm seed:all           # Import + Load en uno
+pnpm import:cards       # Importar 1,837 cartas de API Lorcana
 pnpm db:seed            # Sembrar cartas en Supabase (requiere .env.local)
 
 # Base de datos

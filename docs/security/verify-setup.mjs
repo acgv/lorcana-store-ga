@@ -102,7 +102,7 @@ for (const file of filesToCheck) {
 // ============================================
 const sqlScripts = [
   'scripts/secure-rls-policies.sql',
-  'scripts/create-admin-user.sql',
+  '../scripts/create-admin-user.sql',
 ]
 
 for (const script of sqlScripts) {

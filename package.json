@@ -8,10 +8,8 @@
     "lint": "eslint .",
     "start": "next start",
     "import:cards": "node scripts/import-lorcana-data.js",
-    "load:db": "node scripts/load-to-db.js",
-    "seed:all": "npm run import:cards && npm run load:db",
-    "db:setup": "echo Run this SQL in Supabase SQL editor: scripts/supabase-schema.sql",
     "db:seed": "node scripts/seed-supabase.mjs",
+    "db:setup": "echo Run this SQL in Supabase SQL editor: scripts/supabase-schema.sql",
     "verify:setup": "node docs/security/verify-setup.mjs"
   },
   "dependencies": {

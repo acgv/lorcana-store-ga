@@ -111,7 +111,7 @@ docs/
 │   ├── SECURITY_CHECKLIST.md
 │   ├── RLS_SECURITY.md
 │   ├── SERVICE_ROLE_SETUP.md
-│   └── create-admin-user.sql
+│   └── (scripts moved to /scripts)
 └── setup/                            ← Configuración inicial
     ├── SUPABASE_SETUP.md
     ├── ENV_EXAMPLE.md

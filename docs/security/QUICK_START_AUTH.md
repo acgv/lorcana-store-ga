@@ -78,7 +78,7 @@ Pega la key que copiaste en el paso 1.
 
 1. En Supabase Dashboard
 2. **SQL Editor** → **New query**
-3. Copia y pega el contenido de `docs/security/create-admin-user.sql`
+3. Copia y pega el contenido de `scripts/create-admin-user.sql`
 4. **Reemplaza**:
    - `admin@gacompany.com` → Tu email real
    - `admin123` → Un password seguro
