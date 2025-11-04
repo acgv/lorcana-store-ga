@@ -49,15 +49,17 @@ export function useAuth() {
           email: data.user.email,
         })
       } else {
-        console.log("Token inválido o expirado, limpiando sesión")
-        localStorage.removeItem("admin_token")
-        document.cookie = "admin_token=; path=/; max-age=0"
+        // Token inválido - limpiar solo si no estamos en la página de login
+        if (!window.location.pathname.includes('/admin/login')) {
+          console.log("Token inválido o expirado, limpiando sesión")
+          localStorage.removeItem("admin_token")
+          document.cookie = "admin_token=; path=/; max-age=0"
+        }
         setUser(null)
       }
     } catch (err) {
+      // Error de red o servidor - no limpiar token, solo marcar como no autenticado
       console.error("Error validando token:", err)
-      localStorage.removeItem("admin_token")
-      document.cookie = "admin_token=; path=/; max-age=0"
       setUser(null)
     }
     
