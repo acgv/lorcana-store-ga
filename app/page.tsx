@@ -84,27 +84,27 @@ export default function HomePage() {
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Legendary Cards</h3>
+              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">{t("legendaryCards")}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-sans">
-                Discover rare and legendary cards from all Lorcana sets
+                {t("legendaryCardsDesc")}
               </p>
             </div>
             <div className="p-6 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-6 w-6 text-accent" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Foil Variants</h3>
+              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">{t("foilVariants")}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-sans">
-                Premium foil versions with stunning holographic effects
+                {t("foilVariantsDesc")}
               </p>
             </div>
             <div className="p-6 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Advanced Filters</h3>
+              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">{t("advancedFilters")}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-sans">
-                Find exactly what you need with powerful search tools
+                {t("advancedFiltersDesc")}
               </p>
             </div>
           </div>
