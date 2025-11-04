@@ -29,11 +29,35 @@ export const supabaseAdmin = supabaseUrl && supabaseServiceKey
     })
   : null
 
-// Mock database para desarrollo (reemplazar con Supabase/Firebase)
+// Helper functions to map between Supabase column names (snake_case) and TypeScript types (camelCase)
+const mapSubmissionFromDB = (dbRow: any): CardSubmission => ({
+  id: dbRow.id,
+  card: dbRow.card,
+  status: dbRow.status,
+  submittedBy: dbRow.submittedby,
+  submittedAt: dbRow.submittedat,
+  reviewedBy: dbRow.reviewedby,
+  reviewedAt: dbRow.reviewedat,
+  rejectionReason: dbRow.rejectionreason,
+  images: dbRow.images || [],
+  metadata: dbRow.metadata || { source: 'manual' },
+})
+
+const mapLogFromDB = (dbRow: any): ActivityLog => ({
+  id: dbRow.id,
+  userId: dbRow.userid,
+  action: dbRow.action,
+  entityType: dbRow.entitytype,
+  entityId: dbRow.entityid,
+  timestamp: dbRow.timestamp,
+  details: dbRow.details,
+})
+
+// Database helper class
+// ✅ Submissions and Logs are now connected to Supabase
+// ⚠️ Cards still use mock data (for backwards compatibility)
 export class Database {
   private static cards: Card[] = []
-  private static submissions: CardSubmission[] = []
-  private static logs: ActivityLog[] = []
 
   // Cards
   static async getCards(filters?: {
@@ -102,40 +126,131 @@ export class Database {
     return true
   }
 
-  // Submissions
+  // Submissions - Connected to Supabase
   static async getSubmissions(status?: string): Promise<CardSubmission[]> {
-    if (status) {
-      return this.submissions.filter((s) => s.status === status)
+    if (!supabaseAdmin) {
+      console.warn("⚠️ Supabase not configured, returning empty submissions")
+      return []
     }
-    return this.submissions
+
+    try {
+      let query = supabaseAdmin.from('submissions').select('*')
+      
+      if (status) {
+        query = query.eq('status', status)
+      }
+
+      const { data, error } = await query.order('submittedat', { ascending: false })
+
+      if (error) {
+        console.error("Error fetching submissions from Supabase:", error)
+        return []
+      }
+
+      return (data || []).map(mapSubmissionFromDB)
+    } catch (error) {
+      console.error("Exception fetching submissions:", error)
+      return []
+    }
   }
 
   static async getSubmissionById(id: string): Promise<CardSubmission | null> {
-    return this.submissions.find((s) => s.id === id) || null
+    if (!supabaseAdmin) {
+      console.warn("⚠️ Supabase not configured")
+      return null
+    }
+
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('submissions')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (error) {
+        console.error("Error fetching submission by ID:", error)
+        return null
+      }
+
+      return data ? mapSubmissionFromDB(data) : null
+    } catch (error) {
+      console.error("Exception fetching submission:", error)
+      return null
+    }
   }
 
   static async createSubmission(submission: Omit<CardSubmission, "id">): Promise<CardSubmission> {
-    const newSubmission = {
-      ...submission,
-      id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      submittedAt: new Date().toISOString(),
+    if (!supabaseAdmin) {
+      throw new Error("Supabase not configured")
     }
-    this.submissions.push(newSubmission)
-    return newSubmission
+
+    try {
+      const newSubmission = {
+        id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        card: submission.card,
+        status: submission.status || 'pending',
+        submittedby: submission.submittedBy,
+        submittedat: new Date().toISOString(),
+        reviewedby: submission.reviewedBy || null,
+        reviewedat: submission.reviewedAt || null,
+        rejectionreason: submission.rejectionReason || null,
+        images: submission.images || null,
+        metadata: submission.metadata || null,
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('submissions')
+        .insert([newSubmission])
+        .select()
+        .single()
+
+      if (error) {
+        console.error("Error creating submission:", error)
+        throw error
+      }
+
+      return mapSubmissionFromDB(data)
+    } catch (error) {
+      console.error("Exception creating submission:", error)
+      throw error
+    }
   }
 
   static async updateSubmission(
     id: string,
     updates: Partial<CardSubmission>
   ): Promise<CardSubmission | null> {
-    const index = this.submissions.findIndex((s) => s.id === id)
-    if (index === -1) return null
-
-    this.submissions[index] = {
-      ...this.submissions[index],
-      ...updates,
+    if (!supabaseAdmin) {
+      console.warn("⚠️ Supabase not configured")
+      return null
     }
-    return this.submissions[index]
+
+    try {
+      const updateData: any = {}
+      
+      if (updates.status) updateData.status = updates.status
+      if (updates.reviewedBy) updateData.reviewedby = updates.reviewedBy
+      if (updates.reviewedAt) updateData.reviewedat = updates.reviewedAt
+      if (updates.rejectionReason) updateData.rejectionreason = updates.rejectionReason
+      if (updates.card) updateData.card = updates.card
+
+      const { data, error } = await supabaseAdmin
+        .from('submissions')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error("Error updating submission:", error)
+        return null
+      }
+
+      return data ? mapSubmissionFromDB(data) : null
+    } catch (error) {
+      console.error("Exception updating submission:", error)
+      return null
+    }
   }
 
   static async approveSubmission(id: string, approvedBy: string): Promise<Card | null> {
@@ -174,19 +289,69 @@ export class Database {
     return true
   }
 
-  // Activity Logs
+  // Activity Logs - Connected to Supabase
   static async createLog(log: Omit<ActivityLog, "id" | "timestamp">): Promise<ActivityLog> {
-    const newLog = {
-      ...log,
-      id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date().toISOString(),
+    if (!supabaseAdmin) {
+      console.warn("⚠️ Supabase not configured, log not saved")
+      return {
+        id: `log_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        ...log,
+      }
     }
-    this.logs.push(newLog)
-    return newLog
+
+    try {
+      const newLog = {
+        id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        userid: log.userId,
+        action: log.action,
+        entitytype: log.entityType,
+        entityid: log.entityId,
+        details: log.details || null,
+        timestamp: new Date().toISOString(),
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('logs')
+        .insert([newLog])
+        .select()
+        .single()
+
+      if (error) {
+        console.error("Error creating log:", error)
+        throw error
+      }
+
+      return mapLogFromDB(data)
+    } catch (error) {
+      console.error("Exception creating log:", error)
+      throw error
+    }
   }
 
   static async getLogs(limit = 100): Promise<ActivityLog[]> {
-    return this.logs.slice(-limit).reverse()
+    if (!supabaseAdmin) {
+      console.warn("⚠️ Supabase not configured, returning empty logs")
+      return []
+    }
+
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('logs')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(limit)
+
+      if (error) {
+        console.error("Error fetching logs from Supabase:", error)
+        return []
+      }
+
+      return (data || []).map(mapLogFromDB)
+    } catch (error) {
+      console.error("Exception fetching logs:", error)
+      return []
+    }
   }
 
   // Initialize with mock data
