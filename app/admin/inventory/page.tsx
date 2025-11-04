@@ -655,7 +655,7 @@ export default function InventoryPage() {
                               Saving...
                             </>
                           ) : (
-                            {t("save")}
+                            t("save")
                           )}
                         </Button>
                       </td>
