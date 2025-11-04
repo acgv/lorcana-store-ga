@@ -3,7 +3,8 @@
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
-import { LogOut, User } from "lucide-react"
+import { LogOut, User, Package, ShoppingBag, FileText, Activity } from "lucide-react"
+import { usePathname } from "next/navigation"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,7 @@ interface AdminHeaderProps {
 
 export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
   const { user, logout } = useAuth()
+  const pathname = usePathname()
 
   const handleLogout = () => {
     // Limpiar todo
@@ -28,10 +30,17 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
     window.location.href = "/admin/login"
   }
 
+  const navItems = [
+    { href: "/admin/inventory", label: "Inventario", icon: Package },
+    { href: "/admin/orders", label: "Órdenes", icon: ShoppingBag },
+    { href: "/admin/submissions", label: "Submissions", icon: FileText },
+    { href: "/admin/logs", label: "Logs", icon: Activity },
+  ]
+
   return (
     <header className="border-b border-border/40 bg-background/95 backdrop-blur sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <h1 className="font-display text-3xl font-black tracking-wide">
             <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               {title}
@@ -70,6 +79,26 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
             </DropdownMenu>
           </nav>
         </div>
+
+        {/* Admin Navigation */}
+        <nav className="flex gap-2 overflow-x-auto pb-2">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname === item.href
+            return (
+              <Link key={item.href} href={item.href}>
+                <Button
+                  variant={isActive ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-2 whitespace-nowrap"
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </Button>
+              </Link>
+            )
+          })}
+        </nav>
       </div>
     </header>
   )
