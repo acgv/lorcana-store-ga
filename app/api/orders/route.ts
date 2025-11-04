@@ -1,13 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Usar Service Role para bypassear RLS
-const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE
-  ? createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE
-    )
-  : null
+import { supabaseAdmin } from '@/lib/db'
 
 export async function GET() {
   try {
