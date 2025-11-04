@@ -221,10 +221,10 @@ export default function CardDetailPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="normal" className="font-sans" disabled={normalStock === 0}>
-                          {t("normal")} {normalStock > 0 && `- $${card.price.toFixed(2)}`} {normalStock === 0 && "(Out of Stock)"}
+                          {t("normal")} {normalStock > 0 && `- $${Math.floor(card.price)}`} {normalStock === 0 && "(Out of Stock)"}
                         </SelectItem>
                         <SelectItem value="foil" className="font-sans" disabled={foilStock === 0}>
-                          {t("foil")} {foilStock > 0 && `- $${card.foilPrice.toFixed(2)}`} {foilStock === 0 && "(Out of Stock)"}
+                          {t("foil")} {foilStock > 0 && `- $${Math.floor(card.foilPrice)}`} {foilStock === 0 && "(Out of Stock)"}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -255,8 +255,8 @@ export default function CardDetailPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground font-sans">{t("priceRange")}</p>
-                      <p className="text-3xl font-bold text-primary font-display">${(price * quantity).toFixed(2)}</p>
-                      {quantity > 1 && <p className="text-xs text-muted-foreground">${price.toFixed(2)} each</p>}
+                      <p className="text-3xl font-bold text-primary font-display">${Math.floor(price * quantity)}</p>
+                      {quantity > 1 && <p className="text-xs text-muted-foreground">${Math.floor(price)} each</p>}
                     </div>
                   </div>
                   

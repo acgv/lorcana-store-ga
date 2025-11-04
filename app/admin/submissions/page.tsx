@@ -174,7 +174,7 @@ export default function SubmissionsPage() {
                       </div>
                       <div>
                         <p className="text-muted-foreground">Price</p>
-                        <p className="font-medium">${submission.card.price?.toFixed(2) || "0.00"}</p>
+                        <p className="font-medium">${Math.floor(submission.card.price || 0)}</p>
                       </div>
                     </div>
 

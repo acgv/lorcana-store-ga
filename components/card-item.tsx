@@ -78,13 +78,13 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
                 {hasNormalStock && (
                   <div>
                     <p className="text-xs text-muted-foreground font-sans">{t("normal")}</p>
-                    <p className="text-lg font-bold text-primary font-display">${card.price.toFixed(2)}</p>
+                    <p className="text-lg font-bold text-primary font-display">${Math.floor(card.price)}</p>
                   </div>
                 )}
                 {hasFoilStock && (
                   <div>
                     <p className="text-xs text-muted-foreground font-sans">{t("foil")}</p>
-                    <p className="text-lg font-bold text-accent font-display">${card.foilPrice.toFixed(2)}</p>
+                    <p className="text-lg font-bold text-accent font-display">${Math.floor(card.foilPrice)}</p>
                   </div>
                 )}
               </div>
@@ -154,13 +154,13 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
               {hasNormalStock && (
                 <div>
                   <p className="text-xs text-muted-foreground font-sans">{t("normal")}</p>
-                  <p className="font-bold text-primary font-display">${card.price.toFixed(2)}</p>
+                  <p className="font-bold text-primary font-display">${Math.floor(card.price)}</p>
                 </div>
               )}
               {hasFoilStock && (
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground font-sans">{t("foil")}</p>
-                  <p className="font-bold text-accent font-display">${card.foilPrice.toFixed(2)}</p>
+                  <p className="font-bold text-accent font-display">${Math.floor(card.foilPrice)}</p>
                 </div>
               )}
             </div>

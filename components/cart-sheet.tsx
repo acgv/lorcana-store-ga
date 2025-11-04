@@ -39,7 +39,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-sm truncate">{item.name}</h4>
                       <p className="text-xs text-muted-foreground capitalize">{t(item.version)}</p>
-                      <p className="text-sm font-bold text-primary mt-1">${item.price.toFixed(2)}</p>
+                      <p className="text-sm font-bold text-primary mt-1">${Math.floor(item.price)}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <Button
                           variant="outline"
@@ -74,7 +74,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
               <div className="border-t border-border pt-4 space-y-4">
                 <div className="flex justify-between text-lg font-bold">
                   <span>{t("total")}</span>
-                  <span className="text-primary">${totalPrice.toFixed(2)}</span>
+                  <span className="text-primary">${Math.floor(totalPrice)}</span>
                 </div>
                 <Button className="w-full" size="lg">
                   {t("checkout")}
