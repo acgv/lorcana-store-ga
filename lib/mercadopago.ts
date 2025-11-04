@@ -112,14 +112,17 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
       }
     }
 
-    // Agregar Integrator ID si existe (para Programa de Partners)
-    if (process.env.MERCADOPAGO_INTEGRATOR_ID) {
+    // Integrator ID solo en desarrollo (para testing de certificación)
+    // NO se envía en producción porque el ID "dev_" causa restricciones
+    if (isDev && process.env.MERCADOPAGO_INTEGRATOR_ID) {
       const intId = process.env.MERCADOPAGO_INTEGRATOR_ID
       preferenceBody.integrator_id = intId
-      // También en metadata para asegurar que MP lo detecte
       preferenceBody.metadata = {
         integrator_id: intId
       }
+      console.log('🔑 Using Integrator ID in DEV mode:', intId)
+    } else if (!isDev) {
+      console.log('✅ Production mode: Integrator ID omitted (prevents restrictions)')
     }
 
     console.log('🔍 Preference Body being sent to Mercado Pago:')
