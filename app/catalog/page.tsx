@@ -121,8 +121,17 @@ function CatalogContent() {
       return true
     })
 
-    // Sort
+    // Sort - Prioriza cartas con stock
     filtered.sort((a, b) => {
+      // Calcular si tiene stock (normal o foil)
+      const aHasStock = ((a as any).normalStock || 0) + ((a as any).foilStock || 0) > 0
+      const bHasStock = ((b as any).normalStock || 0) + ((b as any).foilStock || 0) > 0
+      
+      // Si una tiene stock y la otra no, priorizar la que tiene stock
+      if (aHasStock && !bHasStock) return -1
+      if (!aHasStock && bHasStock) return 1
+      
+      // Si ambas tienen o no tienen stock, aplicar criterio secundario
       switch (sortBy) {
         case "nameAZ":
           return a.name.localeCompare(b.name)
