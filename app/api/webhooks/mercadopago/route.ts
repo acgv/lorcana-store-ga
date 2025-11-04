@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
-import { MercadoPagoConfig, Payment } from 'mercadopago'
+import { Payment } from 'mercadopago'
 import { supabaseAdmin } from '@/lib/db'
 import { processConfirmedPayment, type PaymentItem } from '@/lib/payment-processor'
+import { getClient } from '@/lib/mercadopago'
 
 /**
  * Webhook de Mercado Pago
@@ -14,6 +15,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     
     console.log('📬 Webhook Mercado Pago recibido:', JSON.stringify(body, null, 2))
+    console.log('🔍 Request headers:', Object.fromEntries(request.headers.entries()))
 
     // Mercado Pago envía diferentes tipos de notificaciones
     const { type, action, data } = body
@@ -31,14 +33,14 @@ export async function POST(request: Request) {
 
       // Obtener detalles completos del pago desde Mercado Pago
       try {
-        const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
+        // Usar el sistema dual de credenciales (test/prod)
+        const client = getClient()
         
-        if (!accessToken) {
-          console.error('❌ MERCADOPAGO_ACCESS_TOKEN not configured')
+        if (!client) {
+          console.error('❌ Mercado Pago client not configured')
           return NextResponse.json({ success: false, error: 'Not configured' }, { status: 200 })
         }
 
-        const client = new MercadoPagoConfig({ accessToken })
         const paymentClient = new Payment(client)
         
         const payment = await paymentClient.get({ id: paymentId })
