@@ -76,21 +76,15 @@ export function Footer() {
               </a>
               
               {/* Certification Badge - inline with social icons */}
-              <a
-                href="/mercadopago-certificate.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block group transition-transform hover:scale-105"
-                title="Desarrollador Certificado por Mercado Pago - Ver Certificado"
-              >
+              <div className="inline-block" title="Desarrollador Certificado por Mercado Pago">
                 <Image
                   src="/mercadopago-certified-badge.png"
                   alt="Certificado Mercado Pago"
                   width={80}
                   height={27}
-                  className="opacity-90 group-hover:opacity-100 transition-opacity"
+                  className="opacity-90"
                 />
-              </a>
+              </div>
             </div>
             
             <div>
