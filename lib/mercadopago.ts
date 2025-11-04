@@ -94,19 +94,11 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
       // auto_return solo funciona con URLs públicas (no localhost)
       // En producción: 'approved', en desarrollo: undefined
       ...(isDev ? {} : { auto_return: 'approved' as const }),
-      // Configuración de métodos de pago
+      // Configuración de métodos de pago (producción)
+      // ✅ Certificación completada - ahora permitimos todos los métodos de pago
       payment_methods: {
-        // Excluir tarjeta Visa (requisito común del desafío)
-        excluded_payment_methods: [
-          { id: 'visa' }
-        ],
-        // Excluir pagos en efectivo (requisito común)
-        excluded_payment_types: [
-          { id: 'ticket' },
-          { id: 'atm' }
-        ],
-        // Máximo de cuotas: 6 (requisito del desafío)
-        installments: 6
+        installments: 12, // Hasta 12 cuotas para mejor experiencia
+        // Sin exclusiones - permitir VISA, Mastercard, y todos los métodos
       },
       statement_descriptor: 'GA Company',
       external_reference: `order-${Date.now()}`,
