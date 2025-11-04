@@ -242,7 +242,7 @@ export default function OrdersPage() {
                               </div>
                             </div>
                           </td>
-                          <td className="p-4 text-sm">{order.items.length} item(s)</td>
+                          <td className="p-4 text-sm">{order.items.length} {t("items")}</td>
                           <td className="p-4 text-sm font-medium">
                             ${Math.floor(Number(order.total_amount)).toLocaleString()} {order.currency}
                           </td>
@@ -284,11 +284,11 @@ export default function OrdersPage() {
                   <h3 className="font-semibold mb-2">{t("customer")}</h3>
                   <div className="space-y-1 text-sm">
                     <p>
-                      <span className="text-muted-foreground">Email:</span> {selectedOrder.customer_email}
+                      <span className="text-muted-foreground">{t("email")}:</span> {selectedOrder.customer_email}
                     </p>
                     {selectedOrder.customer_name && (
                       <p>
-                        <span className="text-muted-foreground">Nombre:</span> {selectedOrder.customer_name}
+                        <span className="text-muted-foreground">{t("customerName")}:</span> {selectedOrder.customer_name}
                       </p>
                     )}
                   </div>
@@ -299,23 +299,23 @@ export default function OrdersPage() {
                   <h3 className="font-semibold mb-2">{t("paymentInfo")}</h3>
                   <div className="space-y-1 text-sm">
                     <p>
-                      <span className="text-muted-foreground">Payment ID:</span> {selectedOrder.payment_id}
+                      <span className="text-muted-foreground">{t("paymentId")}:</span> {selectedOrder.payment_id}
                     </p>
                     <p>
-                      <span className="text-muted-foreground">Referencia:</span>{" "}
+                      <span className="text-muted-foreground">{t("reference")}:</span>{" "}
                       {selectedOrder.external_reference}
                     </p>
                     <p>
-                      <span className="text-muted-foreground">Estado:</span> {getStatusBadge(selectedOrder.status)}
+                      <span className="text-muted-foreground">{t("paymentStatus")}:</span> {getStatusBadge(selectedOrder.status)}
                     </p>
                     {selectedOrder.payment_method && (
                       <p>
-                        <span className="text-muted-foreground">Método:</span> {selectedOrder.payment_method}
+                        <span className="text-muted-foreground">{t("paymentMethod")}:</span> {selectedOrder.payment_method}
                       </p>
                     )}
                     {selectedOrder.paid_at && (
                       <p>
-                        <span className="text-muted-foreground">Pagado:</span>{" "}
+                        <span className="text-muted-foreground">{t("paidAt")}:</span>{" "}
                         {formatDate(selectedOrder.paid_at)}
                       </p>
                     )}
@@ -334,7 +334,7 @@ export default function OrdersPage() {
                         <div>
                           <p className="font-medium">{item.title}</p>
                           <p className="text-sm text-muted-foreground">
-                            Cantidad: {item.quantity} × ${Math.floor(item.unit_price).toLocaleString()}
+                            {t("quantity")}: {item.quantity} × ${Math.floor(item.unit_price).toLocaleString()}
                           </p>
                         </div>
                         <p className="font-semibold">

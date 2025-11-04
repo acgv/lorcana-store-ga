@@ -49,26 +49,26 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
               {isOutOfStock && (
                 <Badge variant="destructive" className="text-xs font-sans">
                   <AlertCircle className="h-3 w-3 mr-1" />
-                  Out of Stock
+                  {t("outOfStockBadge")}
                 </Badge>
               )}
               {isLowStock && (
                 <Badge variant="secondary" className="text-xs font-sans bg-orange-500/20 text-orange-600 border-orange-500/30">
                   <AlertCircle className="h-3 w-3 mr-1" />
-                  Low Stock
+                  {t("lowStockBadge")}
                 </Badge>
               )}
               
               {/* Version Badges with Stock Count */}
               {hasNormalStock && (
                 <Badge variant="outline" className="text-xs font-sans">
-                  Normal ({normalStock})
+                  {t("normal")} ({normalStock})
                 </Badge>
               )}
               {hasFoilStock && (
                 <Badge className="text-xs font-sans bg-gradient-to-r from-yellow-500 to-amber-500 text-gray-900 border-yellow-400 font-semibold shadow-lg shadow-yellow-500/20">
                   <Star className="h-3 w-3 mr-1 fill-gray-900" />
-                  Foil ({foilStock})
+                  {t("foil")} ({foilStock})
                 </Badge>
               )}
             </div>
@@ -128,13 +128,13 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
             {isOutOfStock && (
               <Badge variant="destructive" className="text-[10px] font-sans h-5 px-1.5">
                 <AlertCircle className="h-2.5 w-2.5 mr-0.5" />
-                Out
+                {t("outOfStockBadge")}
               </Badge>
             )}
             {isLowStock && (
               <Badge variant="secondary" className="text-[10px] font-sans h-5 px-1.5 bg-orange-500/20 text-orange-600 border-orange-500/30">
                 <AlertCircle className="h-2.5 w-2.5 mr-0.5" />
-                Low
+                {t("lowStockBadge")}
               </Badge>
             )}
             {hasNormalStock && (
