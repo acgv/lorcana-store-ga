@@ -14,6 +14,14 @@ const translations: Record<Language, Record<string, string>> = {
   en: {
     home: "Home",
     catalog: "Catalog",
+    filtersAndSort: "Filters & Sort",
+    loadingCards: "Loading cards...",
+    loadingText: "Loading...",
+    cardFound: "card",
+    cardsFound: "cards",
+    foundText: "found",
+    noCardsFound: "No cards found matching your filters",
+    noCardsSearch: "No cards found matching your search.",
     news: "News",
     contact: "Contact",
     search: "Search by name or number...",
@@ -134,6 +142,15 @@ const translations: Record<Language, Record<string, string>> = {
     date: "Date",
     items: "Items",
     status: "Status",
+    // Admin Login
+    password: "Password",
+    emailPlaceholder: "admin@example.com",
+    passwordPlaceholder: "••••••••",
+    // Admin Submissions
+    enterRejectionReason: "Enter rejection reason...",
+    // Admin Inventory
+    noChanges: "No changes",
+    noStockChanges: "No stock changes to save",
     actions: "Actions",
     // Status
     approved: "Approved",
@@ -177,6 +194,14 @@ const translations: Record<Language, Record<string, string>> = {
   fr: {
     home: "Accueil",
     catalog: "Catalogue",
+    filtersAndSort: "Filtres et Tri",
+    loadingCards: "Chargement des cartes...",
+    loadingText: "Chargement...",
+    cardFound: "carte",
+    cardsFound: "cartes",
+    foundText: "trouvées",
+    noCardsFound: "Aucune carte trouvée correspondant à vos filtres",
+    noCardsSearch: "Aucune carte trouvée correspondant à votre recherche.",
     news: "Actualités",
     contact: "Contact",
     search: "Rechercher par nom ou numéro...",
@@ -297,6 +322,15 @@ const translations: Record<Language, Record<string, string>> = {
     date: "Date",
     items: "Articles",
     status: "Statut",
+    // Admin Login
+    password: "Mot de passe",
+    emailPlaceholder: "admin@exemple.com",
+    passwordPlaceholder: "••••••••",
+    // Admin Submissions
+    enterRejectionReason: "Entrez la raison du rejet...",
+    // Admin Inventory
+    noChanges: "Aucun changement",
+    noStockChanges: "Aucun changement de stock à enregistrer",
     actions: "Actions",
     // Status
     approved: "Approuvé",
@@ -340,6 +374,14 @@ const translations: Record<Language, Record<string, string>> = {
   de: {
     home: "Startseite",
     catalog: "Katalog",
+    filtersAndSort: "Filter & Sortierung",
+    loadingCards: "Karten werden geladen...",
+    loadingText: "Laden...",
+    cardFound: "Karte",
+    cardsFound: "Karten",
+    foundText: "gefunden",
+    noCardsFound: "Keine Karten gefunden, die Ihren Filtern entsprechen",
+    noCardsSearch: "Keine Karten gefunden, die Ihrer Suche entsprechen.",
     news: "Neuigkeiten",
     contact: "Kontakt",
     search: "Nach Name oder Nummer suchen...",
@@ -460,6 +502,15 @@ const translations: Record<Language, Record<string, string>> = {
     date: "Datum",
     items: "Artikel",
     status: "Status",
+    // Admin Login
+    password: "Passwort",
+    emailPlaceholder: "admin@beispiel.com",
+    passwordPlaceholder: "••••••••",
+    // Admin Submissions
+    enterRejectionReason: "Ablehnungsgrund eingeben...",
+    // Admin Inventory
+    noChanges: "Keine Änderungen",
+    noStockChanges: "Keine Bestandsänderungen zu speichern",
     actions: "Aktionen",
     // Status
     approved: "Genehmigt",
@@ -503,6 +554,14 @@ const translations: Record<Language, Record<string, string>> = {
   es: {
     home: "Inicio",
     catalog: "Catálogo",
+    filtersAndSort: "Filtros y Orden",
+    loadingCards: "Cargando cartas...",
+    loadingText: "Cargando...",
+    cardFound: "carta",
+    cardsFound: "cartas",
+    foundText: "encontradas",
+    noCardsFound: "No se encontraron cartas que coincidan con tus filtros",
+    noCardsSearch: "No se encontraron cartas que coincidan con tu búsqueda.",
     news: "Noticias",
     contact: "Contacto",
     search: "Buscar por nombre o número...",
@@ -623,6 +682,15 @@ const translations: Record<Language, Record<string, string>> = {
     date: "Fecha",
     items: "Items",
     status: "Estado",
+    // Admin Login
+    password: "Contraseña",
+    emailPlaceholder: "admin@ejemplo.com",
+    passwordPlaceholder: "••••••••",
+    // Admin Submissions
+    enterRejectionReason: "Ingresa la razón del rechazo...",
+    // Admin Inventory
+    noChanges: "Sin cambios",
+    noStockChanges: "No hay cambios de stock para guardar",
     actions: "Acciones",
     // Status
     approved: "Aprobado",

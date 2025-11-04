@@ -172,8 +172,8 @@ export default function InventoryPage() {
   const handleSaveAll = async () => {
     if (editedCards.size === 0) {
       toast({
-        title: "No changes",
-        description: "No stock changes to save",
+        title: t("noChanges"),
+        description: t("noStockChanges"),
       })
       return
     }
@@ -669,7 +669,7 @@ export default function InventoryPage() {
 
         {filteredInventory.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
-            No cards found matching your search.
+            {t("noCardsSearch")}
           </div>
         )}
       </main>

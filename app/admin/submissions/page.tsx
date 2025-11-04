@@ -241,7 +241,7 @@ export default function SubmissionsPage() {
           <Textarea
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="Enter rejection reason..."
+            placeholder={t("enterRejectionReason")}
             className="min-h-[120px] font-serif"
           />
           <DialogFooter>

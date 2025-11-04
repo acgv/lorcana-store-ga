@@ -2,6 +2,7 @@
 
 import type { Card } from "@/lib/mock-data"
 import { CardItem } from "@/components/card-item"
+import { useLanguage } from "@/components/language-provider"
 
 interface CardGridProps {
   cards: Card[]
@@ -9,8 +10,10 @@ interface CardGridProps {
 }
 
 export function CardGrid({ cards, viewMode }: CardGridProps) {
+  const { t } = useLanguage()
+  
   if (cards.length === 0) {
-    return <div className="text-center py-12 text-muted-foreground">No cards found matching your filters</div>
+    return <div className="text-center py-12 text-muted-foreground">{t("noCardsFound")}</div>
   }
 
   if (viewMode === "list") {

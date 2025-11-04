@@ -201,7 +201,7 @@ function CatalogContent() {
                 </SheetTrigger>
                 <SheetContent side="left" className="w-full sm:w-80 overflow-y-auto">
                   <SheetHeader>
-                    <SheetTitle>Filters & Sort</SheetTitle>
+                    <SheetTitle>{t("filtersAndSort")}</SheetTitle>
                   </SheetHeader>
                   <div className="mt-6">
                     <CardFilters
@@ -219,14 +219,14 @@ function CatalogContent() {
 
             {loading ? (
               <div className="text-center py-12 text-muted-foreground">
-                Cargando cartas...
+                {t("loadingCards")}
               </div>
             ) : (
               <>
                 {/* Contador desktop */}
                 <div className="hidden lg:block mb-4">
                   <div className="text-sm text-muted-foreground">
-                    {filteredCards.length} {filteredCards.length === 1 ? "card" : "cards"} found
+                    {filteredCards.length} {filteredCards.length === 1 ? t("cardFound") : t("cardsFound")} {t("foundText")}
                   </div>
                 </div>
                 <CardGrid cards={filteredCards} viewMode={viewMode} />
@@ -249,12 +249,12 @@ export default function CatalogPage() {
           <div className="mb-4 md:mb-6">
             <h1 className="font-display text-4xl md:text-5xl lg:text-7xl font-black text-balance tracking-tight leading-none">
               <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                Catalog
+                {t("catalog")}
               </span>
             </h1>
           </div>
           <div className="text-center py-12 text-muted-foreground">
-            Cargando...
+            {t("loadingText")}
           </div>
         </main>
         <Footer />

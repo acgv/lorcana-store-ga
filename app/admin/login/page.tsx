@@ -76,11 +76,11 @@ function AdminLoginForm() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("email")}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@example.com"
+                placeholder={t("emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -89,11 +89,11 @@ function AdminLoginForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("password")}</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder={t("passwordPlaceholder")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -138,7 +138,7 @@ export default function AdminLoginPage() {
             </div>
             <CardTitle className="text-2xl">Admin Login</CardTitle>
             <CardDescription>
-              Cargando...
+              {t("loadingText")}
             </CardDescription>
           </CardHeader>
         </Card>
