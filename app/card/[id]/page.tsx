@@ -186,7 +186,7 @@ export default function CardDetailPage() {
             <div className="flex gap-3 items-center p-4 rounded-lg bg-muted/30 border border-border">
               <Package className="h-5 w-5 text-muted-foreground" />
               <div className="flex-1">
-                <p className="text-sm font-semibold font-sans">Stock Availability</p>
+                <p className="text-sm font-semibold font-sans">{t("stockAvailability")}</p>
                 <div className="flex gap-3 mt-1">
                   <span className="text-xs text-muted-foreground font-sans">
                     Normal: <span className={normalStock > 0 ? "text-green-500 font-semibold" : "text-red-500"}>{normalStock}</span>

@@ -107,16 +107,16 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
 
       {/* Version/Stock */}
       <div className="space-y-3">
-        <Label className="text-sm font-semibold text-foreground/90">Version Availability</Label>
+        <Label className="text-sm font-semibold text-foreground/90">{t("versionAvailability")}</Label>
         <Select value={filters.version} onValueChange={(value) => setFilters({ ...filters, version: value })}>
           <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors">
-            <SelectValue placeholder="All Versions" />
+            <SelectValue placeholder={t("allVersions")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Versions</SelectItem>
-            <SelectItem value="normal">Normal Only</SelectItem>
-            <SelectItem value="foil">Foil Only</SelectItem>
-            <SelectItem value="both">Both Available</SelectItem>
+            <SelectItem value="all">{t("allVersions")}</SelectItem>
+            <SelectItem value="normal">{t("normalOnly")}</SelectItem>
+            <SelectItem value="foil">{t("foilOnly")}</SelectItem>
+            <SelectItem value="both">{t("bothAvailable")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -163,7 +163,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
 
       {/* View Mode */}
       <div className="space-y-3">
-        <Label className="text-sm font-semibold text-foreground/90">View</Label>
+        <Label className="text-sm font-semibold text-foreground/90">{t("viewLabel")}</Label>
         <div className="flex flex-col gap-2">
           <Button
             variant={viewMode === "grid" ? "default" : "outline"}
