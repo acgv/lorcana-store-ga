@@ -48,6 +48,12 @@ export function Header() {
               {t("contact")}
             </Link>
             <Link
+              href="/submit-card"
+              className="text-sm font-sans font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:scale-105"
+            >
+              {t("submitCard")}
+            </Link>
+            <Link
               href="/admin/inventory"
               className="text-sm font-sans font-medium text-accent hover:text-accent/80 transition-all duration-200 hover:scale-105"
             >
@@ -101,6 +107,13 @@ export function Header() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {t("contact")}
+                </Link>
+                <Link
+                  href="/submit-card"
+                  className="text-base font-sans font-medium text-primary hover:text-primary/80 transition-colors px-2 py-2 hover:bg-muted rounded-md"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {t("submitCard")}
                 </Link>
                 <Link
                   href="/admin/inventory"

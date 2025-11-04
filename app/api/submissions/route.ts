@@ -27,6 +27,62 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST - Create a new submission (public endpoint for users)
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { card, submittedBy, images, metadata } = body
+
+    // Validar campos requeridos
+    if (!card || !submittedBy) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Card data and submittedBy email are required",
+        } as ApiResponse,
+        { status: 400 }
+      )
+    }
+
+    // Crear submission
+    const newSubmission = await Database.createSubmission({
+      card,
+      status: "pending",
+      submittedBy,
+      submittedAt: new Date().toISOString(),
+      images: images || [],
+      metadata: metadata || { source: "web" },
+    })
+
+    // Log activity
+    await Database.createLog({
+      userId: submittedBy,
+      action: "submission_created",
+      entityType: "submission",
+      entityId: newSubmission.id,
+      details: {
+        cardName: card.name,
+        source: metadata?.source || "web",
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      data: newSubmission,
+      message: "Submission created successfully",
+    } as ApiResponse<CardSubmission>)
+  } catch (error) {
+    console.error("Error creating submission:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      } as ApiResponse,
+      { status: 500 }
+    )
+  }
+}
+
 // PUT - Update submission (used for editing before approval)
 export async function PUT(request: NextRequest) {
   try {

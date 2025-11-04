@@ -163,19 +163,19 @@ export default function SubmissionsPage() {
 
                     <div className="grid grid-cols-2 gap-4 mb-4 text-sm font-serif">
                       <div>
-                        <p className="text-muted-foreground">Set</p>
+                        <p className="text-muted-foreground">{t("set")}</p>
                         <p className="font-medium">{submission.card.set || "N/A"}</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Card Number</p>
+                        <p className="text-muted-foreground">{t("cardNumber")}</p>
                         <p className="font-medium">{submission.card.cardNumber || "N/A"}</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Language</p>
+                        <p className="text-muted-foreground">{t("language")}</p>
                         <p className="font-medium uppercase">{submission.card.language || "EN"}</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Price</p>
+                        <p className="text-muted-foreground">{t("price")}</p>
                         <p className="font-medium">${Math.floor(submission.card.price || 0)}</p>
                       </div>
                     </div>
