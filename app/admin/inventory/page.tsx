@@ -498,7 +498,7 @@ export default function InventoryPage() {
                 }}
                 className="h-9 w-full"
               >
-                Clear Filters
+                {t("clearFilters")}
               </Button>
             </div>
           </div>
@@ -507,7 +507,7 @@ export default function InventoryPage() {
         {/* Actions */}
         <div className="flex justify-between items-center mb-6">
           <p className="text-sm text-muted-foreground">
-            Showing {filteredInventory.length} of {inventory.length} cards
+            {t("showingCards")} {filteredInventory.length} {t("ofCards")} {inventory.length} {t("cards")}
           </p>
           <Button 
             onClick={handleSaveAll} 
@@ -522,7 +522,7 @@ export default function InventoryPage() {
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                Save All Changes ({editedCards.size})
+                {t("saveAll")} ({editedCards.size})
               </>
             )}
           </Button>
@@ -534,15 +534,15 @@ export default function InventoryPage() {
             <table className="w-full">
               <thead className="bg-card/50 border-b border-primary/20">
                 <tr>
-                  <th className="text-left p-4 font-semibold">Card</th>
-                  <th className="text-left p-4 font-semibold">Type</th>
-                  <th className="text-left p-4 font-semibold">Rarity</th>
-                  <th className="text-left p-4 font-semibold">Set</th>
-                  <th className="text-center p-4 font-semibold">Card #</th>
-                  <th className="text-right p-4 font-semibold">Price</th>
-                  <th className="text-center p-4 font-semibold">Normal Stock</th>
-                  <th className="text-center p-4 font-semibold">Foil Stock</th>
-                  <th className="text-center p-4 font-semibold">Actions</th>
+                  <th className="text-left p-4 font-semibold">{t("name")}</th>
+                  <th className="text-left p-4 font-semibold">{t("type")}</th>
+                  <th className="text-left p-4 font-semibold">{t("rarity")}</th>
+                  <th className="text-left p-4 font-semibold">{t("set")}</th>
+                  <th className="text-center p-4 font-semibold">{t("cardNum")}</th>
+                  <th className="text-right p-4 font-semibold">{t("price")}</th>
+                  <th className="text-center p-4 font-semibold">{t("normalStock")}</th>
+                  <th className="text-center p-4 font-semibold">{t("foilStock")}</th>
+                  <th className="text-center p-4 font-semibold">{t("actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -574,13 +574,13 @@ export default function InventoryPage() {
                             {isOutOfStock && (
                               <Badge variant="destructive" className="mt-1">
                                 <AlertCircle className="h-3 w-3 mr-1" />
-                                Out of Stock
+                                {t("outOfStockBadge")}
                               </Badge>
                             )}
                             {isLowStock && (
                               <Badge className="mt-1 bg-orange-500 hover:bg-orange-600 text-white border-orange-600">
                                 <AlertCircle className="h-3 w-3 mr-1" />
-                                Low Stock
+                                {t("lowStockBadge")}
                               </Badge>
                             )}
                           </div>
@@ -655,7 +655,7 @@ export default function InventoryPage() {
                               Saving...
                             </>
                           ) : (
-                            "Save"
+                            {t("save")}
                           )}
                         </Button>
                       </td>
