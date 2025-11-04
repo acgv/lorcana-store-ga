@@ -199,13 +199,13 @@ export default function CardDetailPage() {
               {!isInStock && (
                 <Badge variant="destructive">
                   <AlertCircle className="h-3 w-3 mr-1" />
-                  Out of Stock
+                  {t("outOfStockBadge")}
                 </Badge>
               )}
               {isLowStock && (
                 <Badge variant="secondary" className="bg-orange-500/20 text-orange-600 border-orange-500/30">
                   <AlertCircle className="h-3 w-3 mr-1" />
-                  Low Stock
+                  {t("lowStockBadge")}
                 </Badge>
               )}
             </div>
@@ -270,7 +270,7 @@ export default function CardDetailPage() {
                       disabled={!isInStock}
                     >
                       <ShoppingCart className="mr-2 h-4 w-4" />
-                      {isInStock ? t("addToCart") : "Out of Stock"}
+                      {isInStock ? t("addToCart") : t("outOfStockBadge")}
                     </Button>
                     <Button 
                       size="lg" 
@@ -281,7 +281,7 @@ export default function CardDetailPage() {
                       {buyingNow ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Procesando...
+                          {t("processing")}
                         </>
                       ) : (
                         <>
@@ -296,8 +296,8 @@ export default function CardDetailPage() {
             ) : (
               <div className="p-6 rounded-lg bg-card border border-border text-center">
                 <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                <h3 className="text-xl font-semibold mb-2">Out of Stock</h3>
-                <p className="text-muted-foreground mb-4">This card is currently unavailable in all versions.</p>
+                <h3 className="text-xl font-semibold mb-2">{t("outOfStockBadge")}</h3>
+                <p className="text-muted-foreground mb-4">{t("cardUnavailable")}</p>
                 <Button 
                   variant="outline"
                   onClick={() => router.push('/catalog')}
