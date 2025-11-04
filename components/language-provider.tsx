@@ -57,6 +57,10 @@ const translations: Record<Language, Record<string, string>> = {
     about: "About",
     privacy: "Privacy Policy",
     copyright: "© 2025 GA Company. All rights reserved.",
+    // Footer
+    lorcanasingles: "Lorcana Singles",
+    links: "Links",
+    followUs: "Follow Us",
     nameAZ: "Name (A-Z)",
     nameZA: "Name (Z-A)",
     priceLowHigh: "Price (Low to High)",
@@ -191,6 +195,10 @@ const translations: Record<Language, Record<string, string>> = {
     about: "À propos",
     privacy: "Politique de confidentialité",
     copyright: "© 2025 GA Company. Tous droits réservés.",
+    // Footer
+    lorcanasingles: "Singles Lorcana",
+    links: "Liens",
+    followUs: "Suivez-Nous",
     nameAZ: "Nom (A-Z)",
     nameZA: "Nom (Z-A)",
     priceLowHigh: "Prix (Bas à Élevé)",
@@ -325,6 +333,10 @@ const translations: Record<Language, Record<string, string>> = {
     about: "Über uns",
     privacy: "Datenschutz",
     copyright: "© 2025 GA Company. Alle Rechte vorbehalten.",
+    // Footer
+    lorcanasingles: "Lorcana Singles",
+    links: "Links",
+    followUs: "Folgen Sie Uns",
     nameAZ: "Name (A-Z)",
     nameZA: "Name (Z-A)",
     priceLowHigh: "Preis (Niedrig bis Hoch)",
@@ -459,6 +471,10 @@ const translations: Record<Language, Record<string, string>> = {
     about: "Acerca de",
     privacy: "Política de privacidad",
     copyright: "© 2025 GA Company. Todos los derechos reservados.",
+    // Footer
+    lorcanasingles: "Singles de Lorcana",
+    links: "Enlaces",
+    followUs: "Síguenos",
     nameAZ: "Nombre (A-Z)",
     nameZA: "Nombre (Z-A)",
     priceLowHigh: "Precio (Bajo a Alto)",

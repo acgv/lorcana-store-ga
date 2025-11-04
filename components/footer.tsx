@@ -14,11 +14,11 @@ export function Footer() {
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <h3 className="font-display text-lg font-bold mb-4 text-primary">Lorcana Singles</h3>
+            <h3 className="font-display text-lg font-bold mb-4 text-primary">{t("lorcanasingles")}</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">{t("heroSubtitle")}</p>
           </div>
           <div>
-            <h4 className="font-medium mb-4">Links</h4>
+            <h4 className="font-medium mb-4">{t("links")}</h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -38,7 +38,7 @@ export function Footer() {
             </ul>
           </div>
           <div>
-            <h4 className="font-medium mb-4">Follow Us</h4>
+            <h4 className="font-medium mb-4">{t("followUs")}</h4>
             <div className="flex items-center gap-4 flex-wrap mb-4">
               <a 
                 href="https://instagram.com/arte.grafico.sublimable" 
