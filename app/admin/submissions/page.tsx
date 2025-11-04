@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { AuthGuard } from "@/components/auth-guard"
 import { AdminHeader } from "@/components/admin-header"
+import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +22,7 @@ import { ArrowLeft, CheckCircle, XCircle, Eye } from "lucide-react"
 import type { CardSubmission } from "@/lib/types"
 
 export default function SubmissionsPage() {
+  const { t } = useLanguage()
   const [submissions, setSubmissions] = useState<CardSubmission[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSubmission, setSelectedSubmission] = useState<CardSubmission | null>(null)
@@ -113,7 +115,7 @@ export default function SubmissionsPage() {
       <main className="container mx-auto px-4 py-8">
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground font-serif">Loading submissions...</p>
+            <p className="text-muted-foreground font-serif">{t("loadingSubmissions")}</p>
           </div>
         ) : submissions.length === 0 ? (
           <div className="text-center py-12">
@@ -199,7 +201,7 @@ export default function SubmissionsPage() {
                         className="font-serif font-semibold"
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        Approve & Publish
+                        {t("approvePublish")}
                       </Button>
                       <Button
                         variant="destructive"
@@ -210,12 +212,12 @@ export default function SubmissionsPage() {
                         className="font-serif font-semibold"
                       >
                         <XCircle className="h-4 w-4 mr-2" />
-                        Reject
+                        {t("reject")}
                       </Button>
                       <Link href={`/admin/submissions/${submission.id}/edit`}>
                         <Button variant="outline" className="font-serif">
                           <Eye className="h-4 w-4 mr-2" />
-                          Edit & Review
+                          {t("edit")}
                         </Button>
                       </Link>
                     </div>
@@ -231,7 +233,7 @@ export default function SubmissionsPage() {
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl">Reject Submission</DialogTitle>
+            <DialogTitle className="font-display text-2xl">{t("rejectSubmission")}</DialogTitle>
             <DialogDescription className="font-serif">
               Please provide a reason for rejecting this submission. This will be sent to the submitter.
             </DialogDescription>
@@ -244,10 +246,10 @@ export default function SubmissionsPage() {
           />
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowRejectDialog(false)} className="font-serif">
-              Cancel
+              {t("cancel")}
             </Button>
             <Button variant="destructive" onClick={handleReject} className="font-serif">
-              Reject Submission
+              {t("rejectSubmission")}
             </Button>
           </DialogFooter>
         </DialogContent>

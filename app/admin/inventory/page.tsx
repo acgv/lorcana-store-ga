@@ -517,7 +517,7 @@ export default function InventoryPage() {
             {savingAll ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
+                {t("saving")}
               </>
             ) : (
               <>
@@ -652,7 +652,7 @@ export default function InventoryPage() {
                           {savingCard === item.id ? (
                             <>
                               <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                              Saving...
+                              {t("saving")}
                             </>
                           ) : (
                             t("save")

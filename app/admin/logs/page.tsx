@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { AuthGuard } from "@/components/auth-guard"
 import { AdminHeader } from "@/components/admin-header"
+import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +12,7 @@ import { ArrowLeft, Activity, CheckCircle, XCircle, Edit, Plus } from "lucide-re
 import type { ActivityLog } from "@/lib/types"
 
 export default function ActivityLogsPage() {
+  const { t } = useLanguage()
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -74,7 +76,7 @@ export default function ActivityLogsPage() {
       <main className="container mx-auto px-4 py-8">
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground font-serif">Loading activity logs...</p>
+            <p className="text-muted-foreground font-serif">{t("loadingLogs")}</p>
           </div>
         ) : logs.length === 0 ? (
           <div className="text-center py-12">
