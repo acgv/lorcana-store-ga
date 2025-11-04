@@ -1,7 +1,15 @@
 /**
  * Mercado Pago Integration
  * 
- * Helper para manejar pagos con Mercado Pago
+ * Sistema de credenciales duales para fácil cambio entre test y producción
+ * 
+ * Variables de entorno:
+ * - MERCADOPAGO_MODE: "test" | "production" (default: "production")
+ * - MERCADOPAGO_ACCESS_TOKEN_TEST (credenciales de prueba)
+ * - MERCADOPAGO_ACCESS_TOKEN_PROD (credenciales de producción)
+ * - NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY_TEST
+ * - NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY_PROD
+ * - MERCADOPAGO_INTEGRATOR_ID (solo se usa en desarrollo local)
  */
 
 import { MercadoPagoConfig, Preference } from 'mercadopago'
@@ -10,19 +18,54 @@ import { MercadoPagoConfig, Preference } from 'mercadopago'
 let client: MercadoPagoConfig | null = null
 let preferenceClient: Preference | null = null
 
+/**
+ * Obtener credenciales según el modo configurado
+ */
+function getCredentials() {
+  const mode = process.env.MERCADOPAGO_MODE || 'production'
+  const isTestMode = mode === 'test'
+  
+  const accessToken = isTestMode 
+    ? process.env.MERCADOPAGO_ACCESS_TOKEN_TEST 
+    : process.env.MERCADOPAGO_ACCESS_TOKEN_PROD
+  
+  const publicKey = isTestMode
+    ? process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY_TEST
+    : process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY_PROD
+  
+  console.log(`🔧 Mercado Pago Mode: ${mode.toUpperCase()}`)
+  if (accessToken) {
+    console.log(`✅ Using ${mode.toUpperCase()} credentials`)
+    console.log(`   Public Key: ${publicKey?.substring(0, 25)}...`)
+  } else {
+    console.warn(`⚠️ No ${mode.toUpperCase()} credentials configured`)
+  }
+  
+  return { accessToken, publicKey, mode, isTestMode }
+}
+
 function getClient() {
-  if (!client && process.env.MERCADOPAGO_ACCESS_TOKEN) {
+  if (!client) {
+    const { accessToken } = getCredentials()
+    
+    if (!accessToken) {
+      console.error('❌ No Mercado Pago access token found')
+      return null
+    }
+    
     const config: any = {
-      accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
+      accessToken,
       options: {
         timeout: 5000,
       }
     }
     
-    // Agregar integrator_id a nivel de cliente si existe
-    if (process.env.MERCADOPAGO_INTEGRATOR_ID) {
+    // Agregar integrator_id solo en desarrollo local (no en test ni prod)
+    const isDev = process.env.NODE_ENV === 'development'
+    if (isDev && process.env.MERCADOPAGO_INTEGRATOR_ID) {
       config.options.integratorId = process.env.MERCADOPAGO_INTEGRATOR_ID
       config.options.platformId = process.env.MERCADOPAGO_INTEGRATOR_ID
+      console.log('🔑 Using Integrator ID in DEV mode')
     }
     
     client = new MercadoPagoConfig(config)
@@ -145,9 +188,10 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
 }
 
 /**
- * Obtener Public Key para el frontend
+ * Obtener Public Key para el frontend según el modo configurado
  */
 export function getPublicKey() {
-  return process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY || ''
+  const { publicKey } = getCredentials()
+  return publicKey || ''
 }
 
