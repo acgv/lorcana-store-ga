@@ -44,7 +44,7 @@ function getCredentials() {
   return { accessToken, publicKey, mode, isTestMode }
 }
 
-function getClient() {
+export function getClient() {
   if (!client) {
     const { accessToken } = getCredentials()
     
