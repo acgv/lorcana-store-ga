@@ -105,6 +105,13 @@ export default function CardDetailPage() {
   const handleBuyNow = async () => {
     if (!card) return
     
+    // Validar monto mínimo de Mercado Pago (50 CLP)
+    const totalAmount = price * quantity
+    if (totalAmount < 50) {
+      alert('El monto mínimo de compra es $50 CLP. Por favor aumenta la cantidad.')
+      return
+    }
+    
     setBuyingNow(true)
     
     try {
