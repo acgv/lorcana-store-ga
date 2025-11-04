@@ -399,13 +399,13 @@ export default function InventoryPage() {
                   <SelectValue placeholder={t("allStock")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t("allStock")}</SelectItem>
-                  <SelectItem value="firstChapter">Set 1 - First Chapter</SelectItem>
-                  <SelectItem value="riseOfFloodborn">Set 2 - Rise of Floodborn</SelectItem>
-                  <SelectItem value="intoInklands">Set 3 - Into Inklands</SelectItem>
-                  <SelectItem value="ursulaReturn">Set 4 - Ursula's Return</SelectItem>
-                  <SelectItem value="shimmering">Set 5 - Shimmering Skies</SelectItem>
-                  <SelectItem value="azurite">Set 6 - Azurite Sea</SelectItem>
+                  <SelectItem value="all">{t("allSets")}</SelectItem>
+                  <SelectItem value="firstChapter">{t("firstChapter")}</SelectItem>
+                  <SelectItem value="riseOfFloodborn">{t("riseOfFloodborn")}</SelectItem>
+                  <SelectItem value="intoInklands">{t("intoInklands")}</SelectItem>
+                  <SelectItem value="ursulaReturn">{t("ursulaReturn")}</SelectItem>
+                  <SelectItem value="shimmering">{t("shimmering")}</SelectItem>
+                  <SelectItem value="azurite">{t("azurite")}</SelectItem>
                   <SelectItem value="archazia">Set 7 - Archazia's Island</SelectItem>
                   <SelectItem value="reignOfJafar">Set 8 - Reign of Jafar</SelectItem>
                   <SelectItem value="fabled">Set 9 - Fabled</SelectItem>
@@ -415,36 +415,36 @@ export default function InventoryPage() {
 
             {/* Type Filter */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Type</Label>
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("type")}</Label>
               <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="All Types" />
+                  <SelectValue placeholder={t("allTypes")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="character">Character</SelectItem>
-                  <SelectItem value="action">Action</SelectItem>
-                  <SelectItem value="item">Item</SelectItem>
-                  <SelectItem value="song">Song</SelectItem>
+                  <SelectItem value="all">{t("allTypes")}</SelectItem>
+                  <SelectItem value="character">{t("character")}</SelectItem>
+                  <SelectItem value="action">{t("action")}</SelectItem>
+                  <SelectItem value="item">{t("item")}</SelectItem>
+                  <SelectItem value="song">{t("song")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Rarity Filter */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Rarity</Label>
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("rarity")}</Label>
               <Select value={filters.rarity} onValueChange={(value) => setFilters({ ...filters, rarity: value })}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="All Rarities" />
+                  <SelectValue placeholder={t("allRarities")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Rarities</SelectItem>
-                  <SelectItem value="common">Common</SelectItem>
-                  <SelectItem value="uncommon">Uncommon</SelectItem>
-                  <SelectItem value="rare">Rare</SelectItem>
-                  <SelectItem value="superRare">Super Rare</SelectItem>
-                  <SelectItem value="legendary">Legendary</SelectItem>
-                  <SelectItem value="enchanted">Enchanted</SelectItem>
+                  <SelectItem value="all">{t("allRarities")}</SelectItem>
+                  <SelectItem value="common">{t("common")}</SelectItem>
+                  <SelectItem value="uncommon">{t("uncommon")}</SelectItem>
+                  <SelectItem value="rare">{t("rare")}</SelectItem>
+                  <SelectItem value="superRare">{t("superRare")}</SelectItem>
+                  <SelectItem value="legendary">{t("legendary")}</SelectItem>
+                  <SelectItem value="enchanted">{t("enchanted")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -467,16 +467,16 @@ export default function InventoryPage() {
 
             {/* Stock Type Filter (Normal/Foil) */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Stock Type</Label>
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("stockType")}</Label>
               <Select value={filters.stockType} onValueChange={(value) => setFilters({ ...filters, stockType: value })}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="All Types" />
+                  <SelectValue placeholder={t("allTypes")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="hasNormal">Has Normal Stock</SelectItem>
-                  <SelectItem value="hasFoil">Has Foil Stock</SelectItem>
-                  <SelectItem value="hasBoth">Has Both</SelectItem>
+                  <SelectItem value="all">{t("allTypes")}</SelectItem>
+                  <SelectItem value="hasNormal">{t("hasNormal")}</SelectItem>
+                  <SelectItem value="hasFoil">{t("hasFoil")}</SelectItem>
+                  <SelectItem value="hasBoth">{t("hasBoth")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
