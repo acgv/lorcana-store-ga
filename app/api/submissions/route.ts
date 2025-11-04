@@ -2,12 +2,34 @@ import { NextRequest, NextResponse } from "next/server"
 import { Database } from "@/lib/db"
 import type { ApiResponse, CardSubmission } from "@/lib/types"
 
-// GET - Get all submissions (with optional status filter)
+// GET - Get all submissions (with optional status or id filter)
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get("status") || undefined
+    const id = searchParams.get("id") || undefined
 
+    // If searching by ID, use getSubmissionById
+    if (id) {
+      const submission = await Database.getSubmissionById(id)
+      
+      if (!submission) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Submission not found",
+          } as ApiResponse,
+          { status: 404 }
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: [submission], // Return as array for consistency
+      } as ApiResponse<CardSubmission[]>)
+    }
+
+    // Otherwise, get all submissions (optionally filtered by status)
     const submissions = await Database.getSubmissions(status)
 
     const response: ApiResponse<CardSubmission[]> = {
