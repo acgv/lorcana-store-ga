@@ -55,7 +55,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
             <SelectValue placeholder={t("type")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="all">{t("all")}</SelectItem>
             <SelectItem value="character">{t("character")}</SelectItem>
             <SelectItem value="item">{t("item")}</SelectItem>
             <SelectItem value="action">{t("action")}</SelectItem>
@@ -72,13 +72,13 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
             <SelectValue placeholder={t("set")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Sets</SelectItem>
-            <SelectItem value="firstChapter">Set 1 - The First Chapter</SelectItem>
-            <SelectItem value="riseOfFloodborn">Set 2 - Rise of the Floodborn</SelectItem>
-            <SelectItem value="intoInklands">Set 3 - Into the Inklands</SelectItem>
-            <SelectItem value="ursulaReturn">Set 4 - Ursula's Return</SelectItem>
-            <SelectItem value="shimmering">Set 5 - Shimmering Skies</SelectItem>
-            <SelectItem value="azurite">Set 6 - Azurite Sea</SelectItem>
+            <SelectItem value="all">{t("allSets")}</SelectItem>
+            <SelectItem value="firstChapter">{t("firstChapter")}</SelectItem>
+            <SelectItem value="riseOfFloodborn">{t("riseOfFloodborn")}</SelectItem>
+            <SelectItem value="intoInklands">{t("intoInklands")}</SelectItem>
+            <SelectItem value="ursulaReturn">{t("ursulaReturn")}</SelectItem>
+            <SelectItem value="shimmering">{t("shimmering")}</SelectItem>
+            <SelectItem value="azurite">{t("azurite")}</SelectItem>
             <SelectItem value="archazia">Set 7 - Archazia's Island</SelectItem>
             <SelectItem value="reignOfJafar">Set 8 - Reign of Jafar</SelectItem>
             <SelectItem value="fabled">Set 9 - Fabled</SelectItem>
@@ -94,7 +94,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
             <SelectValue placeholder={t("rarity")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="all">{t("all")}</SelectItem>
             <SelectItem value="common">{t("common")}</SelectItem>
             <SelectItem value="uncommon">{t("uncommon")}</SelectItem>
             <SelectItem value="rare">{t("rare")}</SelectItem>
@@ -155,8 +155,8 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
             <SelectItem value="priceLowHigh">{t("priceLowHigh")}</SelectItem>
             <SelectItem value="priceHighLow">{t("priceHighLow")}</SelectItem>
             <SelectItem value="raritySort">{t("raritySort")}</SelectItem>
-            <SelectItem value="cardNumberLowHigh">Card # (Low to High)</SelectItem>
-            <SelectItem value="cardNumberHighLow">Card # (High to Low)</SelectItem>
+            <SelectItem value="cardNumberLowHigh">{t("cardNumberLowHigh")}</SelectItem>
+            <SelectItem value="cardNumberHighLow">{t("cardNumberHighLow")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
