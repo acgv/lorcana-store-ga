@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { AdminHeader } from "@/components/admin-header"
 import { Footer } from "@/components/footer"
 import { AuthGuard } from "@/components/auth-guard"
+import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -30,6 +31,7 @@ interface InventoryItem {
 }
 
 export default function InventoryPage() {
+  const { t } = useLanguage()
   const [inventory, setInventory] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -312,9 +314,9 @@ export default function InventoryPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <AdminHeader title="Inventory Management" />
+        <AdminHeader title={t("inventoryManagement")} />
         <main className="flex-1 container mx-auto px-4 py-8">
-          <div className="text-center">Loading inventory...</div>
+          <div className="text-center">{t("loading")}</div>
         </main>
         <Footer />
       </div>
@@ -324,22 +326,22 @@ export default function InventoryPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen flex flex-col">
-        <AdminHeader title="Inventory Management" />
+        <AdminHeader title={t("inventoryManagement")} />
         <main className="flex-1 container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="font-sans text-4xl font-bold mb-4 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
             <Package className="inline-block mr-3 h-8 w-8 text-primary" />
-            Inventory Management
+            {t("inventoryManagement")}
           </h1>
-          <p className="text-muted-foreground">Manage stock levels for all cards</p>
+          <p className="text-muted-foreground">{t("inventoryDescription")}</p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card className="border-primary/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Cards</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("totalCards")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{filteredInventory.length}</div>
@@ -348,7 +350,7 @@ export default function InventoryPage() {
 
           <Card className="border-primary/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Normal Stock</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("normalStock")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-500">{totals.normal}</div>
@@ -357,7 +359,7 @@ export default function InventoryPage() {
 
           <Card className="border-primary/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Foil Stock</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("foilStock")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-amber-500">{totals.foil}</div>
@@ -366,7 +368,7 @@ export default function InventoryPage() {
 
           <Card className="border-primary/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Inventory Value</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("inventoryValue")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-500">${Math.floor(totals.value).toLocaleString()}</div>
@@ -380,7 +382,7 @@ export default function InventoryPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name, card number, or set..."
+              placeholder={t("searchInventory")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -391,13 +393,13 @@ export default function InventoryPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             {/* Set Filter */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Set</Label>
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("set")}</Label>
               <Select value={filters.set} onValueChange={(value) => setFilters({ ...filters, set: value })}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="All Sets" />
+                  <SelectValue placeholder={t("allStock")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Sets</SelectItem>
+                  <SelectItem value="all">{t("allStock")}</SelectItem>
                   <SelectItem value="firstChapter">Set 1 - First Chapter</SelectItem>
                   <SelectItem value="riseOfFloodborn">Set 2 - Rise of Floodborn</SelectItem>
                   <SelectItem value="intoInklands">Set 3 - Into Inklands</SelectItem>
@@ -449,16 +451,16 @@ export default function InventoryPage() {
 
             {/* Stock Status Filter */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Stock Status</Label>
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("stockStatus")}</Label>
               <Select value={filters.stockStatus} onValueChange={(value) => setFilters({ ...filters, stockStatus: value })}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="All Stock" />
+                  <SelectValue placeholder={t("allStock")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Stock Status</SelectItem>
-                  <SelectItem value="inStock">In Stock (≥5)</SelectItem>
-                  <SelectItem value="lowStock">Low Stock (&lt;5)</SelectItem>
-                  <SelectItem value="outOfStock">Out of Stock</SelectItem>
+                  <SelectItem value="all">{t("allStockStatus")}</SelectItem>
+                  <SelectItem value="inStock">{t("inStock")} (≥5)</SelectItem>
+                  <SelectItem value="lowStock">{t("lowStock")} (&lt;5)</SelectItem>
+                  <SelectItem value="outOfStock">{t("outOfStockBadge")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
