@@ -1,10 +1,12 @@
 "use client"
 
-import { X, Minus, Plus } from "lucide-react"
+import { useState } from "react"
+import { X, Minus, Plus, Loader2, CreditCard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useCart } from "@/components/cart-provider"
 import { useLanguage } from "@/components/language-provider"
+import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 
 interface CartSheetProps {
@@ -13,8 +15,71 @@ interface CartSheetProps {
 }
 
 export function CartSheet({ open, onOpenChange }: CartSheetProps) {
-  const { items, removeFromCart, updateQuantity, totalPrice } = useCart()
+  const { items, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart()
   const { t } = useLanguage()
+  const { toast } = useToast()
+  const [processingCheckout, setProcessingCheckout] = useState(false)
+
+  const handleCheckout = async () => {
+    if (items.length === 0) return
+
+    // Validar mínimo de compra ($50 CLP)
+    if (totalPrice < 50) {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: t("minimumPurchase"),
+      })
+      return
+    }
+
+    setProcessingCheckout(true)
+
+    try {
+      // Preparar items para Mercado Pago
+      const cartItems = items.map(item => ({
+        id: item.id,
+        name: item.name,
+        image: item.image,
+        price: item.price,
+        quantity: item.quantity,
+        version: item.version,
+      }))
+
+      console.log('🛒 Creating payment preference for cart:', cartItems)
+
+      // Crear preferencia de pago
+      const response = await fetch('/api/payment/create-preference', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          items: cartItems,
+          origin: window.location.origin,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.initPoint) {
+        console.log('✅ Redirecting to Mercado Pago:', data.initPoint)
+        
+        // Redirigir a Mercado Pago
+        window.location.href = data.initPoint
+      } else {
+        throw new Error(data.error || 'Failed to create payment preference')
+      }
+    } catch (error) {
+      console.error('❌ Error creating payment:', error)
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: t("checkoutError"),
+      })
+      setProcessingCheckout(false)
+    }
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -76,8 +141,23 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                   <span>{t("total")}</span>
                   <span className="text-primary">${Math.floor(totalPrice).toLocaleString()}</span>
                 </div>
-                <Button className="w-full" size="lg">
-                  {t("checkout")}
+                <Button 
+                  className="w-full" 
+                  size="lg"
+                  onClick={handleCheckout}
+                  disabled={processingCheckout || items.length === 0}
+                >
+                  {processingCheckout ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {t("processing")}
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      {t("checkout")}
+                    </>
+                  )}
                 </Button>
               </div>
             </>
