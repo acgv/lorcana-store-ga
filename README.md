@@ -63,16 +63,17 @@ pnpm dev
 ### Web Store
 ✅ Catálogo con **1,837 cartas reales** de Lorcana  
 ✅ Filtros avanzados: Tipo, Set, Rareza, Precio, **Normal/Foil**  
-✅ Multi-idioma (EN, FR, DE, ES)  
-✅ Carrito de compras  
+✅ Multi-idioma (EN, FR, DE, ES) - **200+ traducciones** ⭐  
+✅ **Carrito de compras funcional** con checkout a Mercado Pago ⭐  
+✅ **Sistema de envío de cartas** - Usuarios pueden proponer cartas ⭐  
 ✅ Tema oscuro mágico con efectos foil  
-✅ Diseño responsive mobile-first  
+✅ Diseño responsive mobile-first con **menú hamburguesa** ⭐  
 ✅ **Página educativa** completa sobre cómo jugar Lorcana  
 ✅ **Noticias** con feeds de Instagram (@disneylorcana, @ravensburgerna)  
 ✅ **Contacto** con enlaces a redes sociales y WhatsApp  
 ✅ **Política de Privacidad** completa y legal  
-✅ Precios ocultos para cartas sin stock  
-✅ Ordenamiento por número de carta por defecto  
+✅ **Precios sin decimales** con separadores de miles ⭐  
+✅ **Priorización por stock** - Cartas disponibles primero ⭐  
 
 ### Mobile App
 ✅ Escaneo con cámara + OCR  
@@ -82,20 +83,20 @@ pnpm dev
 ✅ Notificaciones push de estado de revisión  
 
 ### Admin Dashboard
-✅ **Gestión de Órdenes** - Ver compras, clientes, revenue ⭐ NEW  
-✅ Revisar envíos pendientes desde mobile  
-✅ Editar y aprobar/rechazar datos  
-✅ Gestionar inventario de cartas (stock **Y precios**)  
+✅ **Gestión de Inventario** - Stock, precios + **Import desde API** ⭐  
+✅ **Gestión de Órdenes** - Compras, ingresos brutos/netos **con fees reales de MP** ⭐  
+✅ **Gestión de Submissions** - Revisar/editar/aprobar cartas de usuarios ⭐  
+✅ **Logs de Actividad** - Auditoría completa de acciones  
+✅ **Herramientas Admin** - Procesar pagos, inspeccionar, actualizar fees ⭐  
 ✅ Filtros avanzados: Set, Tipo, Rareza, Estado de Stock, **Normal/Foil**  
 ✅ Edición en masa con "Save All Changes"  
 ✅ **Spinners visuales** durante guardado  
 ✅ **Validación de errores** de Supabase en tiempo real  
-✅ Log de actividad con timestamps  
 ✅ Autenticación segura con logout  
-✅ Dashboard de estadísticas en tiempo real  
-✅ **Navegación con tabs** entre secciones  
-✅ **Multi-idioma completo** (EN, ES, FR, DE)  
+✅ **Navegación con tabs** entre 4 secciones principales  
+✅ **Multi-idioma completo** (EN, ES, FR, DE) - 200+ keys ⭐  
 ✅ Integración con **Supabase** en tiempo real  
+✅ **Un click import** - Cartas desde Lorcana API sin terminal ⭐  
 
 ---
 
@@ -130,21 +131,41 @@ lorcana-store/
 ├── 📱 app/
 │   ├── page.tsx                    # Home
 │   ├── catalog/page.tsx            # Catálogo de cartas
+│   ├── card/[id]/page.tsx          # Detalle de carta
+│   ├── submit-card/page.tsx        # Formulario envío de cartas ⭐
 │   ├── about/page.tsx              # Aprende a Jugar Lorcana
 │   ├── news/page.tsx               # Noticias (feeds Instagram)
 │   ├── contact/page.tsx            # Contacto (redes sociales)
 │   ├── privacy/page.tsx            # Política de Privacidad
+│   ├── payment/                    # Confirmaciones MP
+│   │   ├── success/page.tsx
+│   │   ├── failure/page.tsx
+│   │   └── pending/page.tsx
 │   ├── admin/                      # Dashboard admin
-│   │   ├── page.tsx
+│   │   ├── login/page.tsx          # Login admin
 │   │   ├── inventory/page.tsx      # Gestión de inventario
-│   │   ├── submissions/page.tsx
-│   │   └── logs/page.tsx
+│   │   ├── orders/page.tsx         # Gestión de órdenes ⭐
+│   │   ├── submissions/            # Submissions
+│   │   │   ├── page.tsx            # Lista
+│   │   │   └── [id]/edit/page.tsx  # Editar ⭐
+│   │   ├── logs/page.tsx           # Activity logs
+│   │   ├── update-fees/page.tsx    # Tool: Update fees ⭐
+│   │   ├── process-payment/page.tsx # Tool: Process payment ⭐
+│   │   └── inspect-payment/page.tsx # Tool: Inspect payment ⭐
 │   └── api/
 │       ├── cards/route.ts          # GET cartas públicas
 │       ├── inventory/route.ts      # POST/PATCH stock y precios
-│       ├── staging/route.ts        # POST desde mobile
-│       ├── submissions/            # Admin review
-│       ├── updateCards/route.ts    # Bulk update
+│       ├── orders/route.ts         # GET órdenes ⭐
+│       ├── submissions/            # CRUD submissions ⭐
+│       ├── payment/                # Mercado Pago
+│       │   └── create-preference/  # Crear preferencia MP
+│       ├── webhooks/
+│       │   └── mercadopago/        # Webhook MP ⭐
+│       ├── admin/
+│       │   ├── import-cards/       # Import desde API ⭐
+│       │   ├── process-payment/    # Manual processing ⭐
+│       │   ├── inspect-payment/    # Payment inspector ⭐
+│       │   └── update-order-fees/  # Update fees ⭐
 │       └── logs/route.ts
 ├── 🧩 components/
 │   ├── header.tsx
@@ -379,23 +400,28 @@ curl -X POST http://localhost:3002/api/staging \
 - [x] Webhooks para notificaciones de pago
 - [x] **Admin Panel de Órdenes** - Tracking completo ⭐ NEW
 - [x] Multi-dominio (gacompany.cl + vercel.app)
-- [x] **Menú hamburguesa móvil** - Navegación responsive ⭐ NEW
-- [x] **Sistema i18n completo** - 4 idiomas sin mezclas ⭐ NEW
-- [x] **Precios sin decimales** - Formato CLP limpio ⭐ NEW
-- [x] **Priorización por stock** - Cartas disponibles primero ⭐ NEW
+- [x] **Menú hamburguesa móvil** - Navegación responsive ⭐
+- [x] **Sistema i18n completo** - 4 idiomas sin mezclas ⭐
+- [x] **Precios sin decimales** - Formato CLP limpio ⭐
+- [x] **Priorización por stock** - Cartas disponibles primero ⭐
+- [x] **Sistema de submissions público** - Formulario /submit-card ⭐
+- [x] **Cart checkout funcional** - Compras múltiples con MP ⭐
+- [x] **Fees reales de Mercado Pago** - No calculados, extraídos de API ⭐
+- [x] **Admin Tools section** - Herramientas de recovery y debug ⭐
+- [x] **Import cards desde web** - Un click, sin terminal ⭐
+- [x] **Submissions workflow completo** - Público → Admin → Catálogo ⭐
 
 ### En Progreso 🚧
 - [ ] Cloud image storage (Supabase Storage)
-- [ ] Submissions workflow (mobile → admin)
 - [ ] Email notifications para confirmación de compras
-- [ ] Activación completa de app en Mercado Pago
+- [ ] Webhook configuration en Mercado Pago
+- [ ] OCR service integration
 
 ### Planeado 📋
-- [ ] OCR service integration
 - [ ] Push notifications
-- [ ] User accounts & order history
-- [ ] Analytics dashboard
-- [ ] Admin panel para gestión de órdenes
+- [ ] User accounts & order history  
+- [ ] Analytics dashboard avanzado
+- [ ] Integración con email marketing
 
 ---
 
