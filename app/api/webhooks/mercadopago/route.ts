@@ -68,12 +68,26 @@ export async function POST(request: Request) {
           }))
 
           if (paymentItems.length > 0) {
+            // Extraer datos reales de fees de Mercado Pago
+            const mpFeeAmount = (payment as any).fee_details?.[0]?.amount || 0
+            const netReceivedAmount = payment.transaction_details?.net_received_amount || 0
+            const totalPaidAmount = payment.transaction_details?.total_paid_amount || payment.transaction_amount
+
+            console.log(`💰 Payment financial details:`)
+            console.log(`   Total paid: $${totalPaidAmount}`)
+            console.log(`   MP Fee: $${mpFeeAmount}`)
+            console.log(`   Net received: $${netReceivedAmount}`)
+
             const result = await processConfirmedPayment({
               paymentId: String(paymentId),
               externalReference: externalRef,
               items: paymentItems,
               customerEmail: payment.payer?.email,
               status: payment.status || 'unknown',
+              // ⭐ Pasar datos reales de fees
+              mpFeeAmount,
+              netReceivedAmount,
+              totalPaidAmount,
             })
 
             console.log('📦 Stock update result:', result)

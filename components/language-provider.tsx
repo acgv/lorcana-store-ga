@@ -207,6 +207,11 @@ const translations: Record<Language, Record<string, string>> = {
     noChanges: "No changes",
     noStockChanges: "No stock changes to save",
     actions: "Actions",
+    // Admin Tools
+    tools: "Tools",
+    adminTools: "Admin Tools",
+    processPayment: "Process Payment",
+    inspectPayment: "Inspect Payment",
     // Status
     approved: "Approved",
     pending: "Pending",
@@ -820,6 +825,11 @@ const translations: Record<Language, Record<string, string>> = {
     noChanges: "Sin cambios",
     noStockChanges: "No hay cambios de stock para guardar",
     actions: "Acciones",
+    // Admin Tools
+    tools: "Herramientas",
+    adminTools: "Herramientas Admin",
+    processPayment: "Procesar Pago",
+    inspectPayment: "Inspeccionar Pago",
     // Status
     approved: "Aprobado",
     pending: "Pendiente",

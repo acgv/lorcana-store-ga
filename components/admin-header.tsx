@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
-import { LogOut, User, Package, ShoppingBag, FileText, Activity } from "lucide-react"
+import { LogOut, User, Package, ShoppingBag, FileText, Activity, Wrench } from "lucide-react"
 import { usePathname } from "next/navigation"
 import {
   DropdownMenu,
@@ -100,6 +100,34 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
               </Link>
             )
           })}
+          
+          {/* Tools Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant={pathname.includes('/admin/process-payment') || pathname.includes('/admin/inspect-payment') ? "default" : "ghost"}
+                size="sm"
+                className="gap-2 whitespace-nowrap"
+              >
+                <Wrench className="h-4 w-4" />
+                {t("tools")}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuLabel>{t("adminTools")}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/admin/process-payment" className="cursor-pointer">
+                  {t("processPayment")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/admin/inspect-payment" className="cursor-pointer">
+                  {t("inspectPayment")}
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
       </div>
     </header>

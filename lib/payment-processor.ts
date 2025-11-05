@@ -20,13 +20,26 @@ export interface ProcessPaymentParams {
   items: PaymentItem[]
   customerEmail?: string
   status: string
+  // Datos reales de Mercado Pago
+  mpFeeAmount?: number
+  netReceivedAmount?: number
+  totalPaidAmount?: number
 }
 
 /**
  * Procesar pago confirmado y actualizar stock
  */
 export async function processConfirmedPayment(params: ProcessPaymentParams) {
-  const { paymentId, externalReference, items, customerEmail, status } = params
+  const { 
+    paymentId, 
+    externalReference, 
+    items, 
+    customerEmail, 
+    status,
+    mpFeeAmount,
+    netReceivedAmount,
+    totalPaidAmount 
+  } = params
 
   if (status !== 'approved') {
     console.log(`⏭️ Payment ${paymentId} not approved (${status}), skipping stock update`)
@@ -100,7 +113,7 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
 
     // Crear registro de orden en la tabla orders
     try {
-      const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+      const totalAmount = totalPaidAmount || items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
       
       await supabaseAdmin.from('orders').insert({
         payment_id: paymentId,
@@ -109,11 +122,16 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
         customer_email: customerEmail,
         items: items,
         total_amount: totalAmount,
+        mp_fee_amount: mpFeeAmount || 0, // ⭐ Fee real de MP
+        net_received_amount: netReceivedAmount || totalAmount, // ⭐ Monto neto real
         currency: 'CLP',
         paid_at: new Date().toISOString(),
       })
       
       console.log(`✅ Order created: ${externalReference}`)
+      console.log(`   Total paid: $${totalAmount}`)
+      console.log(`   MP Fee: $${mpFeeAmount || 0}`)
+      console.log(`   Net received: $${netReceivedAmount || totalAmount}`)
     } catch (orderError) {
       console.error('Error creating order:', orderError)
     }

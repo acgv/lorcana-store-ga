@@ -121,20 +121,25 @@ export default function OrdersPage() {
   }
 
   const getNetRevenue = () => {
-    // Mercado Pago comisión en Chile (basado en datos reales):
-    // - Al instante: ~3.78% (incluye IVA y fees)
-    // - 10 días: ~2.89% + IVA
-    // 
-    // Ejemplo real: $450 → Cargo MP: $17 → Total: $433
-    // $17 / $450 = 3.78%
-    const grossRevenue = getTotalRevenue()
-    
-    // Comisión observada en transacciones reales
-    // TODO: Cambiar a 0.0289 cuando cambies a "10 días"
-    const mpCommissionRate = 0.0378 // 3.78% para "Al instante" (observado)
-    const mpFees = grossRevenue * mpCommissionRate
-    
-    return Math.floor(grossRevenue - mpFees)
+    // ✅ Usar datos REALES de Mercado Pago (no calcular)
+    // Sumar net_received_amount de cada orden aprobada
+    return orders
+      .filter((order) => order.status === "approved")
+      .reduce((sum, order) => {
+        // Si la orden tiene net_received_amount, usarlo; si no, calcular
+        const netAmount = (order as any).net_received_amount || 
+                         (Number(order.total_amount) - ((order as any).mp_fee_amount || 0))
+        return sum + Number(netAmount)
+      }, 0)
+  }
+
+  const getTotalFees = () => {
+    // Sumar los fees reales cobrados por Mercado Pago
+    return orders
+      .filter((order) => order.status === "approved")
+      .reduce((sum, order) => {
+        return sum + Number((order as any).mp_fee_amount || 0)
+      }, 0)
   }
 
   const getTotalOrders = () => {

@@ -92,6 +92,16 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Processing payment with items:', paymentItems)
 
+    // Extraer datos reales de fees de Mercado Pago
+    const mpFeeAmount = (payment as any).fee_details?.[0]?.amount || 0
+    const netReceivedAmount = payment.transaction_details?.net_received_amount || 0
+    const totalPaidAmount = payment.transaction_details?.total_paid_amount || payment.transaction_amount
+
+    console.log(`💰 Financial details:`)
+    console.log(`   Total paid: $${totalPaidAmount}`)
+    console.log(`   MP Fee: $${mpFeeAmount}`)
+    console.log(`   Net received: $${netReceivedAmount}`)
+
     // Procesar el pago confirmado
     const result = await processConfirmedPayment({
       paymentId: String(paymentId),
@@ -99,6 +109,10 @@ export async function POST(request: NextRequest) {
       items: paymentItems,
       customerEmail: payment.payer?.email,
       status: payment.status || 'approved',
+      // ⭐ Pasar datos reales de fees
+      mpFeeAmount,
+      netReceivedAmount,
+      totalPaidAmount,
     })
 
     console.log('📦 Processing result:', result)
