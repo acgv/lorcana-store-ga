@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useLanguage } from "@/components/language-provider"
 import { LanguageSelector } from "@/components/language-selector"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { useCart } from "@/components/cart-provider"
 import { CartSheet } from "@/components/cart-sheet"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -132,6 +133,7 @@ export function Header() {
               <Input type="search" placeholder={t("search")} className="pl-9 bg-muted/50 border-border/50" />
             </div>
           </div>
+          <ThemeToggle />
           <LanguageSelector />
           <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
             <ShoppingCart className="h-5 w-5" />
