@@ -210,6 +210,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Admin Tools
     tools: "Tools",
     adminTools: "Admin Tools",
+    updateOrderFees: "Update Order Fees",
     processPayment: "Process Payment",
     inspectPayment: "Inspect Payment",
     // Status
@@ -828,6 +829,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Admin Tools
     tools: "Herramientas",
     adminTools: "Herramientas Admin",
+    updateOrderFees: "Actualizar Fees de Órdenes",
     processPayment: "Procesar Pago",
     inspectPayment: "Inspeccionar Pago",
     // Status

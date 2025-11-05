@@ -105,7 +105,7 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                variant={pathname.includes('/admin/process-payment') || pathname.includes('/admin/inspect-payment') ? "default" : "ghost"}
+                variant={pathname.includes('/admin/process-payment') || pathname.includes('/admin/inspect-payment') || pathname.includes('/admin/update-fees') ? "default" : "ghost"}
                 size="sm"
                 className="gap-2 whitespace-nowrap"
               >
@@ -115,6 +115,12 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
               <DropdownMenuLabel>{t("adminTools")}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/admin/update-fees" className="cursor-pointer">
+                  {t("updateOrderFees")}
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href="/admin/process-payment" className="cursor-pointer">
