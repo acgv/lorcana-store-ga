@@ -120,8 +120,31 @@ export default function OrdersPage() {
       .reduce((sum, order) => sum + Number(order.total_amount), 0)
   }
 
+  const getNetRevenue = () => {
+    // Mercado Pago comisión: ~3.99% + $99 CLP por transacción
+    const grossRevenue = getTotalRevenue()
+    const approvedOrders = getTotalOrders()
+    
+    // Comisión aproximada: 3.99% + $99 fijo por transacción
+    const fixedFees = approvedOrders * 99
+    const percentageFees = grossRevenue * 0.0399
+    
+    return Math.floor(grossRevenue - fixedFees - percentageFees)
+  }
+
   const getTotalOrders = () => {
     return orders.filter((order) => order.status === "approved").length
+  }
+
+  const getTotalProducts = () => {
+    return orders
+      .filter((order) => order.status === "approved")
+      .reduce((sum, order) => {
+        return sum + order.items.reduce((itemSum, item) => {
+          // Asegurar que quantity sea número
+          return itemSum + Number(item.quantity || 0)
+        }, 0)
+      }, 0)
   }
 
   const openOrderDetails = (order: Order) => {
@@ -143,7 +166,7 @@ export default function OrdersPage() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid gap-4 md:grid-cols-3 mb-8">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{t("totalOrders")}</CardTitle>
@@ -164,7 +187,20 @@ export default function OrdersPage() {
                 <div className="text-2xl font-bold text-green-600">
                   ${Math.floor(getTotalRevenue()).toLocaleString()}
                 </div>
-                <p className="text-xs text-muted-foreground">{t("approvedOrders")}</p>
+                <p className="text-xs text-muted-foreground">{t("grossRevenue")}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{t("netRevenue")}</CardTitle>
+                <DollarSign className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-primary">
+                  ${getNetRevenue().toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">{t("afterMPFees")}</p>
               </CardContent>
             </Card>
 
@@ -175,14 +211,7 @@ export default function OrdersPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {orders
-                    .filter((order) => order.status === "approved")
-                    .reduce((sum, order) => {
-                      return (
-                        sum +
-                        order.items.reduce((itemSum, item) => itemSum + (item.quantity || 0), 0)
-                      )
-                    }, 0)}
+                  {getTotalProducts()}
                 </div>
                 <p className="text-xs text-muted-foreground">{t("soldCards")}</p>
               </CardContent>
