@@ -35,16 +35,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     const root = document.documentElement
     
-    // Remover clases anteriores
-    root.classList.remove("light", "dark")
+    // Remover clase dark (light es el default en :root)
+    root.classList.remove("dark")
     
     // Aplicar tema
     if (theme === "system") {
       const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-      root.classList.add(systemPrefersDark ? "dark" : "light")
-    } else {
-      root.classList.add(theme)
+      if (systemPrefersDark) {
+        root.classList.add("dark")
+      }
+    } else if (theme === "dark") {
+      root.classList.add("dark")
     }
+    // Si theme === "light", no agregamos clase (usa :root que es light)
     
     // Guardar preferencia
     localStorage.setItem("theme", theme)
