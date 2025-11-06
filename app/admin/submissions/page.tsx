@@ -188,6 +188,9 @@ export default function SubmissionsPage() {
 
                     <div className="text-xs text-muted-foreground mb-4 font-serif">
                       <p>Submitted: {new Date(submission.submittedAt).toLocaleString()}</p>
+                      <p>
+                        {t("submittedBy")}: {(submission as any).user_name || submission.submittedBy || "Unknown"}
+                      </p>
                       <p>Source: {submission.metadata.source}</p>
                       {submission.metadata.ocrConfidence && (
                         <p>OCR Confidence: {(submission.metadata.ocrConfidence * 100).toFixed(0)}%</p>

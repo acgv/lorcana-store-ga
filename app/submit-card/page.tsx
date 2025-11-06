@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useLanguage } from "@/components/language-provider"
+import { useUser } from "@/hooks/use-user"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,14 +13,64 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Send, CheckCircle } from "lucide-react"
+import { Loader2, Send, CheckCircle, Lock } from "lucide-react"
 
 export default function SubmitCardPage() {
   const { t } = useLanguage()
   const router = useRouter()
   const { toast } = useToast()
+  const { user, loading } = useUser()
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login?redirect=/submit-card")
+    }
+  }, [user, loading, router])
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">{t("loadingText")}</p>
+          </div>
+        </div>
+        <Footer />
+      </>
+    )
+  }
+
+  // Show login prompt if not authenticated
+  if (!user) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader className="text-center">
+              <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Lock className="h-8 w-8 text-primary" />
+              </div>
+              <CardTitle>{t("signInRequired")}</CardTitle>
+              <CardDescription>{t("signInRequiredDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" onClick={() => router.push("/login?redirect=/submit-card")}>
+                {t("signIn")}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+        <Footer />
+      </>
+    )
+  }
 
   const [formData, setFormData] = useState({
     name: "",
@@ -73,6 +124,8 @@ export default function SubmitCardPage() {
         body: JSON.stringify({
           card: cardData,
           submittedBy: formData.contactEmail,
+          userId: user?.id, // ⭐ User ID from authenticated user
+          userName: user?.user_metadata?.name || user?.email?.split("@")[0] || "Unknown", // ⭐ User name
           images: formData.imageUrl ? [formData.imageUrl] : [],
           metadata: {
             source: "web",

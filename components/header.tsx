@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Search, ShoppingCart, Sparkles, Menu } from "lucide-react"
+import { Search, ShoppingCart, Sparkles, Menu, User, LogOut, FileText, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useLanguage } from "@/components/language-provider"
@@ -10,13 +10,33 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useCart } from "@/components/cart-provider"
 import { CartSheet } from "@/components/cart-sheet"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { useState } from "react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useUser } from "@/hooks/use-user"
+import { useAuth } from "@/hooks/use-auth"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 
 export function Header() {
   const { t } = useLanguage()
   const { totalItems } = useCart()
+  const { user, signOut: userSignOut } = useUser()
+  const { isAdmin, logout: adminLogout } = useAuth()
   const [cartOpen, setCartOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const router = useRouter()
+
+  const handleSignOut = async () => {
+    await userSignOut()
+    await adminLogout()
+    router.push("/")
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -54,12 +74,48 @@ export function Header() {
             >
               {t("submitCard")}
             </Link>
-            <Link
-              href="/admin/inventory"
-              className="text-sm font-sans font-medium text-accent hover:text-accent/80 transition-all duration-200 hover:scale-105"
-            >
-              Admin
-            </Link>
+
+            {/* User Menu or Login Button */}
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <User className="h-4 w-4" />
+                    <span className="hidden lg:inline-block">{user.user_metadata?.name || user.email?.split("@")[0]}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>{t("myAccount")}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/my-submissions" className="cursor-pointer">
+                      <FileText className="mr-2 h-4 w-4" />
+                      {t("mySubmissions")}
+                    </Link>
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin/inventory" className="cursor-pointer">
+                        <Shield className="mr-2 h-4 w-4" />
+                        {t("adminPanel")}
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    {t("signOut")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link
+                href="/login"
+                className="text-sm font-sans font-medium text-accent hover:text-accent/80 transition-all duration-200 hover:scale-105"
+              >
+                {t("signIn")}
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -116,13 +172,54 @@ export function Header() {
                 >
                   {t("submitCard")}
                 </Link>
-                <Link
-                  href="/admin/inventory"
-                  className="text-base font-sans font-medium text-accent hover:text-accent/80 transition-colors px-2 py-2 hover:bg-muted rounded-md"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Admin
-                </Link>
+
+                {/* User Menu Mobile */}
+                {user ? (
+                  <>
+                    <div className="border-t pt-4 mt-4">
+                      <div className="flex items-center gap-2 px-2 py-2 text-sm text-muted-foreground">
+                        <User className="h-4 w-4" />
+                        <span className="font-medium text-foreground">{user.user_metadata?.name || user.email?.split("@")[0]}</span>
+                      </div>
+                    </div>
+                    <Link
+                      href="/my-submissions"
+                      className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md flex items-center gap-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <FileText className="h-4 w-4" />
+                      {t("mySubmissions")}
+                    </Link>
+                    {isAdmin && (
+                      <Link
+                        href="/admin/inventory"
+                        className="text-base font-sans font-medium text-accent hover:text-accent/80 transition-colors px-2 py-2 hover:bg-muted rounded-md flex items-center gap-2"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Shield className="h-4 w-4" />
+                        {t("adminPanel")}
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false)
+                        handleSignOut()
+                      }}
+                      className="w-full text-left text-base font-sans font-medium text-destructive hover:text-destructive/80 transition-colors px-2 py-2 hover:bg-muted rounded-md flex items-center gap-2"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      {t("signOut")}
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    href="/login"
+                    className="text-base font-sans font-medium text-accent hover:text-accent/80 transition-colors px-2 py-2 hover:bg-muted rounded-md"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {t("signIn")}
+                  </Link>
+                )}
               </nav>
             </SheetContent>
           </Sheet>

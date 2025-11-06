@@ -35,13 +35,14 @@ const mapSubmissionFromDB = (dbRow: any): CardSubmission => ({
   card: dbRow.card,
   status: dbRow.status,
   submittedBy: dbRow.submittedby,
+  user_name: dbRow.user_name || undefined, // ⭐ User name for display
   submittedAt: dbRow.submittedat,
   reviewedBy: dbRow.reviewedby,
   reviewedAt: dbRow.reviewedat,
   rejectionReason: dbRow.rejectionreason,
   images: dbRow.images || [],
   metadata: dbRow.metadata || { source: 'manual' },
-})
+} as any)
 
 const mapLogFromDB = (dbRow: any): ActivityLog => ({
   id: dbRow.id,
@@ -190,6 +191,8 @@ export class Database {
         card: submission.card,
         status: submission.status || 'pending',
         submittedby: submission.submittedBy,
+        user_id: (submission as any).userId || null, // ⭐ Add user_id
+        user_name: (submission as any).userName || null, // ⭐ Add user_name
         submittedat: new Date().toISOString(),
         reviewedby: submission.reviewedBy || null,
         reviewedat: submission.reviewedAt || null,
@@ -198,7 +201,7 @@ export class Database {
         metadata: submission.metadata || null,
       }
 
-      const { data, error } = await supabaseAdmin
+      const { data, error} = await supabaseAdmin
         .from('submissions')
         .insert([newSubmission])
         .select()

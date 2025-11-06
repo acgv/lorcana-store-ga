@@ -49,28 +49,30 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create a new submission (public endpoint for users)
+// POST - Create a new submission (authenticated users only)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { card, submittedBy, images, metadata } = body
+    const { card, submittedBy, userId, userName, images, metadata } = body
 
     // Validar campos requeridos
-    if (!card || !submittedBy) {
+    if (!card || !submittedBy || !userId) {
       return NextResponse.json(
         {
           success: false,
-          error: "Card data and submittedBy email are required",
+          error: "Card data, submittedBy email, and userId are required",
         } as ApiResponse,
         { status: 400 }
       )
     }
 
-    // Crear submission
+    // Crear submission con user_id y user_name
     const newSubmission = await Database.createSubmission({
       card,
       status: "pending",
       submittedBy,
+      userId, // ⭐ User ID from authenticated user
+      userName, // ⭐ User name for display
       submittedAt: new Date().toISOString(),
       images: images || [],
       metadata: metadata || { source: "web" },
@@ -78,13 +80,14 @@ export async function POST(request: NextRequest) {
 
     // Log activity
     await Database.createLog({
-      userId: submittedBy,
+      userId: userId || submittedBy,
       action: "submission_created",
       entityType: "submission",
       entityId: newSubmission.id,
       details: {
         cardName: card.name,
         source: metadata?.source || "web",
+        userName,
       },
     })
 
