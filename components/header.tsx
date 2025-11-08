@@ -77,54 +77,6 @@ export function Header() {
             >
               {t("submitCard")}
             </Link>
-
-            {/* User Menu or Login Button */}
-            {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <User className="h-4 w-4" />
-                    <span className="hidden sm:inline-block">
-                      {user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Usuario"}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>{t("myAccount")}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem disabled className="text-xs text-muted-foreground">
-                    {user.email}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/my-submissions" className="cursor-pointer">
-                      <FileText className="mr-2 h-4 w-4" />
-                      {t("mySubmissions")}
-                    </Link>
-                  </DropdownMenuItem>
-                  {isAdmin && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin/inventory" className="cursor-pointer">
-                        <Shield className="mr-2 h-4 w-4" />
-                        {t("adminPanel")}
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    {t("signOut")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Link
-                href="/login"
-                className="text-sm font-sans font-medium text-accent hover:text-accent/80 transition-all duration-200 hover:scale-105"
-              >
-                {t("signIn")}
-              </Link>
-            )}
           </nav>
         </div>
 
@@ -246,6 +198,58 @@ export function Header() {
           </div>
           <ThemeToggle />
           <LanguageSelector />
+          
+          {/* User Menu or Login Button - Desktop */}
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 hidden md:flex">
+                  <User className="h-4 w-4" />
+                  <span className="hidden lg:inline-block">
+                    {user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Usuario"}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>{t("myAccount")}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+                  {user.email}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/my-submissions" className="cursor-pointer">
+                    <FileText className="mr-2 h-4 w-4" />
+                    {t("mySubmissions")}
+                  </Link>
+                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/inventory" className="cursor-pointer">
+                      <Shield className="mr-2 h-4 w-4" />
+                      {t("adminPanel")}
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  {t("signOut")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="hidden md:flex gap-2"
+              onClick={() => router.push("/login")}
+            >
+              <User className="h-4 w-4" />
+              <span className="hidden lg:inline-block">{t("signIn")}</span>
+            </Button>
+          )}
+          
           <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
             <ShoppingCart className="h-5 w-5" />
             {totalItems > 0 && (
