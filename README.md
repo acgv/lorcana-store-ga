@@ -50,6 +50,10 @@ pnpm dev
 **Acceso rápido:**
 - 🏠 Home: http://localhost:3002
 - 🎴 Catálogo: http://localhost:3002/catalog
+- 📦 Mi Colección: http://localhost:3002/my-collection 🆕
+- 📝 Enviar Carta: http://localhost:3002/submit-card
+- 📋 Mis Envíos: http://localhost:3002/my-submissions
+- 🔐 Login: http://localhost:3002/login
 - 🎛️ Admin Dashboard: http://localhost:3002/admin
 - 📖 Aprende a Jugar: http://localhost:3002/about
 - 📰 Noticias: http://localhost:3002/news
@@ -63,10 +67,12 @@ pnpm dev
 ### Web Store
 ✅ Catálogo con **1,837 cartas reales** de Lorcana  
 ✅ Filtros avanzados: Tipo, Set, Rareza, Precio, **Normal/Foil**  
-✅ Multi-idioma (EN, FR, DE, ES) - **200+ traducciones** ⭐  
+✅ Multi-idioma (EN, FR, DE, ES) - **300+ traducciones** ⭐  
 ✅ **Carrito de compras funcional** con checkout a Mercado Pago ⭐  
+✅ **Colección Personal Virtual** - Trackea tus cartas (Tengo/Deseo) con cantidades 🆕  
 ✅ **Sistema de envío de cartas** - Usuarios pueden proponer cartas ⭐  
-✅ Tema oscuro mágico con efectos foil  
+✅ **Google OAuth** - Login con cuenta de Google 🆕  
+✅ **Modo Claro/Oscuro** - Toggle entre temas ⭐  
 ✅ Diseño responsive mobile-first con **menú hamburguesa** ⭐  
 ✅ **Página educativa** completa sobre cómo jugar Lorcana  
 ✅ **Noticias** con feeds de Instagram (@disneylorcana, @ravensburgerna)  
@@ -82,10 +88,27 @@ pnpm dev
 ✅ Modo offline con cola de sincronización  
 ✅ Notificaciones push de estado de revisión  
 
+### Colección Personal 🆕
+✅ **3 Tabs organizados:**
+  - **Todas las Cartas** - Base de datos completa (1,837 cartas)
+  - **Mi Colección** - Cartas que tienes (Tengo)
+  - **Lista de Deseos** - Cartas que quieres (Deseo)
+✅ **Trackeo por versión:** Normal y Foil separados  
+✅ **Gestión de cantidades:** Botones [+]/[-] para incrementar/decrementar  
+✅ **Filtros completos:** Búsqueda, Tipo, Set, Rareza, Precio, Ordenamiento  
+✅ **Estadísticas automáticas:**
+  - Total de cartas que tienes
+  - Total de cartas que deseas
+  - Valor de tu colección (calculado en tiempo real)
+✅ **Persistente en Supabase** - Tus datos siempre disponibles  
+✅ **Responsive** - Grid adaptable (2-6 columnas según pantalla)  
+✅ **Visual claro:** Verde para "Tengo", Rojo para "Deseo"  
+
 ### Admin Dashboard
 ✅ **Gestión de Inventario** - Stock, precios + **Import desde API** ⭐  
 ✅ **Gestión de Órdenes** - Compras, ingresos brutos/netos **con fees reales de MP** ⭐  
 ✅ **Gestión de Submissions** - Revisar/editar/aprobar cartas de usuarios ⭐  
+✅ **Gestión de Usuarios** - Asignar/remover roles de admin 🆕  
 ✅ **Logs de Actividad** - Auditoría completa de acciones  
 ✅ **Herramientas Admin** - Procesar pagos, inspeccionar, actualizar fees ⭐  
 ✅ Filtros avanzados: Set, Tipo, Rareza, Estado de Stock, **Normal/Foil**  
@@ -93,8 +116,8 @@ pnpm dev
 ✅ **Spinners visuales** durante guardado  
 ✅ **Validación de errores** de Supabase en tiempo real  
 ✅ Autenticación segura con logout  
-✅ **Navegación con tabs** entre 4 secciones principales  
-✅ **Multi-idioma completo** (EN, ES, FR, DE) - 200+ keys ⭐  
+✅ **Navegación con tabs** entre 5 secciones principales 🆕  
+✅ **Multi-idioma completo** (EN, ES, FR, DE) - 300+ keys ⭐  
 ✅ Integración con **Supabase** en tiempo real  
 ✅ **Un click import** - Cartas desde Lorcana API sin terminal ⭐  
 
@@ -102,13 +125,13 @@ pnpm dev
 
 ## 📚 Documentación
 
-👉 **Índice completo:** [docs/README.md](./docs/README.md)
-
 ### 🚀 **Empezar Aquí**
 
 | Documento | Descripción |
 |-----------|-------------|
-| [🔒 Quick Start Auth](./docs/security/QUICK_START_AUTH.md) | Configurar seguridad en 15 minutos |
+| [🔒 Guía de Seguridad](./docs/SECURITY.md) | Estado actual y configuración de seguridad |
+| [💳 Mercado Pago Setup](./docs/setup/MERCADOPAGO_SETUP.md) | Configurar pagos con Mercado Pago |
+| [🔧 Variables de Entorno](./docs/setup/ENV_EXAMPLE.md) | Ejemplo de .env.local completo |
 | [🗄️ Supabase Setup](./docs/setup/SUPABASE_SETUP.md) | Configurar base de datos |
 | [📊 Importar Cartas](./docs/guides/QUICK_START_IMPORT.md) | Importar 1,837 cartas de Lorcana |
 
