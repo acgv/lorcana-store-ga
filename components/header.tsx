@@ -26,11 +26,14 @@ import { useRouter } from "next/navigation"
 export function Header() {
   const { t } = useLanguage()
   const { totalItems } = useCart()
-  const { user, signOut: userSignOut } = useUser()
-  const { isAdmin, logout: adminLogout } = useAuth()
+  const { user, signOut: userSignOut, isAdmin: isUserAdmin } = useUser()
+  const { isAdmin: isAdminAuth, logout: adminLogout } = useAuth()
   const [cartOpen, setCartOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const router = useRouter()
+
+  // User is admin if they're admin via Google OAuth OR traditional admin login
+  const isAdmin = isUserAdmin || isAdminAuth
 
   const handleSignOut = async () => {
     await userSignOut()

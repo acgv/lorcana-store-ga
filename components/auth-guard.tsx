@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
+import { useUser } from "@/hooks/use-user"
 import { Loader2 } from "lucide-react"
 
 interface AuthGuardProps {
@@ -11,8 +12,9 @@ interface AuthGuardProps {
 export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const { user, loading: userLoading, isAdmin: isGoogleAdmin } = useUser()
   
-  // Verificar token sincronamente para evitar doble loading
+  // Verificar token de admin tradicional
   const getToken = () => {
     if (typeof window === "undefined") return null
     const localToken = localStorage.getItem("admin_token")
@@ -23,28 +25,45 @@ export function AuthGuard({ children }: AuthGuardProps) {
     return localToken || cookieToken
   }
 
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!getToken())
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
 
   useEffect(() => {
+    // Wait for user loading to complete
+    if (userLoading) return
+
     const token = getToken()
     
-    if (!token) {
-      // No hay token, redirigir a login
+    // User is authenticated if:
+    // 1. They have an admin token (traditional login) OR
+    // 2. They're logged in with Google AND have admin role
+    const isAuth = !!token || (!!user && isGoogleAdmin)
+    
+    if (!isAuth) {
+      // Not authenticated, redirect to admin login
       const loginUrl = `/admin/login?redirect=${encodeURIComponent(pathname)}`
       router.push(loginUrl)
       setIsAuthenticated(false)
     } else {
-      // Hay token, permitir acceso
+      // Authenticated, allow access
       setIsAuthenticated(true)
     }
-  }, [router, pathname])
+  }, [router, pathname, user, userLoading, isGoogleAdmin])
 
-  // Si no autenticado, no mostrar nada (está redirigiendo)
+  // Show loading while checking authentication
+  if (isAuthenticated === null || userLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  // If not authenticated, don't show content (redirecting)
   if (!isAuthenticated) {
     return null
   }
 
-  // Si autenticado, mostrar contenido directamente (sin loading extra)
+  // If authenticated, show content
   return <>{children}</>
 }
 
