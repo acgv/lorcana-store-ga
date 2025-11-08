@@ -353,6 +353,7 @@ export default function MyCollectionPage() {
                           isInCollection={isInCollection}
                           addToCollection={addToCollection}
                           removeFromCollection={removeFromCollection}
+                          refresh={refresh}
                         />
                       ))}
                     </div>
@@ -442,7 +443,8 @@ function AllCardsCard({
   collection,
   isInCollection,
   addToCollection,
-  removeFromCollection
+  removeFromCollection,
+  refresh
 }: { 
   card: CardType
   t: (key: string) => string
@@ -451,6 +453,7 @@ function AllCardsCard({
   isInCollection: (cardId: string, status: "owned" | "wanted", version: "normal" | "foil") => boolean
   addToCollection: (cardId: string, status: "owned" | "wanted", version: "normal" | "foil", quantity: number) => Promise<any>
   removeFromCollection: (cardId: string, status: "owned" | "wanted", version: "normal" | "foil") => Promise<any>
+  refresh: () => void
 }) {
   const { toast } = useToast()
   const [updating, setUpdating] = useState<string | null>(null)
@@ -489,13 +492,10 @@ function AllCardsCard({
   const handleIncrement = async (status: "owned" | "wanted", version: "normal" | "foil") => {
     setUpdating(`inc-${status}-${version}`)
     const currentQty = getQuantity(status, version)
-    const result = await addToCollection(card.id, status, version, currentQty + 1)
-    setUpdating(null)
     
-    if (!result.success && result.code === "DUPLICATE") {
-      // Update existing entry
-      await updateQuantity(status, version, currentQty + 1)
-    }
+    // Si ya existe, actualizar directamente en vez de intentar agregar
+    await updateQuantity(status, version, currentQty + 1)
+    setUpdating(null)
   }
 
   const handleDecrement = async (status: "owned" | "wanted", version: "normal" | "foil") => {
@@ -527,7 +527,10 @@ function AllCardsCard({
         }),
       })
       const data = await response.json()
-      if (!data.success) {
+      if (data.success) {
+        // Recargar colección desde el servidor
+        refresh()
+      } else {
         toast({
           variant: "destructive",
           title: t("error"),
@@ -536,6 +539,11 @@ function AllCardsCard({
       }
     } catch (error) {
       console.error("Error updating quantity:", error)
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: "Error updating quantity",
+      })
     }
   }
 

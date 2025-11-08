@@ -131,6 +131,12 @@ export function useCollection() {
     }
   }
 
+  const manualRefresh = () => {
+    // Invalidar cache para forzar recarga
+    lastUserIdRef.current = null
+    loadCollection()
+  }
+
   return {
     collection,
     loading,
@@ -138,7 +144,7 @@ export function useCollection() {
     addToCollection,
     removeFromCollection,
     loadCollection, // Exponer para refresh manual
-    refresh: loadCollection, // Alias para compatibilidad
+    refresh: manualRefresh, // Forzar recarga invalidando cache
   }
 }
 
