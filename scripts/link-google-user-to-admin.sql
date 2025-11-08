@@ -17,15 +17,20 @@ SELECT
 FROM auth.users
 WHERE email = 'acgv.24.10@gmail.com'; -- ⭐ CHANGE THIS TO YOUR EMAIL
 
--- Step 2: Insert admin role for your Google user
--- Copy the user_id from Step 1 and paste below
+-- Step 2: Insert admin role for your Google user (only if not exists)
+-- This will skip if the role already exists
 INSERT INTO public.user_roles (user_id, role, created_at)
-VALUES (
-  (SELECT id FROM auth.users WHERE email = 'acgv.24.10@gmail.com'), -- ⭐ CHANGE THIS
-  'admin',
-  NOW()
-)
-ON CONFLICT (user_id, role) DO NOTHING;
+SELECT 
+  id as user_id,
+  'admin' as role,
+  NOW() as created_at
+FROM auth.users
+WHERE email = 'acgv.24.10@gmail.com' -- ⭐ CHANGE THIS
+  AND NOT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = (SELECT id FROM auth.users WHERE email = 'acgv.24.10@gmail.com')
+      AND role = 'admin'
+  );
 
 -- Step 3: Verify the admin role was added
 SELECT 
