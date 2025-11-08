@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
-import { LogOut, User, Package, ShoppingBag, FileText, Activity, Wrench } from "lucide-react"
+import { LogOut, User, Users, Package, ShoppingBag, FileText, Activity, Wrench } from "lucide-react"
 import { usePathname } from "next/navigation"
 import {
   DropdownMenu,
@@ -36,6 +36,7 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
     { href: "/admin/inventory", labelKey: "catalog", icon: Package },
     { href: "/admin/orders", labelKey: "orders", icon: ShoppingBag },
     { href: "/admin/submissions", labelKey: "products", icon: FileText },
+    { href: "/admin/users", labelKey: "allUsers", icon: Users },
     { href: "/admin/logs", labelKey: "actions", icon: Activity },
   ]
 
