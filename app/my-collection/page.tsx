@@ -60,14 +60,20 @@ export default function MyCollectionPage() {
   const loadAllCards = async () => {
     try {
       setLoadingCards(true)
+      console.log("🔍 Fetching cards from /api/inventory...")
       const response = await fetch("/api/inventory")
       const data = await response.json()
       
+      console.log("📦 API Response:", data)
+      console.log("📊 Cards loaded:", data.inventory?.length || 0)
+      
       if (data.success) {
-        setAllCards(data.data || [])
+        setAllCards(data.inventory || [])
+      } else {
+        console.error("❌ API returned success:false", data)
       }
     } catch (error) {
-      console.error("Error loading cards:", error)
+      console.error("❌ Error loading cards:", error)
       toast({
         variant: "destructive",
         title: t("error"),

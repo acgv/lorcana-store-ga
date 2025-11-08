@@ -49,7 +49,10 @@ export function proxy(request: NextRequest) {
   // Rutas de admin que necesitan protección
   const isAdminPath = path.startsWith("/admin")
   const isAdminLoginPath = path.startsWith("/admin/login")
-  const isAdminApiPath = path.startsWith("/api/inventory") || 
+  
+  // Solo bloquear operaciones de escritura en APIs
+  // GET a /api/inventory es público (para catálogo y colección)
+  const isAdminApiPath = (path.startsWith("/api/inventory") && request.method !== "GET") || 
                          path.startsWith("/api/submissions") ||
                          path.startsWith("/api/logs")
 
