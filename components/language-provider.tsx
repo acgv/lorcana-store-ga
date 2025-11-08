@@ -270,6 +270,7 @@ const translations: Record<Language, Record<string, string>> = {
     signUp: "Sign Up",
     welcomeBack: "Welcome back!",
     welcomeMessage: "Sign in with your Google account to continue",
+    noAccountNeeded: "No account needed - your Google account is all you need",
     // My Submissions
     mySubmissions: "My Submissions",
     mySubmissionsDesc: "Manage your submitted card proposals",
@@ -494,6 +495,7 @@ const translations: Record<Language, Record<string, string>> = {
     signUp: "S'inscrire",
     welcomeBack: "Bienvenue!",
     welcomeMessage: "Connectez-vous avec votre compte Google pour continuer",
+    noAccountNeeded: "Aucun compte requis - votre compte Google suffit",
     // My Submissions
     mySubmissions: "Mes Soumissions",
     mySubmissionsDesc: "Gérez vos propositions de cartes soumises",
@@ -718,6 +720,7 @@ const translations: Record<Language, Record<string, string>> = {
     signUp: "Registrieren",
     welcomeBack: "Willkommen zurück!",
     welcomeMessage: "Melden Sie sich mit Ihrem Google-Konto an, um fortzufahren",
+    noAccountNeeded: "Kein Konto erforderlich - Ihr Google-Konto reicht aus",
     // My Submissions
     mySubmissions: "Meine Einreichungen",
     mySubmissionsDesc: "Verwalten Sie Ihre eingereichten Kartenvorschläge",
@@ -1001,6 +1004,7 @@ const translations: Record<Language, Record<string, string>> = {
     signUp: "Registrarse",
     welcomeBack: "¡Bienvenido de nuevo!",
     welcomeMessage: "Inicia sesión con tu cuenta de Google para continuar",
+    noAccountNeeded: "No necesitas crear cuenta - con tu cuenta de Google es suficiente",
     // My Submissions
     mySubmissions: "Mis Envíos",
     mySubmissionsDesc: "Gestiona tus propuestas de cartas enviadas",
