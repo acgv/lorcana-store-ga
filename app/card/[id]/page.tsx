@@ -129,19 +129,29 @@ export default function CardDetailPage() {
     }
   }
 
-  // Cargar carta desde API
+  // Cargar carta desde API de inventario (método original que funciona)
   useEffect(() => {
     const loadCard = async () => {
       try {
         console.log(`🔍 Cargando carta con ID: "${id}"`)
-        const response = await fetch(`/api/cards/${id}`)
+        
+        // Usar el endpoint de inventario que ya funciona
+        const response = await fetch(`/api/inventory`)
         const result = await response.json()
         
         if (result.success && result.data) {
-          console.log(`✅ Carta encontrada: ${result.data.name} (${result.data.id})`)
-          setCard(result.data)
+          // Buscar la carta específica por ID
+          const foundCard = result.data.find((c: Card) => c.id === id)
+          
+          if (foundCard) {
+            console.log(`✅ Carta encontrada: ${foundCard.name} (${foundCard.id})`)
+            setCard(foundCard)
+          } else {
+            console.log(`❌ Carta no encontrada en inventario`)
+            setCard(null)
+          }
         } else {
-          console.log(`❌ Carta no encontrada`)
+          console.log(`❌ Error obteniendo inventario`)
           setCard(null)
         }
       } catch (error) {
