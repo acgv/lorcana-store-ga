@@ -46,9 +46,15 @@ export function useUser() {
         .eq("role", "admin")
         .maybeSingle()
 
-      setIsAdmin(!!data)
+      if (error) {
+        console.error("Error checking admin status:", error)
+        setIsAdmin(false)
+      } else {
+        setIsAdmin(!!data)
+        console.log("✅ Admin status checked:", !!data, "for user:", userId)
+      }
     } catch (error) {
-      console.error("Error checking admin status:", error)
+      console.error("❌ Exception checking admin status:", error)
       setIsAdmin(false)
     } finally {
       setLoading(false)
