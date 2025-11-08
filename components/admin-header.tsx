@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
+import { useUser } from "@/hooks/use-user"
 import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
 import { LogOut, User, Users, Package, ShoppingBag, FileText, Activity, Wrench } from "lucide-react"
@@ -20,9 +21,19 @@ interface AdminHeaderProps {
 }
 
 export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
-  const { user, logout } = useAuth()
+  const { user: adminUser, logout } = useAuth()
+  const { user: googleUser } = useUser()
   const { t } = useLanguage()
   const pathname = usePathname()
+  
+  // Get display name from Google user metadata or email
+  const displayName = googleUser?.user_metadata?.name || 
+                      googleUser?.user_metadata?.full_name || 
+                      googleUser?.email?.split('@')[0] ||
+                      adminUser?.email?.split('@')[0] ||
+                      "Admin"
+  
+  const displayEmail = googleUser?.email || adminUser?.email || "admin@gacompany.cl"
 
   const handleLogout = () => {
     // Limpiar todo
@@ -61,14 +72,14 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
                   <User className="h-4 w-4" />
-                  <span className="hidden sm:inline">{user?.email || "Admin"}</span>
+                  <span className="hidden sm:inline">{displayName}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem disabled className="text-xs text-muted-foreground">
-                  {user?.email || "admin@gacompany.cl"}
+                  {displayEmail}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
