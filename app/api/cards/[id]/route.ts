@@ -1,86 +1,68 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { supabase } from "@/lib/db"
-import type { ApiResponse, Card } from "@/lib/types"
+import { mockCards } from "@/lib/mock-data"
+import type { Card, ApiResponse } from "@/lib/types"
 
-// GET - Get a single card by ID
 export async function GET(
-  request: NextRequest,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    // Next.js 16: params is now async
-    const { id: cardId } = await params
-    console.log("🔍 Fetching card with ID:", cardId)
+  const { id } = await params
 
-    // Query Supabase for the card
-    const { data, error } = await supabase
-      .from("cards")
-      .select("*")
-      .eq("id", cardId)
-      .single()
-
-    console.log("📊 Supabase response:", { 
-      found: !!data, 
-      error: error?.message,
-      cardId 
-    })
-
-    if (error || !data) {
-      console.error("❌ Error fetching card:", error)
-      
-      // Try alternative query to see if card exists with different ID format
-      const { data: searchData, error: searchError } = await supabase
-        .from("cards")
-        .select("id, name")
-        .ilike("id", `%${cardId}%`)
-        .limit(5)
-      
-      console.log("🔍 Similar cards found:", searchData)
-      
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Card not found",
-          debug: {
-            requestedId: cardId,
-            similarCards: searchData?.map(c => c.id) || [],
-          }
-        } as ApiResponse,
-        { status: 404 }
-      )
-    }
-
-    // Map from database format to application format
-    const card: Card = {
-      id: data.id,
-      name: data.name,
-      set: data.set,
-      rarity: data.rarity,
-      type: data.type,
-      cardNumber: data.cardnumber || data.card_number,
-      description: data.description,
-      image: data.image,
-      language: data.language || "EN",
-      price: data.price,
-      foilPrice: data.foilprice || data.foil_price,
-      normalStock: data.normalstock || data.normal_stock || 0,
-      foilStock: data.foilstock || data.foil_stock || 0,
-      createdAt: data.createdat || data.created_at,
-      updatedAt: data.updatedat || data.updated_at,
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: card,
-    } as ApiResponse<Card>)
-  } catch (error) {
-    console.error("Error fetching card:", error)
+  if (!id) {
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      } as ApiResponse,
-      { status: 500 }
+      { success: false, error: "Card ID is required" },
+      { status: 400 }
     )
   }
+
+  let card: Card | null = null
+  let dataSource = "mock"
+
+  // Try Supabase first
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("cards")
+        .select("*")
+        .eq("id", id)
+        .eq("status", "approved")
+        .single()
+
+      if (!error && data) {
+        card = data as Card
+        dataSource = "supabase"
+        console.log(`✓ GET /api/cards/${id} - Found in SUPABASE`)
+      } else {
+        console.log(`⚠ GET /api/cards/${id} - Not found in Supabase:`, error?.message)
+      }
+    } catch (err) {
+      console.log(`⚠ GET /api/cards/${id} - Supabase connection error:`, err)
+    }
+  }
+
+  // Fallback to mock data if not found in Supabase
+  if (!card) {
+    card = mockCards.find((c) => c.id === id) || null
+    if (card) {
+      console.log(`✓ GET /api/cards/${id} - Found in MOCK`)
+    }
+  }
+
+  if (!card) {
+    return NextResponse.json(
+      { success: false, error: "Card not found" },
+      { status: 404 }
+    )
+  }
+
+  const response: ApiResponse<Card> = {
+    success: true,
+    data: card,
+    meta: {
+      source: dataSource,
+    } as any,
+  }
+
+  return NextResponse.json(response)
 }
