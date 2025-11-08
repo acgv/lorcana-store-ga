@@ -22,6 +22,20 @@ export default function SubmitCardPage() {
   const { user, loading } = useUser()
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  
+  // ⭐ MOVED HERE: All useState hooks must be before any conditional returns
+  const [formData, setFormData] = useState({
+    name: "",
+    set: "",
+    rarity: "",
+    type: "",
+    cardNumber: "",
+    description: "",
+    imageUrl: "",
+    suggestedPrice: "",
+    contactEmail: "",
+    additionalNotes: "",
+  })
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -71,19 +85,6 @@ export default function SubmitCardPage() {
       </>
     )
   }
-
-  const [formData, setFormData] = useState({
-    name: "",
-    set: "",
-    rarity: "",
-    type: "",
-    cardNumber: "",
-    description: "",
-    imageUrl: "",
-    suggestedPrice: "",
-    contactEmail: "",
-    additionalNotes: "",
-  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
