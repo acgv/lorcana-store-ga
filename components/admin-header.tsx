@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { useUser } from "@/hooks/use-user"
@@ -26,21 +27,33 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
   const { t } = useLanguage()
   const pathname = usePathname()
   
-  // Get display name with fallback to localStorage (if Google session lost)
-  const savedName = typeof window !== "undefined" ? localStorage.getItem('user_name') : null
-  const savedEmail = typeof window !== "undefined" ? localStorage.getItem('user_email') : null
-  
-  const displayName = googleUser?.user_metadata?.name || 
-                      googleUser?.user_metadata?.full_name || 
-                      savedName || // ⭐ Fallback to saved name
-                      googleUser?.email?.split('@')[0] ||
-                      adminUser?.email?.split('@')[0] ||
-                      "Admin"
-  
-  const displayEmail = googleUser?.email || 
-                      savedEmail || // ⭐ Fallback to saved email
-                      adminUser?.email || 
-                      "admin@gacompany.cl"
+  // SSR-safe state for display name
+  const [displayName, setDisplayName] = useState("Admin")
+  const [displayEmail, setDisplayEmail] = useState("admin@gacompany.cl")
+  const [mounted, setMounted] = useState(false)
+
+  // Update display name only on client
+  useEffect(() => {
+    setMounted(true)
+    
+    const savedName = localStorage.getItem('user_name')
+    const savedEmail = localStorage.getItem('user_email')
+    
+    const name = googleUser?.user_metadata?.name || 
+                 googleUser?.user_metadata?.full_name || 
+                 savedName ||
+                 googleUser?.email?.split('@')[0] ||
+                 adminUser?.email?.split('@')[0] ||
+                 "Admin"
+    
+    const email = googleUser?.email || 
+                  savedEmail ||
+                  adminUser?.email || 
+                  "admin@gacompany.cl"
+    
+    setDisplayName(name)
+    setDisplayEmail(email)
+  }, [googleUser, adminUser])
 
   const handleLogout = () => {
     // Limpiar todo
@@ -81,14 +94,16 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
                   <User className="h-4 w-4" />
-                  <span className="hidden sm:inline">{displayName}</span>
+                  <span className="hidden sm:inline" suppressHydrationWarning>
+                    {mounted ? displayName : "Admin"}
+                  </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem disabled className="text-xs text-muted-foreground">
-                  {displayEmail}
+                <DropdownMenuItem disabled className="text-xs text-muted-foreground" suppressHydrationWarning>
+                  {mounted ? displayEmail : "admin@gacompany.cl"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
