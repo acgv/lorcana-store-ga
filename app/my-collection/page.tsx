@@ -426,7 +426,7 @@ function AllCardsCard({
             <Button
               variant={hasNormalOwned ? "default" : "outline"}
               size="sm"
-              className="flex-1"
+              className="flex-1 hover:bg-primary hover:text-primary-foreground"
               onClick={() => handleAdd("owned", "normal")}
               disabled={adding === "owned-normal"}
             >
@@ -448,7 +448,7 @@ function AllCardsCard({
             <Button
               variant={hasFoilOwned ? "default" : "outline"}
               size="sm"
-              className="flex-1"
+              className="flex-1 hover:bg-primary hover:text-primary-foreground"
               onClick={() => handleAdd("owned", "foil")}
               disabled={adding === "owned-foil"}
             >
@@ -473,7 +473,7 @@ function AllCardsCard({
             <Button
               variant={hasNormalWanted ? "destructive" : "outline"}
               size="sm"
-              className="flex-1"
+              className="flex-1 hover:bg-destructive hover:text-destructive-foreground"
               onClick={() => handleAdd("wanted", "normal")}
               disabled={adding === "wanted-normal"}
             >
@@ -488,7 +488,7 @@ function AllCardsCard({
             <Button
               variant={hasNormalWanted ? "destructive" : "outline"}
               size="sm"
-              className="flex-1"
+              className="flex-1 hover:bg-destructive hover:text-destructive-foreground"
               onClick={() => handleAdd("wanted", "foil")}
               disabled={adding === "wanted-foil"}
             >

@@ -84,7 +84,7 @@ function LoginContent() {
             <button
               onClick={handleGoogleSignIn}
               disabled={signingIn}
-              className="w-full h-12 px-4 text-base font-medium bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-900 border border-gray-300 rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+              className="w-full h-12 px-4 text-base font-medium bg-white hover:bg-gray-50 hover:text-gray-900 active:bg-gray-100 text-gray-900 border border-gray-300 rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
             >
               {signingIn ? (
                 <>
