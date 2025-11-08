@@ -2,7 +2,27 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 export function proxy(request: NextRequest) {
+  const hostname = request.headers.get("host") || ""
+  const url = request.nextUrl.clone()
   const path = request.nextUrl.pathname
+
+  // ═══════════════════════════════════════════════════════════════
+  // DOMAIN REDIRECT: Vercel.app → gacompany.cl
+  // ═══════════════════════════════════════════════════════════════
+  const vercelDomains = [
+    "lorcana-store-ga.vercel.app",
+    "lorcana-store-ga-git-master-acgvs-projects.vercel.app",
+  ]
+
+  const isVercelDomain = vercelDomains.some((domain) => hostname.includes(domain))
+
+  if (isVercelDomain && !hostname.includes("gacompany.cl")) {
+    // Redirect to custom domain (preserves path and query params)
+    url.host = "www.gacompany.cl"
+    url.protocol = "https:"
+    return NextResponse.redirect(url, { status: 308 })
+  }
+  // ═══════════════════════════════════════════════════════════════
 
   // Rutas públicas que no requieren auth
   const publicPaths = [
