@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Header } from "@/components/header"
@@ -36,13 +36,17 @@ interface CollectionItem {
 export default function MyCollectionPage() {
   const { t } = useLanguage()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, loading: userLoading } = useUser()
   const { collection, isInCollection, addToCollection, removeFromCollection, refresh } = useCollection()
   const { toast } = useToast()
   
   const [allCards, setAllCards] = useState<CardType[]>([])
   const [loadingCards, setLoadingCards] = useState(true)
-  const [activeTab, setActiveTab] = useState<"all" | "owned" | "wanted">("all")
+  
+  // Leer tab desde URL o usar default
+  const tabFromUrl = searchParams.get("tab") as "all" | "owned" | "wanted" | null
+  const [activeTab, setActiveTab] = useState<"all" | "owned" | "wanted">(tabFromUrl || "all")
   const [filters, setFilters] = useState({
     type: "all",
     set: "all",
@@ -61,6 +65,21 @@ export default function MyCollectionPage() {
       router.push("/login?redirect=/my-collection")
     }
   }, [user, userLoading, router])
+
+  // Sync activeTab with URL
+  useEffect(() => {
+    const newUrl = activeTab === "all" 
+      ? "/my-collection" 
+      : `/my-collection?tab=${activeTab}`
+    router.replace(newUrl, { scroll: false })
+  }, [activeTab, router])
+
+  // Restore tab from URL on mount
+  useEffect(() => {
+    if (tabFromUrl && ["all", "owned", "wanted"].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl)
+    }
+  }, []) // Solo al montar
 
   // Load all cards
   useEffect(() => {
