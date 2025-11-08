@@ -56,8 +56,8 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
     localStorage.removeItem("user_name")
     localStorage.removeItem("user_email")
     document.cookie = "admin_token=; path=/; max-age=0"
-    // Redirigir
-    window.location.href = "/admin/login"
+    // Redirigir al home
+    window.location.href = "/"
   }
 
   const navItems = [
