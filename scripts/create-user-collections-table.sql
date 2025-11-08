@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.user_collections (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   card_id TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('owned', 'wanted')),
+  version TEXT NOT NULL DEFAULT 'normal' CHECK (version IN ('normal', 'foil')),
   quantity INTEGER DEFAULT 1 CHECK (quantity > 0),
   notes TEXT,
   added_at TIMESTAMPTZ DEFAULT NOW(),
@@ -34,10 +35,11 @@ CREATE INDEX IF NOT EXISTS idx_user_collections_status
 CREATE INDEX IF NOT EXISTS idx_user_collections_user_card 
   ON public.user_collections(user_id, card_id);
 
--- Create unique constraint: one entry per user+card+status
--- (User can have same card as both 'owned' AND 'wanted')
+-- Create unique constraint: one entry per user+card+status+version
+-- (User can have same card in different versions and states)
+-- Example: Own 2 normal, own 1 foil, want 3 foil
 CREATE UNIQUE INDEX IF NOT EXISTS idx_user_collections_unique 
-  ON public.user_collections(user_id, card_id, status);
+  ON public.user_collections(user_id, card_id, status, version);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.user_collections ENABLE ROW LEVEL SECURITY;
@@ -108,13 +110,13 @@ WHERE tablename = 'user_collections';
 -- EXAMPLE USAGE (for testing)
 -- ============================================
 
--- Add a card to "owned" collection:
--- INSERT INTO public.user_collections (user_id, card_id, status, quantity)
--- VALUES ('YOUR_USER_ID', 'tfc-001', 'owned', 2);
+-- Add a normal card to "owned" collection:
+-- INSERT INTO public.user_collections (user_id, card_id, status, version, quantity)
+-- VALUES ('YOUR_USER_ID', 'tfc-001', 'owned', 'normal', 2);
 
--- Add a card to "wanted" wishlist:
--- INSERT INTO public.user_collections (user_id, card_id, status)
--- VALUES ('YOUR_USER_ID', 'tfc-002', 'wanted');
+-- Add a foil card to "wanted" wishlist:
+-- INSERT INTO public.user_collections (user_id, card_id, status, version, quantity)
+-- VALUES ('YOUR_USER_ID', 'tfc-002', 'wanted', 'foil', 1);
 
 -- View your collection:
 -- SELECT * FROM public.user_collections WHERE user_id = auth.uid();
@@ -122,12 +124,16 @@ WHERE tablename = 'user_collections';
 -- ============================================
 -- NOTES
 -- ============================================
--- 1. status: 'owned' = User owns this card
--- 2. status: 'wanted' = User wants this card
--- 3. User can have same card in both states (own 1, want more)
--- 4. quantity: Default 1, user can specify how many they own
+-- 1. status: 'owned' = User owns this card | 'wanted' = User wants this card
+-- 2. version: 'normal' or 'foil' - User can have both versions separately
+-- 3. quantity: How many they own/want (default 1)
+-- 4. User can have same card in multiple combinations:
+--    - Own 2 normal, want 1 foil
+--    - Own 1 foil, want 3 normal
+--    - Own both versions, want more of one
 -- 5. notes: Optional field for user notes (condition, language, etc.)
 -- 6. RLS policies ensure users only see/modify their own data
 -- 7. updated_at auto-updates on any change
+-- 8. Unique constraint on (user_id, card_id, status, version)
 -- ============================================
 

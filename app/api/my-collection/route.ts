@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, cardId, status, quantity, notes } = body
+    const { userId, cardId, status, version, quantity, notes } = body
 
     if (!userId || !cardId || !status) {
       return NextResponse.json(
@@ -76,12 +76,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (version && !["normal", "foil"].includes(version)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "version must be 'normal' or 'foil'",
+        },
+        { status: 400 }
+      )
+    }
+
     const { data, error } = await supabase
       .from("user_collections")
       .insert({
         user_id: userId,
         card_id: cardId,
         status,
+        version: version || 'normal',
         quantity: quantity || 1,
         notes: notes || null,
       })
@@ -128,6 +139,7 @@ export async function DELETE(request: NextRequest) {
     const userId = searchParams.get("userId")
     const cardId = searchParams.get("cardId")
     const status = searchParams.get("status")
+    const version = searchParams.get("version") || "normal"
 
     if (!userId || !cardId || !status) {
       return NextResponse.json(
@@ -145,6 +157,7 @@ export async function DELETE(request: NextRequest) {
       .eq("user_id", userId)
       .eq("card_id", cardId)
       .eq("status", status)
+      .eq("version", version)
 
     if (error) {
       console.error("Error removing from collection:", error)

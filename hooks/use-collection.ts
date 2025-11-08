@@ -7,6 +7,7 @@ interface CollectionItem {
   id: string
   card_id: string
   status: "owned" | "wanted"
+  version: "normal" | "foil"
   quantity: number
 }
 
@@ -41,11 +42,22 @@ export function useCollection() {
     }
   }
 
-  const isInCollection = (cardId: string, status: "owned" | "wanted"): boolean => {
-    return collection.some((item) => item.card_id === cardId && item.status === status)
+  const isInCollection = (
+    cardId: string, 
+    status: "owned" | "wanted", 
+    version: "normal" | "foil"
+  ): boolean => {
+    return collection.some(
+      (item) => item.card_id === cardId && item.status === status && item.version === version
+    )
   }
 
-  const addToCollection = async (cardId: string, status: "owned" | "wanted") => {
+  const addToCollection = async (
+    cardId: string, 
+    status: "owned" | "wanted",
+    version: "normal" | "foil" = "normal",
+    quantity: number = 1
+  ) => {
     if (!user) return { success: false, error: "Not logged in" }
 
     try {
@@ -56,7 +68,8 @@ export function useCollection() {
           userId: user.id,
           cardId,
           status,
-          quantity: 1,
+          version,
+          quantity,
         }),
       })
 
@@ -73,12 +86,16 @@ export function useCollection() {
     }
   }
 
-  const removeFromCollection = async (cardId: string, status: "owned" | "wanted") => {
+  const removeFromCollection = async (
+    cardId: string, 
+    status: "owned" | "wanted",
+    version: "normal" | "foil" = "normal"
+  ) => {
     if (!user) return { success: false, error: "Not logged in" }
 
     try {
       const response = await fetch(
-        `/api/my-collection?userId=${user.id}&cardId=${cardId}&status=${status}`,
+        `/api/my-collection?userId=${user.id}&cardId=${cardId}&status=${status}&version=${version}`,
         { method: "DELETE" }
       )
 
