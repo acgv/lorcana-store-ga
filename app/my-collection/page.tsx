@@ -349,8 +349,10 @@ export default function MyCollectionPage() {
                           card={card} 
                           t={t} 
                           user={user}
+                          collection={collection}
                           isInCollection={isInCollection}
                           addToCollection={addToCollection}
+                          removeFromCollection={removeFromCollection}
                         />
                       ))}
                     </div>
@@ -437,23 +439,35 @@ function AllCardsCard({
   card, 
   t, 
   user,
+  collection,
   isInCollection,
-  addToCollection
+  addToCollection,
+  removeFromCollection
 }: { 
   card: CardType
   t: (key: string) => string
   user: any
+  collection: any[]
   isInCollection: (cardId: string, status: "owned" | "wanted", version: "normal" | "foil") => boolean
   addToCollection: (cardId: string, status: "owned" | "wanted", version: "normal" | "foil", quantity: number) => Promise<any>
+  removeFromCollection: (cardId: string, status: "owned" | "wanted", version: "normal" | "foil") => Promise<any>
 }) {
   const { toast } = useToast()
-  const [adding, setAdding] = useState<string | null>(null)
+  const [updating, setUpdating] = useState<string | null>(null)
+
+  // Get quantities from collection
+  const getQuantity = (status: "owned" | "wanted", version: "normal" | "foil") => {
+    const item = collection.find(
+      (i) => i.card_id === card.id && i.status === status && i.version === version
+    )
+    return item?.quantity || 0
+  }
 
   const handleAdd = async (status: "owned" | "wanted", version: "normal" | "foil") => {
-    setAdding(`${status}-${version}`)
+    setUpdating(`add-${status}-${version}`)
     
     const result = await addToCollection(card.id, status, version, 1)
-    setAdding(null)
+    setUpdating(null)
 
     if (result.success) {
       toast({
@@ -461,11 +475,8 @@ function AllCardsCard({
         description: status === "owned" ? t("addedToCollection") : t("addedToWishlist"),
       })
     } else if (result.code === "DUPLICATE") {
-      toast({
-        variant: "destructive",
-        title: t("error"),
-        description: status === "owned" ? t("alreadyOwned") : t("alreadyWanted"),
-      })
+      // If already exists, increment quantity
+      await handleIncrement(status, version)
     } else {
       toast({
         variant: "destructive",
@@ -475,10 +486,68 @@ function AllCardsCard({
     }
   }
 
+  const handleIncrement = async (status: "owned" | "wanted", version: "normal" | "foil") => {
+    setUpdating(`inc-${status}-${version}`)
+    const currentQty = getQuantity(status, version)
+    const result = await addToCollection(card.id, status, version, currentQty + 1)
+    setUpdating(null)
+    
+    if (!result.success && result.code === "DUPLICATE") {
+      // Update existing entry
+      await updateQuantity(status, version, currentQty + 1)
+    }
+  }
+
+  const handleDecrement = async (status: "owned" | "wanted", version: "normal" | "foil") => {
+    const currentQty = getQuantity(status, version)
+    if (currentQty <= 1) {
+      // Remove if quantity would be 0
+      setUpdating(`dec-${status}-${version}`)
+      await removeFromCollection(card.id, status, version)
+      setUpdating(null)
+    } else {
+      // Decrease quantity
+      setUpdating(`dec-${status}-${version}`)
+      await updateQuantity(status, version, currentQty - 1)
+      setUpdating(null)
+    }
+  }
+
+  const updateQuantity = async (status: "owned" | "wanted", version: "normal" | "foil", newQty: number) => {
+    try {
+      const response = await fetch("/api/my-collection", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          cardId: card.id,
+          status,
+          version,
+          quantity: newQty,
+        }),
+      })
+      const data = await response.json()
+      if (!data.success) {
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: data.error,
+        })
+      }
+    } catch (error) {
+      console.error("Error updating quantity:", error)
+    }
+  }
+
   const hasNormalOwned = isInCollection(card.id, "owned", "normal")
   const hasFoilOwned = isInCollection(card.id, "owned", "foil")
   const hasNormalWanted = isInCollection(card.id, "wanted", "normal")
   const hasFoilWanted = isInCollection(card.id, "wanted", "foil")
+  
+  const qtyNormalOwned = getQuantity("owned", "normal")
+  const qtyFoilOwned = getQuantity("owned", "foil")
+  const qtyNormalWanted = getQuantity("wanted", "normal")
+  const qtyFoilWanted = getQuantity("wanted", "foil")
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -526,85 +595,165 @@ function AllCardsCard({
         </div>
 
         <div className="space-y-2 mb-3">
-          {/* Add to Owned Buttons */}
-          <div className="flex gap-2">
+          {/* Normal Owned */}
+          {hasNormalOwned ? (
+            <div className="flex items-center gap-1 p-2 bg-green-500/10 rounded-md border border-green-500/20">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-green-600"
+                onClick={() => handleDecrement("owned", "normal")}
+                disabled={!!updating}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <div className="flex-1 text-center">
+                <span className="text-xs font-semibold text-green-600">
+                  {qtyNormalOwned}× {t("normal")}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-green-600"
+                onClick={() => handleIncrement("owned", "normal")}
+                disabled={!!updating}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
             <Button
-              variant={hasNormalOwned ? "default" : "outline"}
+              variant="outline"
               size="sm"
-              className="flex-1 hover:bg-primary hover:text-primary-foreground"
+              className="w-full hover:bg-primary hover:text-primary-foreground"
               onClick={() => handleAdd("owned", "normal")}
-              disabled={adding === "owned-normal"}
+              disabled={!!updating}
             >
-              {adding === "owned-normal" ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : hasNormalOwned ? (
-                <>
-                  <Check className="h-3 w-3 mr-1" />
-                  {t("normal")}
-                </>
-              ) : (
-                <>
-                  <Plus className="h-3 w-3 mr-1" />
-                  {t("normal")}
-                </>
-              )}
+              <Plus className="h-3 w-3 mr-1" />
+              {t("addNormal")}
             </Button>
+          )}
 
+          {/* Foil Owned */}
+          {hasFoilOwned ? (
+            <div className="flex items-center gap-1 p-2 bg-green-500/10 rounded-md border border-green-500/20">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-green-600"
+                onClick={() => handleDecrement("owned", "foil")}
+                disabled={!!updating}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <div className="flex-1 text-center">
+                <span className="text-xs font-semibold text-green-600">
+                  {qtyFoilOwned}× {t("foil")}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-green-600"
+                onClick={() => handleIncrement("owned", "foil")}
+                disabled={!!updating}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
             <Button
-              variant={hasFoilOwned ? "default" : "outline"}
+              variant="outline"
               size="sm"
-              className="flex-1 hover:bg-primary hover:text-primary-foreground"
+              className="w-full hover:bg-primary hover:text-primary-foreground"
               onClick={() => handleAdd("owned", "foil")}
-              disabled={adding === "owned-foil"}
+              disabled={!!updating}
             >
-              {adding === "owned-foil" ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : hasFoilOwned ? (
-                <>
-                  <Check className="h-3 w-3 mr-1" />
-                  {t("foil")}
-                </>
-              ) : (
-                <>
-                  <Plus className="h-3 w-3 mr-1" />
-                  {t("foil")}
-                </>
-              )}
+              <Plus className="h-3 w-3 mr-1" />
+              {t("addFoil")}
             </Button>
-          </div>
+          )}
 
-          {/* Add to Wanted Buttons */}
-          <div className="flex gap-2">
+          {/* Normal Wanted */}
+          {hasNormalWanted ? (
+            <div className="flex items-center gap-1 p-2 bg-red-500/10 rounded-md border border-red-500/20">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-red-600"
+                onClick={() => handleDecrement("wanted", "normal")}
+                disabled={!!updating}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <div className="flex-1 text-center">
+                <span className="text-xs font-semibold text-red-600">
+                  ❤️ {qtyNormalWanted}× {t("normal")}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-red-600"
+                onClick={() => handleIncrement("wanted", "normal")}
+                disabled={!!updating}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
             <Button
-              variant={hasNormalWanted ? "destructive" : "outline"}
+              variant="outline"
               size="sm"
-              className="flex-1 hover:bg-destructive hover:text-destructive-foreground"
+              className="w-full hover:bg-destructive hover:text-destructive-foreground"
               onClick={() => handleAdd("wanted", "normal")}
-              disabled={adding === "wanted-normal"}
+              disabled={!!updating}
             >
-              {adding === "wanted-normal" ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Heart className="h-3 w-3 mr-1" />
-              )}
+              <Heart className="h-3 w-3 mr-1" />
               {t("normal")}
             </Button>
+          )}
 
+          {/* Foil Wanted */}
+          {hasFoilWanted ? (
+            <div className="flex items-center gap-1 p-2 bg-red-500/10 rounded-md border border-red-500/20">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-red-600"
+                onClick={() => handleDecrement("wanted", "foil")}
+                disabled={!!updating}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <div className="flex-1 text-center">
+                <span className="text-xs font-semibold text-red-600">
+                  ❤️ {qtyFoilWanted}× {t("foil")}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-red-600"
+                onClick={() => handleIncrement("wanted", "foil")}
+                disabled={!!updating}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
             <Button
-              variant={hasNormalWanted ? "destructive" : "outline"}
+              variant="outline"
               size="sm"
-              className="flex-1 hover:bg-destructive hover:text-destructive-foreground"
+              className="w-full hover:bg-destructive hover:text-destructive-foreground"
               onClick={() => handleAdd("wanted", "foil")}
-              disabled={adding === "wanted-foil"}
+              disabled={!!updating}
             >
-              {adding === "wanted-foil" ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Heart className="h-3 w-3 mr-1" />
-              )}
+              <Heart className="h-3 w-3 mr-1" />
               {t("foil")}
             </Button>
-          </div>
+          )}
         </div>
 
         <div className="text-xs text-muted-foreground text-center">

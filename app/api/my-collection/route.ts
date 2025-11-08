@@ -132,6 +132,57 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PUT - Update quantity of a card in collection
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { userId, cardId, status, version, quantity } = body
+
+    if (!userId || !cardId || !status || !quantity) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "userId, cardId, status, and quantity are required",
+        },
+        { status: 400 }
+      )
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("user_collections")
+      .update({
+        quantity,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId)
+      .eq("card_id", cardId)
+      .eq("status", status)
+      .eq("version", version || "normal")
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error updating collection:", error)
+      throw error
+    }
+
+    return NextResponse.json({
+      success: true,
+      data,
+      message: "Quantity updated",
+    })
+  } catch (error) {
+    console.error("Error in PUT /api/my-collection:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+
 // DELETE - Remove card from collection
 export async function DELETE(request: NextRequest) {
   try {
