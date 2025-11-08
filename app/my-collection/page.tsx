@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -33,7 +33,7 @@ interface CollectionItem {
   card?: CardType
 }
 
-export default function MyCollectionPage() {
+function MyCollectionContent() {
   const { t } = useLanguage()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -451,6 +451,19 @@ export default function MyCollectionPage() {
       </main>
       <Footer />
     </>
+  )
+}
+
+// Wrapper with Suspense for useSearchParams
+export default function MyCollectionPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <MyCollectionContent />
+    </Suspense>
   )
 }
 
