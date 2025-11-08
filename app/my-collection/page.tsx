@@ -14,6 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { 
   Loader2, Lock, Package, Heart, Trash2, ExternalLink, 
@@ -42,6 +44,11 @@ export default function MyCollectionPage() {
   const [loadingCards, setLoadingCards] = useState(true)
   const [activeTab, setActiveTab] = useState<"all" | "owned" | "wanted">("all")
   const [searchTerm, setSearchTerm] = useState("")
+  const [filters, setFilters] = useState({
+    type: "all",
+    set: "all",
+    rarity: "all",
+  })
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -108,11 +115,29 @@ export default function MyCollectionPage() {
     return sum + (price * item.quantity)
   }, 0)
 
+  // Get unique values for filters
+  const uniqueTypes = ["all", ...new Set(allCards.map(c => c.type).filter(Boolean))]
+  const uniqueSets = ["all", ...new Set(allCards.map(c => c.set).filter(Boolean))]
+  const uniqueRarities = ["all", ...new Set(allCards.map(c => c.rarity).filter(Boolean))]
+
   // Filter cards for "All Cards" tab
-  const filteredAllCards = allCards.filter((card) =>
-    card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    card.id.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredAllCards = allCards.filter((card) => {
+    // Search filter
+    const matchesSearch = 
+      card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      card.id.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    // Type filter
+    const matchesType = filters.type === "all" || card.type === filters.type
+    
+    // Set filter
+    const matchesSet = filters.set === "all" || card.set === filters.set
+    
+    // Rarity filter
+    const matchesRarity = filters.rarity === "all" || card.rarity === filters.rarity
+    
+    return matchesSearch && matchesType && matchesSet && matchesRarity
+  })
 
   if (userLoading || !user) {
     return (
@@ -223,14 +248,76 @@ export default function MyCollectionPage() {
             {/* Tab 1: All Cards */}
             <TabsContent value="all">
               <Card className="mb-6">
-                <CardContent className="pt-6">
-                  <Input
-                    type="search"
-                    placeholder={t("search")}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="max-w-md"
-                  />
+                <CardContent className="pt-6 space-y-4">
+                  {/* Search */}
+                  <div>
+                    <Label>{t("search")}</Label>
+                    <Input
+                      type="search"
+                      placeholder={t("search")}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Filters */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Type Filter */}
+                    <div>
+                      <Label>{t("type")}</Label>
+                      <Select value={filters.type} onValueChange={(value) => setFilters({...filters, type: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {uniqueTypes.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type === "all" ? t("allTypes") : type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Set Filter */}
+                    <div>
+                      <Label>{t("set")}</Label>
+                      <Select value={filters.set} onValueChange={(value) => setFilters({...filters, set: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {uniqueSets.map((set) => (
+                            <SelectItem key={set} value={set}>
+                              {set === "all" ? t("allSets") : set}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Rarity Filter */}
+                    <div>
+                      <Label>{t("rarity")}</Label>
+                      <Select value={filters.rarity} onValueChange={(value) => setFilters({...filters, rarity: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {uniqueRarities.map((rarity) => (
+                            <SelectItem key={rarity} value={rarity}>
+                              {rarity === "all" ? t("allRarities") : rarity}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Results count */}
+                  <div className="text-sm text-muted-foreground">
+                    {filteredAllCards.length} {filteredAllCards.length === 1 ? t("cardFound") : t("cardsFound")}
+                  </div>
                 </CardContent>
               </Card>
 
@@ -239,7 +326,7 @@ export default function MyCollectionPage() {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                   {filteredAllCards.map((card) => (
                     <AllCardsCard 
                       key={card.id} 
@@ -274,7 +361,7 @@ export default function MyCollectionPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                   {ownedItems.map((item) => (
                     <CollectionCard
                       key={item.id}
@@ -307,7 +394,7 @@ export default function MyCollectionPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                   {wantedItems.map((item) => (
                     <CollectionCard
                       key={item.id}
