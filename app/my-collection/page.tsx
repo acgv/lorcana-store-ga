@@ -6,6 +6,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import { CardFilters } from "@/components/card-filters"
 import { useLanguage } from "@/components/language-provider"
 import { useUser } from "@/hooks/use-user"
 import { useCollection } from "@/hooks/use-collection"
@@ -13,10 +14,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { SlidersHorizontal } from "lucide-react"
 import { 
   Loader2, Lock, Package, Heart, Trash2, ExternalLink, 
   TrendingUp, Plus, Minus, Check, List, Sparkles
@@ -43,12 +43,17 @@ export default function MyCollectionPage() {
   const [allCards, setAllCards] = useState<CardType[]>([])
   const [loadingCards, setLoadingCards] = useState(true)
   const [activeTab, setActiveTab] = useState<"all" | "owned" | "wanted">("all")
-  const [searchTerm, setSearchTerm] = useState("")
   const [filters, setFilters] = useState({
     type: "all",
     set: "all",
     rarity: "all",
+    minPrice: 0,
+    maxPrice: 10000,
+    version: "all",
+    search: "",
   })
+  const [sortBy, setSortBy] = useState("cardNumberLowHigh")
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -115,28 +120,74 @@ export default function MyCollectionPage() {
     return sum + (price * item.quantity)
   }, 0)
 
-  // Get unique values for filters
-  const uniqueTypes = ["all", ...new Set(allCards.map(c => c.type).filter(Boolean))]
-  const uniqueSets = ["all", ...new Set(allCards.map(c => c.set).filter(Boolean))]
-  const uniqueRarities = ["all", ...new Set(allCards.map(c => c.rarity).filter(Boolean))]
-
-  // Filter cards for "All Cards" tab
+  // Filter cards for "All Cards" tab (same logic as catalog)
   const filteredAllCards = allCards.filter((card) => {
-    // Search filter
-    const matchesSearch = 
-      card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      card.id.toLowerCase().includes(searchTerm.toLowerCase())
-    
     // Type filter
-    const matchesType = filters.type === "all" || card.type === filters.type
+    if (filters.type && filters.type !== "all" && card.type !== filters.type) return false
     
     // Set filter
-    const matchesSet = filters.set === "all" || card.set === filters.set
+    if (filters.set && filters.set !== "all" && card.set !== filters.set) return false
     
     // Rarity filter
-    const matchesRarity = filters.rarity === "all" || card.rarity === filters.rarity
+    if (filters.rarity && filters.rarity !== "all" && card.rarity !== filters.rarity) return false
     
-    return matchesSearch && matchesType && matchesSet && matchesRarity
+    // Price range filter
+    const cardPrice = card.price || 0
+    if (cardPrice < filters.minPrice || cardPrice > filters.maxPrice) return false
+    
+    // Version availability filter
+    if (filters.version !== "all") {
+      if (filters.version === "normal" && (!card.normalStock || card.normalStock === 0)) return false
+      if (filters.version === "foil" && (!card.foilStock || card.foilStock === 0)) return false
+      if (filters.version === "both" && (
+        (!card.normalStock || card.normalStock === 0) || 
+        (!card.foilStock || card.foilStock === 0)
+      )) return false
+    }
+    
+    // Search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase()
+      if (!card.name.toLowerCase().includes(searchLower) && 
+          !card.id.toLowerCase().includes(searchLower)) {
+        return false
+      }
+    }
+    
+    return true
+  })
+
+  // Sort filtered cards (same logic as catalog)
+  const sortedCards = [...filteredAllCards].sort((a, b) => {
+    // Priority: Cards with stock first
+    const aHasStock = (a.normalStock && a.normalStock > 0) || (a.foilStock && a.foilStock > 0)
+    const bHasStock = (b.normalStock && b.normalStock > 0) || (b.foilStock && b.foilStock > 0)
+    
+    if (aHasStock && !bHasStock) return -1
+    if (!aHasStock && bHasStock) return 1
+
+    // Then apply selected sorting
+    switch (sortBy) {
+      case "nameAZ":
+        return a.name.localeCompare(b.name)
+      case "nameZA":
+        return b.name.localeCompare(a.name)
+      case "priceLowHigh":
+        return (a.price || 0) - (b.price || 0)
+      case "priceHighLow":
+        return (b.price || 0) - (a.price || 0)
+      case "rarityHighLow":
+        const rarityOrder = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
+        return (rarityOrder[b.rarity as keyof typeof rarityOrder] || 0) - 
+               (rarityOrder[a.rarity as keyof typeof rarityOrder] || 0)
+      case "rarityLowHigh":
+        const rarityOrder2 = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
+        return (rarityOrder2[a.rarity as keyof typeof rarityOrder2] || 0) - 
+               (rarityOrder2[b.rarity as keyof typeof rarityOrder2] || 0)
+      case "cardNumberLowHigh":
+      default:
+        return (a.cardNumber || 0) - (b.cardNumber || 0)
+    }
   })
 
   if (userLoading || !user) {
@@ -247,98 +298,75 @@ export default function MyCollectionPage() {
 
             {/* Tab 1: All Cards */}
             <TabsContent value="all">
-              <Card className="mb-6">
-                <CardContent className="pt-6 space-y-4">
-                  {/* Search */}
-                  <div>
-                    <Label>{t("search")}</Label>
-                    <Input
-                      type="search"
-                      placeholder={t("search")}
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+              {/* Filters - Mobile Sheet */}
+              <div className="lg:hidden mb-6">
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                      {t("filtersAndSort")}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-80 overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>{t("filtersAndSort")}</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-6">
+                      <CardFilters
+                        filters={filters}
+                        setFilters={setFilters}
+                        sortBy={sortBy}
+                        setSortBy={setSortBy}
+                        viewMode={viewMode}
+                        setViewMode={setViewMode}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+
+              <div className="grid lg:grid-cols-[280px_1fr] gap-6">
+                {/* Filters - Desktop Sidebar */}
+                <aside className="hidden lg:block">
+                  <div className="sticky top-4">
+                    <CardFilters
+                      filters={filters}
+                      setFilters={setFilters}
+                      sortBy={sortBy}
+                      setSortBy={setSortBy}
+                      viewMode={viewMode}
+                      setViewMode={setViewMode}
                     />
                   </div>
+                </aside>
 
-                  {/* Filters */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Type Filter */}
-                    <div>
-                      <Label>{t("type")}</Label>
-                      <Select value={filters.type} onValueChange={(value) => setFilters({...filters, type: value})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {uniqueTypes.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type === "all" ? t("allTypes") : type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Set Filter */}
-                    <div>
-                      <Label>{t("set")}</Label>
-                      <Select value={filters.set} onValueChange={(value) => setFilters({...filters, set: value})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {uniqueSets.map((set) => (
-                            <SelectItem key={set} value={set}>
-                              {set === "all" ? t("allSets") : set}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Rarity Filter */}
-                    <div>
-                      <Label>{t("rarity")}</Label>
-                      <Select value={filters.rarity} onValueChange={(value) => setFilters({...filters, rarity: value})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {uniqueRarities.map((rarity) => (
-                            <SelectItem key={rarity} value={rarity}>
-                              {rarity === "all" ? t("allRarities") : rarity}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
+                {/* Cards Grid */}
+                <div>
                   {/* Results count */}
-                  <div className="text-sm text-muted-foreground">
-                    {filteredAllCards.length} {filteredAllCards.length === 1 ? t("cardFound") : t("cardsFound")}
+                  <div className="mb-4 text-sm text-muted-foreground">
+                    {sortedCards.length} {sortedCards.length === 1 ? t("cardFound") : t("cardsFound")}
                   </div>
-                </CardContent>
-              </Card>
 
-              {loadingCards ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  {loadingCards ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                      {sortedCards.map((card) => (
+                        <AllCardsCard 
+                          key={card.id} 
+                          card={card} 
+                          t={t} 
+                          user={user}
+                          isInCollection={isInCollection}
+                          addToCollection={addToCollection}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                  {filteredAllCards.map((card) => (
-                    <AllCardsCard 
-                      key={card.id} 
-                      card={card} 
-                      t={t} 
-                      user={user}
-                      isInCollection={isInCollection}
-                      addToCollection={addToCollection}
-                    />
-                  ))}
-                </div>
-              )}
+              </div>
             </TabsContent>
 
             {/* Tab 2: Owned Cards */}
