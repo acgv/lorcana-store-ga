@@ -18,8 +18,8 @@ function LoginContent() {
   const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Get redirect URL from query params (default to /submit-card)
-  const redirect = searchParams.get("redirect") || "/submit-card"
+  // Get redirect URL from query params (default to home)
+  const redirect = searchParams.get("redirect") || "/"
 
   // If already logged in, redirect
   useEffect(() => {
