@@ -1,69 +1,39 @@
-import { NextResponse } from "next/server"
-import { supabase } from "@/lib/db"
-import { mockCards } from "@/lib/mock-data"
-import type { Card, ApiResponse } from "@/lib/types"
+import { NextRequest, NextResponse } from "next/server"
+import { Database } from "@/lib/db"
+import type { ApiResponse, Card } from "@/lib/types"
 
+// GET - Get a single card by ID
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await params
+  try {
+    const cardId = params.id
 
-  if (!id) {
+    const card = await Database.getCardById(cardId)
+
+    if (!card) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Card not found",
+        } as ApiResponse,
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: card,
+    } as ApiResponse<Card>)
+  } catch (error) {
+    console.error("Error fetching card:", error)
     return NextResponse.json(
-      { success: false, error: "Card ID is required" },
-      { status: 400 }
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      } as ApiResponse,
+      { status: 500 }
     )
   }
-
-  let card: Card | null = null
-  let dataSource = "mock"
-
-  // Try Supabase first
-  if (supabase) {
-    try {
-      const { data, error } = await supabase
-        .from("cards")
-        .select("*")
-        .eq("id", id)
-        .eq("status", "approved")
-        .single()
-
-      if (!error && data) {
-        card = data as Card
-        dataSource = "supabase"
-        console.log(`✓ GET /api/cards/${id} - Found in SUPABASE`)
-      } else {
-        console.log(`⚠ GET /api/cards/${id} - Not found in Supabase:`, error?.message)
-      }
-    } catch (err) {
-      console.log(`⚠ GET /api/cards/${id} - Supabase connection error:`, err)
-    }
-  }
-
-  // Fallback to mock data if not found in Supabase
-  if (!card) {
-    card = mockCards.find((c) => c.id === id) || null
-    if (card) {
-      console.log(`✓ GET /api/cards/${id} - Found in MOCK`)
-    }
-  }
-
-  if (!card) {
-    return NextResponse.json(
-      { success: false, error: "Card not found" },
-      { status: 404 }
-    )
-  }
-
-  const response: ApiResponse<Card> = {
-    success: true,
-    data: card,
-    meta: {
-      source: dataSource,
-    } as any,
-  }
-
-  return NextResponse.json(response)
 }
-

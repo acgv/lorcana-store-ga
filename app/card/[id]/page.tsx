@@ -6,9 +6,12 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/components/language-provider"
 import { useCart } from "@/components/cart-provider"
+import { useUser } from "@/hooks/use-user"
+import { useCollection } from "@/hooks/use-collection"
+import { useToast } from "@/hooks/use-toast"
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { ArrowLeft, Sparkles, Package, AlertCircle, ShoppingCart, CreditCard, Loader2 } from "lucide-react"
+import { ArrowLeft, Sparkles, Package, AlertCircle, ShoppingCart, CreditCard, Loader2, Heart, Check } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import type { Card } from "@/lib/types"
@@ -18,12 +21,113 @@ export default function CardDetailPage() {
   const id = params?.id as string
   const { t } = useLanguage()
   const { addToCart } = useCart()
+  const { user } = useUser()
+  const { isInCollection, addToCollection, removeFromCollection } = useCollection()
+  const { toast } = useToast()
   const router = useRouter()
   const [version, setVersion] = useState<"normal" | "foil">("normal")
   const [quantity, setQuantity] = useState(1)
   const [card, setCard] = useState<Card | null>(null)
   const [loading, setLoading] = useState(true)
   const [buyingNow, setBuyingNow] = useState(false)
+  const [addingToCollection, setAddingToCollection] = useState<"owned" | "wanted" | null>(null)
+
+  // Collection handlers
+  const handleAddToOwned = async () => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: t("signInRequired"),
+        description: t("loginToContinue"),
+      })
+      router.push("/login?redirect=/card/" + id)
+      return
+    }
+
+    setAddingToCollection("owned")
+    const result = await addToCollection(id, "owned")
+    setAddingToCollection(null)
+
+    if (result.success) {
+      toast({
+        title: t("success"),
+        description: t("addedToCollection"),
+      })
+    } else if (result.code === "DUPLICATE") {
+      toast({
+        variant: "destructive",
+        title: t("alreadyOwned"),
+        description: t("alreadyOwned"),
+      })
+    } else {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: result.error,
+      })
+    }
+  }
+
+  const handleAddToWanted = async () => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: t("signInRequired"),
+        description: t("loginToContinue"),
+      })
+      router.push("/login?redirect=/card/" + id)
+      return
+    }
+
+    setAddingToCollection("wanted")
+    const result = await addToCollection(id, "wanted")
+    setAddingToCollection(null)
+
+    if (result.success) {
+      toast({
+        title: t("success"),
+        description: t("addedToWishlist"),
+      })
+    } else if (result.code === "DUPLICATE") {
+      toast({
+        variant: "destructive",
+        title: t("alreadyWanted"),
+        description: t("alreadyWanted"),
+      })
+    } else {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: result.error,
+      })
+    }
+  }
+
+  const handleRemoveFromOwned = async () => {
+    setAddingToCollection("owned")
+    const result = await removeFromCollection(id, "owned")
+    setAddingToCollection(null)
+
+    if (result.success) {
+      toast({
+        title: t("success"),
+        description: t("removedFromCollection"),
+      })
+    }
+  }
+
+  const handleRemoveFromWanted = async () => {
+    setAddingToCollection("wanted")
+    const result = await removeFromCollection(id, "wanted")
+    setAddingToCollection(null)
+
+    if (result.success) {
+      toast({
+        title: t("success"),
+        description: t("removedFromWishlist"),
+      })
+    }
+  }
 
   // Cargar carta desde API
   useEffect(() => {
@@ -291,6 +395,62 @@ export default function CardDetailPage() {
                       )}
                     </Button>
                   </div>
+
+                  {/* Collection Buttons */}
+                  {user && (
+                    <div className="mt-4 p-4 rounded-lg bg-muted/50 border border-border/50">
+                      <h4 className="text-sm font-medium mb-3">{t("addToCollection")}</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        {isInCollection(id, "owned") ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRemoveFromOwned}
+                            disabled={addingToCollection === "owned"}
+                            className="gap-2"
+                          >
+                            <Check className="h-4 w-4 text-green-500" />
+                            {t("owned")}
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleAddToOwned}
+                            disabled={addingToCollection === "owned"}
+                            className="gap-2"
+                          >
+                            <Package className="h-4 w-4" />
+                            {t("addToOwned")}
+                          </Button>
+                        )}
+
+                        {isInCollection(id, "wanted") ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRemoveFromWanted}
+                            disabled={addingToCollection === "wanted"}
+                            className="gap-2"
+                          >
+                            <Check className="h-4 w-4 text-red-500" />
+                            {t("wanted")}
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleAddToWanted}
+                            disabled={addingToCollection === "wanted"}
+                            className="gap-2"
+                          >
+                            <Heart className="h-4 w-4" />
+                            {t("addToWanted")}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
