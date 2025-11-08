@@ -120,7 +120,9 @@ export default function MyCollectionPage() {
     return sum + (price * item.quantity)
   }, 0)
 
-  // Filter cards for "All Cards" tab (same logic as catalog)
+  // Filter cards for "All Cards" tab
+  // NOTE: NO filtramos por stock/version porque esto es para crear colección personal
+  // Los usuarios deben ver TODAS las cartas disponibles, no solo las en stock
   const filteredAllCards = allCards.filter((card) => {
     // Type filter
     if (filters.type && filters.type !== "all" && card.type !== filters.type) return false
@@ -131,19 +133,12 @@ export default function MyCollectionPage() {
     // Rarity filter
     if (filters.rarity && filters.rarity !== "all" && card.rarity !== filters.rarity) return false
     
-    // Price range filter
+    // Price range filter (opcional, por si quieren filtrar por precio de referencia)
     const cardPrice = card.price || 0
     if (cardPrice < filters.minPrice || cardPrice > filters.maxPrice) return false
     
-    // Version availability filter
-    if (filters.version !== "all") {
-      if (filters.version === "normal" && (!card.normalStock || card.normalStock === 0)) return false
-      if (filters.version === "foil" && (!card.foilStock || card.foilStock === 0)) return false
-      if (filters.version === "both" && (
-        (!card.normalStock || card.normalStock === 0) || 
-        (!card.foilStock || card.foilStock === 0)
-      )) return false
-    }
+    // ❌ NO APLICAMOS filtro de version/stock - mostramos todas las cartas
+    // Esto es para colección personal, no para comprar
     
     // Search filter
     if (filters.search) {
@@ -157,16 +152,10 @@ export default function MyCollectionPage() {
     return true
   })
 
-  // Sort filtered cards (same logic as catalog)
+  // Sort filtered cards
+  // NOTE: NO priorizamos por stock - en colección personal todas las cartas son iguales
   const sortedCards = [...filteredAllCards].sort((a, b) => {
-    // Priority: Cards with stock first
-    const aHasStock = (a.normalStock && a.normalStock > 0) || (a.foilStock && a.foilStock > 0)
-    const bHasStock = (b.normalStock && b.normalStock > 0) || (b.foilStock && b.foilStock > 0)
-    
-    if (aHasStock && !bHasStock) return -1
-    if (!aHasStock && bHasStock) return 1
-
-    // Then apply selected sorting
+    // Apply selected sorting directly (sin prioridad de stock)
     switch (sortBy) {
       case "nameAZ":
         return a.name.localeCompare(b.name)
