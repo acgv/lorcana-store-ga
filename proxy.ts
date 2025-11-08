@@ -50,10 +50,10 @@ export function proxy(request: NextRequest) {
   const isAdminPath = path.startsWith("/admin")
   const isAdminLoginPath = path.startsWith("/admin/login")
   
-  // Solo bloquear operaciones de escritura en APIs
-  // GET a /api/inventory y /api/my-collection es público (para catálogo y colección)
+  // Solo bloquear operaciones de escritura en APIs de admin
+  // GET /api/inventory es público (para catálogo)
+  // /api/my-collection es para usuarios autenticados (NO admin, es personal)
   const isAdminApiPath = (path.startsWith("/api/inventory") && request.method !== "GET") || 
-                         (path.startsWith("/api/my-collection") && request.method !== "GET") ||
                          path.startsWith("/api/submissions") ||
                          path.startsWith("/api/logs")
 
