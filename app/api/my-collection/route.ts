@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/db"
+import { supabaseAdmin } from "@/lib/db"
 
 // GET - Get user's collection (owned and wanted cards)
 export async function GET(request: NextRequest) {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let query = supabase
+    let query = supabaseAdmin
       .from("user_collections")
       .select("*")
       .eq("user_id", userId)
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("user_collections")
       .insert({
         user_id: userId,
@@ -151,7 +151,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("user_collections")
       .delete()
       .eq("user_id", userId)
