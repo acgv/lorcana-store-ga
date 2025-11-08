@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useUser } from "@/hooks/use-user"
 
 interface CollectionItem {
@@ -15,32 +15,47 @@ export function useCollection() {
   const { user } = useUser()
   const [collection, setCollection] = useState<CollectionItem[]>([])
   const [loading, setLoading] = useState(false)
+  const loadingRef = useRef(false) // Flag para prevenir múltiples cargas
+  const lastUserIdRef = useRef<string | null>(null) // Track último usuario cargado
 
   const loadCollection = useCallback(async () => {
     if (!user?.id) return
+    if (loadingRef.current) return // Ya está cargando, salir
+    if (lastUserIdRef.current === user.id) return // Ya cargado para este usuario
 
     try {
+      loadingRef.current = true
       setLoading(true)
+      
+      console.log("🔄 Loading collection for user:", user.id)
       const response = await fetch(`/api/my-collection?userId=${user.id}`)
       const data = await response.json()
 
       if (data.success) {
         setCollection(data.data || [])
+        lastUserIdRef.current = user.id // Marcar como cargado
+        console.log("✅ Collection loaded:", data.data?.length || 0, "items")
       }
     } catch (error) {
-      console.error("Error loading collection:", error)
+      console.error("❌ Error loading collection:", error)
     } finally {
       setLoading(false)
+      loadingRef.current = false
     }
   }, [user?.id])
 
   useEffect(() => {
     if (user?.id) {
-      loadCollection()
+      // Solo cargar si cambió el usuario
+      if (lastUserIdRef.current !== user.id) {
+        loadCollection()
+      }
     } else {
       setCollection([])
+      lastUserIdRef.current = null
     }
-  }, [user?.id, loadCollection]) // Solo cuando cambia el ID del usuario o la función
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]) // Solo user.id como dependencia
 
   const isInCollection = (
     cardId: string, 
@@ -76,7 +91,9 @@ export function useCollection() {
       const data = await response.json()
 
       if (data.success) {
-        await loadCollection() // Reload
+        // Invalidar cache y recargar
+        lastUserIdRef.current = null
+        await loadCollection()
       }
 
       return data
@@ -102,7 +119,9 @@ export function useCollection() {
       const data = await response.json()
 
       if (data.success) {
-        await loadCollection() // Reload
+        // Invalidar cache y recargar
+        lastUserIdRef.current = null
+        await loadCollection()
       }
 
       return data
