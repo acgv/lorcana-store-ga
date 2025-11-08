@@ -5,10 +5,11 @@ import type { ApiResponse, Card } from "@/lib/types"
 // GET - Get a single card by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const cardId = params.id
+    // Next.js 16: params is now async
+    const { id: cardId } = await params
     console.log("🔍 Fetching card with ID:", cardId)
 
     // Query Supabase for the card
