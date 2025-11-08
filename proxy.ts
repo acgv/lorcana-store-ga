@@ -7,20 +7,25 @@ export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // ═══════════════════════════════════════════════════════════════
-  // DOMAIN REDIRECT: Vercel.app → gacompany.cl
+  // DOMAIN REDIRECT: Vercel.app → gacompany.cl (SKIP localhost)
   // ═══════════════════════════════════════════════════════════════
-  const vercelDomains = [
-    "lorcana-store-ga.vercel.app",
-    "lorcana-store-ga-git-master-acgvs-projects.vercel.app",
-  ]
+  const isLocalhost = hostname.includes("localhost") || hostname.includes("127.0.0.1")
+  
+  // NEVER redirect localhost
+  if (!isLocalhost) {
+    const vercelDomains = [
+      "lorcana-store-ga.vercel.app",
+      "lorcana-store-ga-git-master-acgvs-projects.vercel.app",
+    ]
 
-  const isVercelDomain = vercelDomains.some((domain) => hostname.includes(domain))
+    const isVercelDomain = vercelDomains.some((domain) => hostname.includes(domain))
 
-  if (isVercelDomain && !hostname.includes("gacompany.cl")) {
-    // Redirect to custom domain (preserves path and query params)
-    url.host = "www.gacompany.cl"
-    url.protocol = "https:"
-    return NextResponse.redirect(url, { status: 308 })
+    if (isVercelDomain && !hostname.includes("gacompany.cl")) {
+      // Redirect to custom domain (preserves path and query params)
+      url.host = "www.gacompany.cl"
+      url.protocol = "https:"
+      return NextResponse.redirect(url, { status: 308 })
+    }
   }
   // ═══════════════════════════════════════════════════════════════
 
