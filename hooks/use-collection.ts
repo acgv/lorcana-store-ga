@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useUser } from "@/hooks/use-user"
 
 interface CollectionItem {
@@ -16,16 +16,8 @@ export function useCollection() {
   const [collection, setCollection] = useState<CollectionItem[]>([])
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (user) {
-      loadCollection()
-    } else {
-      setCollection([])
-    }
-  }, [user])
-
-  const loadCollection = async () => {
-    if (!user) return
+  const loadCollection = useCallback(async () => {
+    if (!user?.id) return
 
     try {
       setLoading(true)
@@ -40,7 +32,15 @@ export function useCollection() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (user?.id) {
+      loadCollection()
+    } else {
+      setCollection([])
+    }
+  }, [user?.id, loadCollection]) // Solo cuando cambia el ID del usuario o la función
 
   const isInCollection = (
     cardId: string, 
@@ -118,7 +118,8 @@ export function useCollection() {
     isInCollection,
     addToCollection,
     removeFromCollection,
-    refresh: loadCollection,
+    loadCollection, // Exponer para refresh manual
+    refresh: loadCollection, // Alias para compatibilidad
   }
 }
 
