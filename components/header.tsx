@@ -82,13 +82,19 @@ export function Header() {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-2">
+                  <Button variant="outline" size="sm" className="gap-2">
                     <User className="h-4 w-4" />
-                    <span className="hidden lg:inline-block">{user.user_metadata?.name || user.email?.split("@")[0]}</span>
+                    <span className="hidden sm:inline-block">
+                      {user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Usuario"}
+                    </span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>{t("myAccount")}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+                    {user.email}
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/my-submissions" className="cursor-pointer">
@@ -180,9 +186,14 @@ export function Header() {
                 {user ? (
                   <>
                     <div className="border-t pt-4 mt-4">
-                      <div className="flex items-center gap-2 px-2 py-2 text-sm text-muted-foreground">
-                        <User className="h-4 w-4" />
-                        <span className="font-medium text-foreground">{user.user_metadata?.name || user.email?.split("@")[0]}</span>
+                      <div className="flex items-center gap-2 px-2 py-2 text-sm">
+                        <User className="h-4 w-4 text-primary" />
+                        <div className="flex flex-col">
+                          <span className="font-medium text-foreground">
+                            {user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Usuario"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{user.email}</span>
+                        </div>
                       </div>
                     </div>
                     <Link
