@@ -175,7 +175,8 @@ export default function MyCollectionPage() {
                (rarityOrder2[b.rarity as keyof typeof rarityOrder2] || 0)
       case "cardNumberLowHigh":
       default:
-        return (a.cardNumber || 0) - (b.cardNumber || 0)
+        // Usar 'number' (numérico) en lugar de 'cardNumber' (string)
+        return (a.number || 0) - (b.number || 0)
     }
   })
 
