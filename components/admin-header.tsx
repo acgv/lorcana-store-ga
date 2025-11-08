@@ -26,30 +26,35 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
   const { t } = useLanguage()
   const pathname = usePathname()
   
-  // Debug: See what user data we have
-  console.log("👤 AdminHeader - Users:", {
-    hasGoogleUser: !!googleUser,
-    googleName: googleUser?.user_metadata?.name,
-    googleFullName: googleUser?.user_metadata?.full_name,
-    googleEmail: googleUser?.email,
-    hasAdminUser: !!adminUser,
-    adminEmail: adminUser?.email,
-  })
+  // Get display name with fallback to localStorage (if Google session lost)
+  const savedName = typeof window !== "undefined" ? localStorage.getItem('user_name') : null
+  const savedEmail = typeof window !== "undefined" ? localStorage.getItem('user_email') : null
   
-  // Get display name from Google user metadata or email
   const displayName = googleUser?.user_metadata?.name || 
                       googleUser?.user_metadata?.full_name || 
+                      savedName || // ⭐ Fallback to saved name
                       googleUser?.email?.split('@')[0] ||
                       adminUser?.email?.split('@')[0] ||
                       "Admin"
   
-  const displayEmail = googleUser?.email || adminUser?.email || "admin@gacompany.cl"
+  const displayEmail = googleUser?.email || 
+                      savedEmail || // ⭐ Fallback to saved email
+                      adminUser?.email || 
+                      "admin@gacompany.cl"
   
-  console.log("👤 AdminHeader - Display:", { displayName, displayEmail })
+  console.log("👤 AdminHeader - Display:", { 
+    displayName, 
+    displayEmail,
+    hasGoogle: !!googleUser,
+    hasAdmin: !!adminUser,
+    savedName,
+  })
 
   const handleLogout = () => {
     // Limpiar todo
     localStorage.removeItem("admin_token")
+    localStorage.removeItem("user_name")
+    localStorage.removeItem("user_email")
     document.cookie = "admin_token=; path=/; max-age=0"
     // Redirigir
     window.location.href = "/admin/login"

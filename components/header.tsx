@@ -36,6 +36,9 @@ export function Header() {
   const isAdmin = isUserAdmin || isAdminAuth
 
   const handleSignOut = async () => {
+    // Clear all user data
+    localStorage.removeItem("user_name")
+    localStorage.removeItem("user_email")
     await userSignOut()
     await adminLogout()
     router.push("/")

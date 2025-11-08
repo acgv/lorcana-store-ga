@@ -26,13 +26,18 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const [hasChecked, setHasChecked] = useState(false)
 
   useEffect(() => {
-    // Wait for user loading to complete
+    // Wait for user loading to complete COMPLETELY
     if (userLoading) {
       console.log("🔄 AuthGuard: Waiting for user loading...")
       return
     }
+
+    // Only check once after loading completes
+    if (hasChecked) return
+    setHasChecked(true)
 
     const token = getToken()
     
@@ -61,7 +66,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       console.log("✅ Authenticated, granting access")
       setIsAuthenticated(true)
     }
-  }, [router, pathname, user, userLoading, isGoogleAdmin])
+  }, [router, pathname, user, userLoading, isGoogleAdmin, hasChecked])
 
   // Show loading while checking authentication
   if (isAuthenticated === null || userLoading) {

@@ -14,6 +14,14 @@ export function useUser() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) {
+        // Save user info to localStorage for admin panel
+        const userName = session.user.user_metadata?.name || 
+                        session.user.user_metadata?.full_name || 
+                        session.user.email?.split('@')[0]
+        if (userName) {
+          localStorage.setItem('user_name', userName)
+          localStorage.setItem('user_email', session.user.email || '')
+        }
         checkAdminStatus(session.user.id)
       } else {
         setLoading(false)
@@ -26,10 +34,21 @@ export function useUser() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) {
+        // Save user info to localStorage
+        const userName = session.user.user_metadata?.name || 
+                        session.user.user_metadata?.full_name || 
+                        session.user.email?.split('@')[0]
+        if (userName) {
+          localStorage.setItem('user_name', userName)
+          localStorage.setItem('user_email', session.user.email || '')
+        }
         checkAdminStatus(session.user.id)
       } else {
         setIsAdmin(false)
         setLoading(false)
+        // Clear saved user info
+        localStorage.removeItem('user_name')
+        localStorage.removeItem('user_email')
       }
     })
 
