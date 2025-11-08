@@ -217,18 +217,14 @@ export function Header() {
                   {user.email}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/my-submissions" className="cursor-pointer">
-                    <FileText className="mr-2 h-4 w-4" />
-                    {t("mySubmissions")}
-                  </Link>
+                <DropdownMenuItem onClick={() => router.push("/my-submissions")} className="cursor-pointer">
+                  <FileText className="mr-2 h-4 w-4" />
+                  {t("mySubmissions")}
                 </DropdownMenuItem>
                 {isAdmin && (
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin/inventory" className="cursor-pointer">
-                      <Shield className="mr-2 h-4 w-4" />
-                      {t("adminPanel")}
-                    </Link>
+                  <DropdownMenuItem onClick={() => router.push("/admin/inventory")} className="cursor-pointer">
+                    <Shield className="mr-2 h-4 w-4" />
+                    {t("adminPanel")}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
