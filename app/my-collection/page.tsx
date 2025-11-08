@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { 
   Loader2, Lock, Package, Heart, Trash2, ExternalLink, 
-  TrendingUp, Plus, Minus, Check, List
+  TrendingUp, Plus, Minus, Check, List, Sparkles
 } from "lucide-react"
 import type { Card as CardType } from "@/lib/types"
 
@@ -241,7 +241,14 @@ export default function MyCollectionPage() {
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {filteredAllCards.map((card) => (
-                    <AllCardsCard key={card.id} card={card} t={t} user={user} />
+                    <AllCardsCard 
+                      key={card.id} 
+                      card={card} 
+                      t={t} 
+                      user={user}
+                      isInCollection={isInCollection}
+                      addToCollection={addToCollection}
+                    />
                   ))}
                 </div>
               )}
@@ -321,8 +328,19 @@ export default function MyCollectionPage() {
 }
 
 // Component for cards in "All Cards" tab
-function AllCardsCard({ card, t, user }: { card: CardType; t: (key: string) => string; user: any }) {
-  const { isInCollection, addToCollection } = useCollection()
+function AllCardsCard({ 
+  card, 
+  t, 
+  user,
+  isInCollection,
+  addToCollection
+}: { 
+  card: CardType
+  t: (key: string) => string
+  user: any
+  isInCollection: (cardId: string, status: "owned" | "wanted", version: "normal" | "foil") => boolean
+  addToCollection: (cardId: string, status: "owned" | "wanted", version: "normal" | "foil", quantity: number) => Promise<any>
+}) {
   const { toast } = useToast()
   const [adding, setAdding] = useState<string | null>(null)
 
@@ -387,7 +405,7 @@ function AllCardsCard({ card, t, user }: { card: CardType; t: (key: string) => s
             </Badge>
           )}
           {hasFoilWanted && (
-            <Badge className="bg-red-500/90 foil-effect">
+            <Badge className="bg-red-500/90">
               <Heart className="h-3 w-3" />
             </Badge>
           )}
@@ -430,7 +448,7 @@ function AllCardsCard({ card, t, user }: { card: CardType; t: (key: string) => s
             <Button
               variant={hasFoilOwned ? "default" : "outline"}
               size="sm"
-              className="flex-1 foil-effect"
+              className="flex-1"
               onClick={() => handleAdd("owned", "foil")}
               disabled={adding === "owned-foil"}
             >
@@ -470,7 +488,7 @@ function AllCardsCard({ card, t, user }: { card: CardType; t: (key: string) => s
             <Button
               variant={hasNormalWanted ? "destructive" : "outline"}
               size="sm"
-              className="flex-1 foil-effect"
+              className="flex-1"
               onClick={() => handleAdd("wanted", "foil")}
               disabled={adding === "wanted-foil"}
             >
