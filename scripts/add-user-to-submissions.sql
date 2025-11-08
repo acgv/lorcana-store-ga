@@ -81,16 +81,20 @@ USING (
 -- VERIFICATION QUERIES
 -- ============================================
 
--- Check the updated schema
-\d public.submissions
-
 -- Count existing submissions (should preserve all data)
 SELECT COUNT(*) as total_submissions FROM public.submissions;
 
--- Check new columns
-SELECT id, card_name, user_id, user_name, contact_email, status, created_at
+-- Check new columns (verify user_id and user_name were added)
+SELECT 
+  id, 
+  card->>'name' as card_name,
+  user_id, 
+  user_name, 
+  submittedby as contact_email, 
+  status, 
+  submittedat as created_at
 FROM public.submissions
-ORDER BY created_at DESC
+ORDER BY submittedat DESC
 LIMIT 5;
 
 -- ============================================
