@@ -10,7 +10,35 @@ export async function GET(request: NextRequest) {
     await supabase.auth.exchangeCodeForSession(code)
   }
 
-  // Redirect to the specified page or default to submit-card
-  return NextResponse.redirect(new URL(redirect, requestUrl.origin))
+  // Detectar el origen real de donde vino la petición
+  const referer = request.headers.get("referer")
+  const isLocalhost = requestUrl.hostname.includes("localhost") || 
+                      requestUrl.hostname.includes("127.0.0.1") ||
+                      referer?.includes("localhost")
+
+  // Determinar el origen correcto
+  let targetOrigin = requestUrl.origin
+  
+  if (isLocalhost) {
+    // Si es localhost, mantener localhost
+    targetOrigin = "http://localhost:3002"
+  } else if (requestUrl.hostname.includes("vercel.app")) {
+    // Si es Vercel, usar gacompany.cl
+    targetOrigin = "https://www.gacompany.cl"
+  } else {
+    // Si ya es gacompany.cl, mantenerlo
+    targetOrigin = requestUrl.origin
+  }
+
+  console.log("🔄 OAuth Callback:", {
+    from: requestUrl.origin,
+    referer,
+    isLocalhost,
+    targetOrigin,
+    redirect,
+  })
+
+  // Redirect to the specified page with correct origin
+  return NextResponse.redirect(new URL(redirect, targetOrigin))
 }
 
