@@ -9,6 +9,7 @@ export async function GET(
 ) {
   try {
     const cardId = params.id
+    console.log("🔍 Fetching card with ID:", cardId)
 
     // Query Supabase for the card
     const { data, error } = await supabase
@@ -17,12 +18,32 @@ export async function GET(
       .eq("id", cardId)
       .single()
 
+    console.log("📊 Supabase response:", { 
+      found: !!data, 
+      error: error?.message,
+      cardId 
+    })
+
     if (error || !data) {
-      console.error("Error fetching card:", error)
+      console.error("❌ Error fetching card:", error)
+      
+      // Try alternative query to see if card exists with different ID format
+      const { data: searchData, error: searchError } = await supabase
+        .from("cards")
+        .select("id, name")
+        .ilike("id", `%${cardId}%`)
+        .limit(5)
+      
+      console.log("🔍 Similar cards found:", searchData)
+      
       return NextResponse.json(
         {
           success: false,
           error: "Card not found",
+          debug: {
+            requestedId: cardId,
+            similarCards: searchData?.map(c => c.id) || [],
+          }
         } as ApiResponse,
         { status: 404 }
       )
