@@ -30,10 +30,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   useEffect(() => {
     // Wait for user loading to complete COMPLETELY
-    if (userLoading) {
-      console.log("🔄 AuthGuard: Waiting for user loading...")
-      return
-    }
+    if (userLoading) return
 
     // Only check once after loading completes
     if (hasChecked) return
@@ -46,24 +43,13 @@ export function AuthGuard({ children }: AuthGuardProps) {
     // 2. They're logged in with Google AND have admin role
     const isAuth = !!token || (!!user && isGoogleAdmin)
     
-    console.log("🔐 AuthGuard check:", {
-      hasToken: !!token,
-      hasUser: !!user,
-      isGoogleAdmin,
-      isAuth,
-      userLoading,
-      pathname,
-    })
-    
     if (!isAuth) {
       // Not authenticated, redirect to admin login
-      console.log("❌ Not authenticated, redirecting to login")
       const loginUrl = `/admin/login?redirect=${encodeURIComponent(pathname)}`
       router.push(loginUrl)
       setIsAuthenticated(false)
     } else {
       // Authenticated, allow access
-      console.log("✅ Authenticated, granting access")
       setIsAuthenticated(true)
     }
   }, [router, pathname, user, userLoading, isGoogleAdmin, hasChecked])

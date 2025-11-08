@@ -41,14 +41,6 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
                       savedEmail || // ⭐ Fallback to saved email
                       adminUser?.email || 
                       "admin@gacompany.cl"
-  
-  console.log("👤 AdminHeader - Display:", { 
-    displayName, 
-    displayEmail,
-    hasGoogle: !!googleUser,
-    hasAdmin: !!adminUser,
-    savedName,
-  })
 
   const handleLogout = () => {
     // Limpiar todo
