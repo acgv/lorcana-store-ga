@@ -160,9 +160,50 @@ Esto:
 
 ---
 
-## 📝 Alternativas al Script
+## 📝 Opciones de Aplicación
 
-### **Opción B: Ajuste Manual Selectivo**
+### **Opción A: Solo Cartas Sin Precio** ⚠️
+
+Script: `scripts/utilities/apply-pricing-by-rarity.sql`
+
+- ✅ Actualiza solo cartas con precio = 0 o NULL
+- ✅ Respeta precios que configuraste manualmente
+- ✅ Seguro (no sobrescribe)
+
+**Cuándo usar:**
+- Primera vez configurando precios
+- Quieres mantener ajustes manuales previos
+
+---
+
+### **Opción B: TODAS las Cartas (Estandarizar)** ⭐ RECOMENDADO
+
+Script: `scripts/utilities/standardize-all-prices.sql`
+
+- ⚠️ Actualiza TODAS las cartas
+- ⚠️ Sobrescribe precios existentes
+- ✅ Crea estándar consistente
+- ✅ Incluye backup opcional
+
+**Cuándo usar:**
+- Quieres un catálogo 100% consistente
+- Prefieres ajustar manualmente DESPUÉS (no antes)
+- Facilita explicar precios a clientes ("Todas las raras valen $2,500")
+
+**Resultado:**
+```
+Todas las Common = $500
+Todas las Uncommon = $1,000
+Todas las Rare = $2,500
+Todas las Super Rare = $5,000
+Todas las Legendary = $30,000
+```
+
+Luego ajustas casos especiales individualmente.
+
+---
+
+### **Opción C: Ajuste Manual Selectivo**
 
 Si prefieres NO usar script automático:
 
