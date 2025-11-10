@@ -381,6 +381,9 @@ const translations: Record<Language, Record<string, string>> = {
     deliveryNotes: "Delivery Notes",
     free: "FREE",
     subtotal: "Subtotal",
+    inCart: "in cart",
+    available: "available",
+    maxStockReached: "Maximum stock in cart",
   },
   fr: {
     home: "Accueil",
@@ -693,6 +696,9 @@ const translations: Record<Language, Record<string, string>> = {
     deliveryNotes: "Notes de Livraison",
     free: "GRATUIT",
     subtotal: "Sous-total",
+    inCart: "dans le panier",
+    available: "disponible",
+    maxStockReached: "Stock maximum dans le panier",
   },
   de: {
     home: "Startseite",
@@ -1005,6 +1011,9 @@ const translations: Record<Language, Record<string, string>> = {
     deliveryNotes: "Lieferhinweise",
     free: "KOSTENLOS",
     subtotal: "Zwischensumme",
+    inCart: "im Warenkorb",
+    available: "verfügbar",
+    maxStockReached: "Maximaler Bestand im Warenkorb",
   },
   es: {
     home: "Inicio",
@@ -1376,6 +1385,9 @@ const translations: Record<Language, Record<string, string>> = {
     deliveryNotes: "Notas de Entrega",
     free: "GRATIS",
     subtotal: "Subtotal",
+    inCart: "en carrito",
+    available: "disponibles",
+    maxStockReached: "Stock máximo en carrito",
   },
 }
 

@@ -19,7 +19,7 @@ interface CardItemProps {
 
 export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
   const { t } = useLanguage()
-  const { addToCart } = useCart()
+  const { addToCart, items } = useCart()
   const { toast } = useToast()
   const [adding, setAdding] = useState<string | null>(null)
 
@@ -31,9 +31,31 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
   const isLowStock = (normalStock + foilStock) < 5 && (normalStock + foilStock) > 0
   const isOutOfStock = normalStock === 0 && foilStock === 0
 
+  // Get quantity in cart for this card
+  const getCartQuantity = (version: "normal" | "foil") => {
+    const cartItem = items.find(item => item.id === card.id && item.version === version)
+    return cartItem?.quantity || 0
+  }
+
+  const normalInCart = getCartQuantity("normal")
+  const foilInCart = getCartQuantity("foil")
+
   const handleAddToCart = (e: React.MouseEvent, version: "normal" | "foil") => {
     e.preventDefault() // Prevenir navegación
     e.stopPropagation()
+    
+    const currentStock = version === "foil" ? foilStock : normalStock
+    const currentInCart = version === "foil" ? foilInCart : normalInCart
+
+    // Validar stock disponible
+    if (currentInCart >= currentStock) {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: `${t("maxStockReached")} (${currentStock} ${t("available")})`,
+      })
+      return
+    }
     
     setAdding(version)
     
@@ -51,7 +73,7 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
       description: `${card.name} (${version === "foil" ? t("foil") : t("normal")}) ${t("addedToCart")}`,
     })
 
-    setAdding(null)
+    setTimeout(() => setAdding(null), 500)
   }
 
   if (viewMode === "list") {
@@ -195,18 +217,26 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground font-sans">{t("normal")}</p>
                   <p className="font-bold text-primary font-display">${Math.floor(card.price).toLocaleString()}</p>
+                  {normalInCart > 0 && (
+                    <p className="text-[10px] text-green-600 font-medium">
+                      {normalInCart} {t("inCart")} / {normalStock} {t("available")}
+                    </p>
+                  )}
                 </div>
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="h-8 px-2 hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                  variant={normalInCart > 0 ? "default" : "outline"}
+                  className="h-8 px-2 hover:bg-primary hover:text-primary-foreground hover:border-primary hover:scale-110 active:scale-95 transition-all shadow-sm hover:shadow-md"
                   onClick={(e) => handleAddToCart(e, "normal")}
-                  disabled={adding === "normal"}
+                  disabled={adding === "normal" || normalInCart >= normalStock}
                 >
                   {adding === "normal" ? (
                     <Package className="h-3 w-3 animate-pulse" />
                   ) : (
-                    <ShoppingCart className="h-3 w-3" />
+                    <>
+                      <ShoppingCart className="h-3 w-3" />
+                      {normalInCart > 0 && <span className="ml-1 text-xs font-bold">+</span>}
+                    </>
                   )}
                 </Button>
               </div>
@@ -218,18 +248,26 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground font-sans">{t("foil")}</p>
                   <p className="font-bold text-accent font-display">${Math.floor(card.foilPrice).toLocaleString()}</p>
+                  {foilInCart > 0 && (
+                    <p className="text-[10px] text-green-600 font-medium">
+                      {foilInCart} {t("inCart")} / {foilStock} {t("available")}
+                    </p>
+                  )}
                 </div>
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="h-8 px-2 hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                  variant={foilInCart > 0 ? "default" : "outline"}
+                  className="h-8 px-2 hover:bg-primary hover:text-primary-foreground hover:border-primary hover:scale-110 active:scale-95 transition-all shadow-sm hover:shadow-md"
                   onClick={(e) => handleAddToCart(e, "foil")}
-                  disabled={adding === "foil"}
+                  disabled={adding === "foil" || foilInCart >= foilStock}
                 >
                   {adding === "foil" ? (
                     <Package className="h-3 w-3 animate-pulse" />
                   ) : (
-                    <ShoppingCart className="h-3 w-3" />
+                    <>
+                      <ShoppingCart className="h-3 w-3" />
+                      {foilInCart > 0 && <span className="ml-1 text-xs font-bold">+</span>}
+                    </>
                   )}
                 </Button>
               </div>
