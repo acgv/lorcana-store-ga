@@ -38,45 +38,45 @@ WHERE c.id = b.id;
 -- PASO 2: APLICAR PRECIOS ESTÁNDAR
 -- ============================================
 
--- Actualizar TODAS las COMMON
+-- Actualizar TODAS las COMMON (minúscula en DB)
 UPDATE public.cards
 SET 
   price = 500,
   "foilPrice" = 500,
   "updatedAt" = NOW()
-WHERE rarity = 'Common';
+WHERE rarity = 'common';
 
--- Actualizar TODAS las UNCOMMON
+-- Actualizar TODAS las UNCOMMON (minúscula en DB)
 UPDATE public.cards
 SET 
   price = 1000,
   "foilPrice" = 1000,
   "updatedAt" = NOW()
-WHERE rarity = 'Uncommon';
+WHERE rarity = 'uncommon';
 
--- Actualizar TODAS las RARE
+-- Actualizar TODAS las RARE (minúscula en DB)
 UPDATE public.cards
 SET 
   price = 2500,
   "foilPrice" = 4000,
   "updatedAt" = NOW()
-WHERE rarity = 'Rare';
+WHERE rarity = 'rare';
 
--- Actualizar TODAS las SUPER RARE
+-- Actualizar TODAS las SUPER RARE (camelCase en DB)
 UPDATE public.cards
 SET 
   price = 5000,
   "foilPrice" = 8000,
   "updatedAt" = NOW()
-WHERE rarity = 'Super Rare';
+WHERE rarity = 'superRare';
 
--- Actualizar TODAS las LEGENDARY
+-- Actualizar TODAS las LEGENDARY (minúscula en DB)
 UPDATE public.cards
 SET 
   price = 30000,
   "foilPrice" = 50000,
   "updatedAt" = NOW()
-WHERE rarity = 'Legendary';
+WHERE rarity = 'legendary';
 
 -- ============================================
 -- PASO 3: VERIFICACIÓN
