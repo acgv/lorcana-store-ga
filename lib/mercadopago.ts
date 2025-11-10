@@ -94,6 +94,7 @@ export interface CardItem {
 
 export interface CreatePreferenceParams {
   items: CardItem[]
+  shipping?: any // Datos de envío
   customerEmail?: string
   origin?: string // Dominio desde el cual se originó la compra
 }
@@ -116,18 +117,39 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
   console.log('🌐 Using base URL for redirects:', baseUrl)
 
   try {
-    const preferenceBody: any = {
-      items: params.items.map(item => ({
-        id: item.id,
-        title: `${item.name} (${item.version === 'foil' ? 'Foil' : 'Normal'})`,
-        description: `Carta Lorcana: ${item.name}`,
-        picture_url: item.image.startsWith('http') ? item.image : `${baseUrl}${item.image}`,
-        category_id: 'trading_cards',
-        quantity: item.quantity,
-        // En CLP los precios deben ser enteros (sin decimales)
-        unit_price: Math.round(item.price),
+    // Construir items (cartas)
+    const mpItems = params.items.map(item => ({
+      id: item.id,
+      title: `${item.name} (${item.version === 'foil' ? 'Foil' : 'Normal'})`,
+      description: `Carta Lorcana: ${item.name}`,
+      picture_url: item.image.startsWith('http') ? item.image : `${baseUrl}${item.image}`,
+      category_id: 'trading_cards',
+      quantity: item.quantity,
+      // En CLP los precios deben ser enteros (sin decimales)
+      unit_price: Math.round(item.price),
+      currency_id: 'CLP',
+    }))
+
+    // Agregar envío como item adicional si tiene costo
+    if (params.shipping && params.shipping.cost > 0) {
+      mpItems.push({
+        id: 'shipping',
+        title: params.shipping.method === 'pickup' 
+          ? 'Retiro en Metro Militares' 
+          : `Envío a Domicilio - ${params.shipping.zone?.toUpperCase()}`,
+        description: params.shipping.method === 'pickup'
+          ? 'Retiro en estación Metro Militares'
+          : `Envío a ${params.shipping.address?.commune || 'domicilio'}`,
+        picture_url: `${baseUrl}/placeholder.svg`,
+        category_id: 'shipping',
+        quantity: 1,
+        unit_price: Math.round(params.shipping.cost),
         currency_id: 'CLP',
-      })),
+      })
+    }
+
+    const preferenceBody: any = {
+      items: mpItems,
       // URLs de retorno
       back_urls: {
         success: `${baseUrl}/payment/success`,
@@ -155,14 +177,27 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
       }
     }
 
+    // Agregar metadata de envío
+    preferenceBody.metadata = {}
+    
+    if (params.shipping) {
+      preferenceBody.metadata.shipping_method = params.shipping.method
+      preferenceBody.metadata.shipping_cost = params.shipping.cost
+      preferenceBody.metadata.shipping_zone = params.shipping.zone || 'pickup'
+      
+      if (params.shipping.address) {
+        preferenceBody.metadata.shipping_address = JSON.stringify(params.shipping.address)
+      }
+      
+      console.log('📦 Shipping info added to metadata')
+    }
+
     // Integrator ID solo en desarrollo (para testing de certificación)
     // NO se envía en producción porque el ID "dev_" causa restricciones
     if (isDev && process.env.MERCADOPAGO_INTEGRATOR_ID) {
       const intId = process.env.MERCADOPAGO_INTEGRATOR_ID
       preferenceBody.integrator_id = intId
-      preferenceBody.metadata = {
-        integrator_id: intId
-      }
+      preferenceBody.metadata.integrator_id = intId
       console.log('🔑 Using Integrator ID in DEV mode:', intId)
     } else if (!isDev) {
       console.log('✅ Production mode: Integrator ID omitted (prevents restrictions)')

@@ -4,13 +4,15 @@ import { createPaymentPreference, type CardItem } from '@/lib/mercadopago'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { items, customerEmail, origin } = body as {
+    const { items, shipping, customerEmail, origin } = body as {
       items: CardItem[]
+      shipping?: any
       customerEmail?: string
       origin?: string
     }
 
     console.log('📝 Creating payment preference with items:', items)
+    console.log('📦 Shipping data:', shipping)
     console.log('🌐 Origin domain:', origin)
 
     // Validar items
@@ -38,6 +40,7 @@ export async function POST(request: Request) {
     // Crear preferencia en Mercado Pago
     const preference = await createPaymentPreference({
       items,
+      shipping, // Pasar datos de envío
       customerEmail,
       origin, // Pasar el dominio de origen
     })

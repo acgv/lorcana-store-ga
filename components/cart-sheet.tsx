@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { useCart } from "@/components/cart-provider"
 import { useLanguage } from "@/components/language-provider"
 import { useToast } from "@/hooks/use-toast"
+import { ShippingSelector, type ShippingData } from "@/components/shipping-selector"
 import Image from "next/image"
 
 interface CartSheetProps {
@@ -19,6 +20,12 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const { t } = useLanguage()
   const { toast } = useToast()
   const [processingCheckout, setProcessingCheckout] = useState(false)
+  const [shippingData, setShippingData] = useState<ShippingData>({
+    method: "pickup",
+    cost: 0,
+  })
+  
+  const finalTotal = totalPrice + shippingData.cost
 
   const handleCheckout = async () => {
     if (items.length === 0) return
@@ -31,6 +38,18 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
         description: t("minimumPurchase"),
       })
       return
+    }
+
+    // Validar datos de envío si es shipping
+    if (shippingData.method === "shipping") {
+      if (!shippingData.address?.street || !shippingData.address?.commune || !shippingData.address?.city) {
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: "Por favor completa la dirección de envío",
+        })
+        return
+      }
     }
 
     setProcessingCheckout(true)
@@ -47,6 +66,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
       }))
 
       console.log('🛒 Creating payment preference for cart:', cartItems)
+      console.log('📦 Shipping data:', shippingData)
 
       // Crear preferencia de pago
       const response = await fetch('/api/payment/create-preference', {
@@ -56,6 +76,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
         },
         body: JSON.stringify({
           items: cartItems,
+          shipping: shippingData,
           origin: window.location.origin,
         }),
       })
@@ -136,11 +157,34 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                   </div>
                 ))}
               </div>
-              <div className="border-t border-border pt-4 space-y-4">
-                <div className="flex justify-between text-lg font-bold">
-                  <span>{t("total")}</span>
-                  <span className="text-primary">${Math.floor(totalPrice).toLocaleString()}</span>
+              
+              {/* Shipping Selector */}
+              <div className="border-t border-border pt-4">
+                <ShippingSelector 
+                  cartTotal={totalPrice}
+                  onShippingChange={setShippingData}
+                />
+              </div>
+
+              {/* Totales */}
+              <div className="border-t border-border pt-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>{t("subtotal")}</span>
+                  <span>${Math.floor(totalPrice).toLocaleString()}</span>
                 </div>
+                <div className="flex justify-between text-sm">
+                  <span>{t("shippingCost")}</span>
+                  <span className={shippingData.cost === 0 ? "text-green-500 font-medium" : ""}>
+                    {shippingData.cost === 0 ? t("free") : `$${Math.floor(shippingData.cost).toLocaleString()}`}
+                  </span>
+                </div>
+                <div className="flex justify-between text-lg font-bold border-t pt-2">
+                  <span>{t("total")}</span>
+                  <span className="text-primary">${Math.floor(finalTotal).toLocaleString()}</span>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
                 <Button 
                   className="w-full" 
                   size="lg"
