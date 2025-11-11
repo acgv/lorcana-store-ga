@@ -11,10 +11,13 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 // Cliente público (solo lectura) - Para frontend y lectura de cartas
+// ✅ persistSession: true → Mantiene sesión de Google OAuth en localStorage
 export const supabase = supabaseUrl && supabaseAnonKey
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        persistSession: false,
+        persistSession: true, // ✅ Mantener sesión al recargar
+        autoRefreshToken: true, // ✅ Refrescar token automáticamente
+        detectSessionInUrl: true, // ✅ Detectar sesión en URL (OAuth callback)
       },
     })
   : null
