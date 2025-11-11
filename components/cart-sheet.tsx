@@ -28,10 +28,19 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const finalTotal = totalPrice + shippingData.cost
 
   const handleCheckout = async () => {
-    if (items.length === 0) return
+    console.log('🚀 Checkout initiated')
+    console.log('📊 Items:', items.length)
+    console.log('💰 Total:', totalPrice)
+    console.log('📦 Shipping:', shippingData)
+    
+    if (items.length === 0) {
+      console.log('❌ No items in cart')
+      return
+    }
 
     // Validar mínimo de compra ($50 CLP)
     if (totalPrice < 50) {
+      console.log('❌ Below minimum purchase')
       toast({
         variant: "destructive",
         title: t("error"),
@@ -42,16 +51,23 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
 
     // Validar datos de envío si es shipping
     if (shippingData.method === "shipping") {
+      console.log('📋 Validating shipping address...')
+      console.log('   Street:', shippingData.address?.street)
+      console.log('   Commune:', shippingData.address?.commune)
+      console.log('   City:', shippingData.address?.city)
+      
       if (!shippingData.address?.street || !shippingData.address?.commune || !shippingData.address?.city) {
+        console.log('❌ Missing required address fields')
         toast({
           variant: "destructive",
           title: t("error"),
-          description: "Por favor completa la dirección de envío",
+          description: "Por favor completa la dirección de envío (Calle, Comuna, Ciudad)",
         })
         return
       }
     }
 
+    console.log('✅ All validations passed, proceeding to payment...')
     setProcessingCheckout(true)
 
     try {
