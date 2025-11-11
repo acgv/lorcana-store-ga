@@ -31,7 +31,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
     console.log('🚀 Checkout initiated')
     console.log('📊 Items:', items.length)
     console.log('💰 Total:', totalPrice)
-    console.log('📦 Shipping:', shippingData)
+    console.log('📦 Shipping (at checkout):', shippingData)
     
     if (items.length === 0) {
       console.log('❌ No items in cart')
@@ -49,22 +49,34 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
       return
     }
 
-    // Validar datos de envío si es shipping
+    // ✅ VALIDACIÓN SOLO AL FINALIZAR COMPRA
     if (shippingData.method === "shipping") {
-      console.log('📋 Validating shipping address...')
-      console.log('   Street:', shippingData.address?.street)
-      console.log('   Commune:', shippingData.address?.commune)
-      console.log('   City:', shippingData.address?.city)
+      console.log('📋 Validating shipping address at checkout...')
       
-      if (!shippingData.address?.street || !shippingData.address?.commune || !shippingData.address?.city) {
-        console.log('❌ Missing required address fields')
+      const requiredFields = [
+        { field: 'street', name: 'Calle', value: shippingData.address?.street },
+        { field: 'number', name: 'Número', value: shippingData.address?.number },
+        { field: 'commune', name: 'Comuna', value: shippingData.address?.commune },
+        { field: 'city', name: 'Ciudad', value: shippingData.address?.city },
+        { field: 'region', name: 'Región', value: shippingData.address?.region },
+      ]
+      
+      const missingFields = requiredFields.filter(f => !f.value)
+      
+      if (missingFields.length > 0) {
+        const missingNames = missingFields.map(f => f.name).join(', ')
+        console.log('❌ Missing fields:', missingNames)
+        
         toast({
           variant: "destructive",
           title: t("error"),
-          description: "Por favor completa la dirección de envío (Calle, Comuna, Ciudad)",
+          description: `Por favor completa: ${missingNames}`,
+          duration: 5000,
         })
         return
       }
+      
+      console.log('✅ Address validation passed')
     }
 
     console.log('✅ All validations passed, proceeding to payment...')

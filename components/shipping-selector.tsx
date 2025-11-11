@@ -55,38 +55,21 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
   const shippingCost = calculateShippingCost(method, zone, cartTotal)
   const freeShipping = isFreeShipping(cartTotal)
 
-  // Effect: Actualización inmediata para método y zona (sin debounce)
-  useEffect(() => {
-    const data: ShippingData = {
+  // Función para obtener datos actuales (llamada desde padre al checkout)
+  const getShippingData = (): ShippingData => {
+    return {
       method,
       zone: method === "shipping" ? zone : undefined,
       address: method === "shipping" ? address : undefined,
       cost: shippingCost,
     }
-    console.log('📦 ShippingSelector updating parent (immediate):', data)
-    onShippingChange(data)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [method, zone, shippingCost, cartTotal])
+  }
 
-  // Effect: Actualización con debounce solo para campos de dirección (al escribir)
+  // Solo actualizar costo en tiempo real (para mostrar en UI)
   useEffect(() => {
-    // Solo si es shipping
-    if (method !== "shipping") return
-
-    const timeoutId = setTimeout(() => {
-      const data: ShippingData = {
-        method,
-        zone,
-        address,
-        cost: shippingCost,
-      }
-      console.log('📦 ShippingSelector updating address (debounced):', data)
-      onShippingChange(data)
-    }, 500) // Espera 500ms después de dejar de escribir
-
-    return () => clearTimeout(timeoutId)
+    onShippingChange(getShippingData())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address.street, address.number, address.commune, address.city, address.region])
+  }, [method, zone, shippingCost])
 
   const handleMethodChange = (newMethod: "pickup" | "shipping") => {
     setMethod(newMethod)
