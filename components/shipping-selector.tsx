@@ -63,9 +63,10 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
       address: method === "shipping" ? address : undefined,
       cost: shippingCost,
     }
+    console.log('📦 ShippingSelector updating parent:', data)
     onShippingChange(data)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [method, zone, shippingCost, cartTotal, address.street, address.commune])
+  }, [method, zone, shippingCost, cartTotal, address.street, address.number, address.commune, address.city])
 
   const handleMethodChange = (newMethod: "pickup" | "shipping") => {
     setMethod(newMethod)
@@ -180,21 +181,27 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
             {/* Calle */}
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-2">
-                <Label>{t("street")}</Label>
+                <Label className="text-sm font-medium">
+                  {t("street")} <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   placeholder="Av. Providencia"
                   value={address.street}
                   onChange={(e) => handleAddressChange("street", e.target.value)}
                   required
+                  className={!address.street ? "border-red-500/50" : ""}
                 />
               </div>
               <div>
-                <Label>{t("number")}</Label>
+                <Label className="text-sm font-medium">
+                  {t("number")} <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   placeholder="1234"
                   value={address.number}
                   onChange={(e) => handleAddressChange("number", e.target.value)}
                   required
+                  className={!address.number ? "border-red-500/50" : ""}
                 />
               </div>
             </div>
@@ -202,33 +209,42 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
             {/* Comuna y Ciudad */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>{t("commune")}</Label>
+                <Label className="text-sm font-medium">
+                  {t("commune")} <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   placeholder="Las Condes"
                   value={address.commune}
                   onChange={(e) => handleAddressChange("commune", e.target.value)}
                   required
+                  className={!address.commune ? "border-red-500/50" : ""}
                 />
               </div>
               <div>
-                <Label>{t("city")}</Label>
+                <Label className="text-sm font-medium">
+                  {t("city")} <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   placeholder="Santiago"
                   value={address.city}
                   onChange={(e) => handleAddressChange("city", e.target.value)}
                   required
+                  className={!address.city ? "border-red-500/50" : ""}
                 />
               </div>
             </div>
 
             {/* Región */}
             <div>
-              <Label>{t("region")}</Label>
+              <Label className="text-sm font-medium">
+                {t("region")} <span className="text-red-500">*</span>
+              </Label>
               <Input
                 placeholder="Región Metropolitana"
                 value={address.region}
                 onChange={(e) => handleAddressChange("region", e.target.value)}
                 required
+                className={!address.region ? "border-red-500/50" : ""}
               />
             </div>
 

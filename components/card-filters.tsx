@@ -127,15 +127,15 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
         <div className="pt-3">
           <Slider
             min={0}
-            max={100}
-            step={1}
+            max={100000}
+            step={500}
             value={[filters.minPrice, filters.maxPrice]}
             onValueChange={([min, max]) => setFilters({ ...filters, minPrice: min, maxPrice: max })}
             className="cursor-pointer"
           />
           <div className="flex justify-between mt-3 text-sm font-medium text-foreground/70">
-            <span className="px-2 py-1 rounded bg-primary/10 text-primary">${filters.minPrice}</span>
-            <span className="px-2 py-1 rounded bg-primary/10 text-primary">${filters.maxPrice}</span>
+            <span className="px-2 py-1 rounded bg-primary/10 text-primary">${Math.floor(filters.minPrice).toLocaleString()}</span>
+            <span className="px-2 py-1 rounded bg-primary/10 text-primary">${Math.floor(filters.maxPrice).toLocaleString()}</span>
           </div>
         </div>
       </div>

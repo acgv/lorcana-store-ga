@@ -26,7 +26,7 @@ function CatalogContent() {
     set: searchParams.get("set") || "all",
     rarity: searchParams.get("rarity") || "all",
     minPrice: Number(searchParams.get("minPrice")) || 0,
-    maxPrice: Number(searchParams.get("maxPrice")) || 10000, // Aumentado a $10,000 para incluir todas las cartas
+    maxPrice: Number(searchParams.get("maxPrice")) || 100000, // Aumentado a $100,000 para incluir legendarias
     version: searchParams.get("version") || "all",
     search: searchParams.get("search") || "",
   })
