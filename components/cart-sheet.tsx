@@ -104,16 +104,16 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg">
-        <SheetHeader>
+      <SheetContent className="w-full sm:max-w-lg flex flex-col">
+        <SheetHeader className="flex-shrink-0">
           <SheetTitle className="font-display text-2xl">{t("cart")}</SheetTitle>
         </SheetHeader>
-        <div className="mt-8 flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto mt-8 flex flex-col gap-4 pr-2">
           {items.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">{t("emptyCart")}</p>
           ) : (
             <>
-              <div className="flex-1 overflow-auto space-y-4">
+              <div className="space-y-4">
                 {items.map((item) => (
                   <div
                     key={`${item.id}-${item.version}`}
