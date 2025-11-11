@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useLanguage } from "@/components/language-provider"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -55,7 +55,8 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
   const shippingCost = calculateShippingCost(method, zone, cartTotal)
   const freeShipping = isFreeShipping(cartTotal)
 
-  const updateShipping = () => {
+  // Effect to update parent whenever shipping data changes
+  useEffect(() => {
     const data: ShippingData = {
       method,
       zone: method === "shipping" ? zone : undefined,
@@ -63,11 +64,11 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
       cost: shippingCost,
     }
     onShippingChange(data)
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [method, zone, shippingCost, cartTotal, address.street, address.commune])
 
   const handleMethodChange = (newMethod: "pickup" | "shipping") => {
     setMethod(newMethod)
-    setTimeout(updateShipping, 0)
   }
 
   const handleZoneChange = (newZone: string) => {
@@ -78,13 +79,10 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
     if (selectedZone) {
       setAddress({ ...address, region: selectedZone.regions[0] })
     }
-    
-    setTimeout(updateShipping, 0)
   }
 
   const handleAddressChange = (field: string, value: string) => {
     setAddress({ ...address, [field]: value })
-    setTimeout(updateShipping, 0)
   }
 
   return (
