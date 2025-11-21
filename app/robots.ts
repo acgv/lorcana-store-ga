@@ -2,9 +2,12 @@ import { MetadataRoute } from 'next'
 
 // Función auxiliar para obtener la URL base
 function getBaseUrl(): string {
-  // En producción, usar NEXT_PUBLIC_APP_URL si está configurado
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL
+  // Prioridad 1: NEXT_PUBLIC_SITE_URL (estándar para SEO)
+  // Prioridad 2: NEXT_PUBLIC_APP_URL (compatibilidad hacia atrás)
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL
+  
+  if (siteUrl) {
+    return siteUrl
   }
   
   // En Vercel, usar VERCEL_URL si está disponible
