@@ -215,9 +215,14 @@ export function Header() {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 hidden md:flex" aria-label="Abrir menú de usuario">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-2 hidden md:flex font-medium text-foreground hover:text-foreground hover:bg-accent/50 border-border hover:border-primary/50 transition-all" 
+                  aria-label="Abrir menú de usuario"
+                >
                   <User className="h-4 w-4" />
-                  <span className="hidden lg:inline-block">
+                  <span className="hidden lg:inline-block font-semibold">
                     {user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Usuario"}
                   </span>
                 </Button>
