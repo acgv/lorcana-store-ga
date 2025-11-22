@@ -23,7 +23,7 @@ interface AdminHeaderProps {
 
 export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
   const { user: adminUser, logout } = useAuth()
-  const { user: googleUser } = useUser()
+  const { user: googleUser, signOut: userSignOut } = useUser()
   const { t } = useLanguage()
   const pathname = usePathname()
   
@@ -55,14 +55,17 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
     setDisplayEmail(email)
   }, [googleUser, adminUser])
 
-  const handleLogout = () => {
-    // Limpiar todo
-    localStorage.removeItem("admin_token")
-    localStorage.removeItem("user_name")
-    localStorage.removeItem("user_email")
-    document.cookie = "admin_token=; path=/; max-age=0"
-    // Redirigir al home
-    window.location.href = "/"
+  const handleLogout = async () => {
+    // Si hay sesión de Google, cerrar todo y hacer redirect (última acción)
+    if (googleUser) {
+      // Limpiar también el admin_token antes del redirect
+      localStorage.removeItem("admin_token")
+      document.cookie = "admin_token=; path=/; max-age=0"
+      await userSignOut() // Esto hará redirect a Google Logout
+    } else {
+      // Solo cerrar sesión de admin tradicional
+      logout()
+    }
   }
 
   const navItems = [
