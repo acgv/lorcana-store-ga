@@ -218,7 +218,7 @@ export function Header() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="gap-2 hidden md:flex font-medium text-foreground hover:text-foreground hover:bg-accent/50 border-border hover:border-primary/50 transition-all" 
+                  className="gap-2 hidden md:flex font-medium text-foreground hover:text-primary-foreground hover:bg-primary hover:border-primary border-border transition-all" 
                   aria-label="Abrir menú de usuario"
                 >
                   <User className="h-4 w-4" />
