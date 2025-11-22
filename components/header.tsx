@@ -216,13 +216,13 @@ export function Header() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
                   size="sm" 
-                  className="gap-2 hidden md:flex font-medium text-foreground hover:text-primary-foreground hover:bg-primary hover:border-primary border-border transition-all" 
+                  className="gap-2 hidden md:flex font-semibold text-foreground border border-border hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200" 
                   aria-label="Abrir menú de usuario"
                 >
                   <User className="h-4 w-4" />
-                  <span className="hidden lg:inline-block font-semibold">
+                  <span className="hidden lg:inline-block">
                     {user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Usuario"}
                   </span>
                 </Button>
