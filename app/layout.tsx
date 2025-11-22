@@ -9,18 +9,22 @@ import { CartProvider } from "@/components/cart-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 
 // Fuente display elegante SOLO para títulos grandes (estilo Disney Lorcana)
+// Optimizado con font-display: swap para mostrar texto inmediatamente
 const playfair = Playfair_Display({ 
   subsets: ["latin"], 
   weight: ["400", "500", "600", "700", "800", "900"],
   variable: "--font-display",
-  style: ["normal", "italic"]
+  style: ["normal", "italic"],
+  display: "swap", // Muestra texto inmediatamente mientras carga la fuente
 })
 
 // Fuente Inter para TODO lo demás (suave y moderna)
+// Optimizado con font-display: swap para LCP más rápido
 const inter = Inter({ 
   subsets: ["latin"], 
   variable: "--font-sans",
-  weight: ["300", "400", "500", "600", "700", "800", "900"]
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  display: "swap", // Muestra texto inmediatamente mientras carga la fuente
 })
 
 export const metadata: Metadata = {
@@ -53,16 +57,20 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        {/* Preconnect para fuentes de Google */}
+        {/* Preconnect para fuentes de Google - CRÍTICO para LCP de texto */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Preconnect para API de imágenes de Lorcana */}
         <link rel="preconnect" href="https://api.lorcana.ravensburger.com" />
+        {/* DNS prefetch para recursos adicionales */}
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
       </head>
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
         <Script
           id="store-schema"
           type="application/ld+json"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <ThemeProvider>

@@ -12,10 +12,11 @@ export default function HomePage() {
   const { t } = useLanguage()
   const [isMounted, setIsMounted] = useState(false)
 
-  // Generate particles only once on client side
+  // Generate particles only once on client side - optimized for performance
   const particles = useMemo(() => {
     if (!isMounted) return []
-    return [...Array(50)].map((_, i) => ({
+    // Reduce particle count from 50 to 25 for better performance
+    return [...Array(25)].map((_, i) => ({
       width: Math.random() * 4 + 1,
       height: Math.random() * 4 + 1,
       left: Math.random() * 100,
@@ -49,6 +50,10 @@ export default function HomePage() {
                     top: `${particle.top}%`,
                     animation: `float ${particle.duration}s ease-in-out infinite`,
                     animationDelay: `${particle.delay}s`,
+                    willChange: 'transform',
+                    transform: 'translateZ(0)',
+                    backfaceVisibility: 'hidden',
+                    perspective: '1000px',
                   }}
                 />
               ))}
@@ -61,6 +66,7 @@ export default function HomePage() {
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="text-sm font-sans font-medium text-primary tracking-wide">Disney Lorcana TCG</span>
             </div>
+            {/* LCP Element - Hero Title - Optimizado para carga rápida */}
             <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black mb-8 text-balance leading-[0.9]">
               <span className="text-magical bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent inline-block">
                 Comprar Cartas Lorcana en Chile

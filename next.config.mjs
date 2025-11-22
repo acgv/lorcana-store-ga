@@ -14,7 +14,21 @@ const nextConfig = {
     forceSwcTransforms: false,
   },
   compiler: {
-    removeConsole: false,
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'],
+    } : false,
+  },
+  // Optimizar bundle size y tree-shaking
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Optimizar para reducir JS no usado
+      config.optimization = {
+        ...config.optimization,
+        usedExports: true,
+        sideEffects: false,
+      }
+    }
+    return config
   },
   browserslist: {
     production: [

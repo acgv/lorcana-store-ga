@@ -138,6 +138,7 @@
   h1 {
     font-weight: 900;
     letter-spacing: -0.02em;
+    /* LCP optimizado: font-display: swap configurado en next/font/google */
   }
   
   h2, h3 {
@@ -191,16 +192,19 @@
 @keyframes float {
   0%,
   100% {
-    transform: translateY(0px);
+    transform: translateY(0px) translateZ(0);
   }
   50% {
-    transform: translateY(-10px);
+    transform: translateY(-10px) translateZ(0);
   }
 }
 
 .foil-effect {
   position: relative;
   overflow: hidden;
+  /* Optimización: composición GPU */
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .foil-effect::before {
@@ -220,8 +224,14 @@
   );
   animation: shimmer 3s infinite;
   pointer-events: none;
+  /* Optimización: animación compuesta */
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 .glow-border {
   animation: glow 2s ease-in-out infinite;
+  /* Optimización: composición GPU */
+  will-change: box-shadow;
+  transform: translateZ(0);
 }
