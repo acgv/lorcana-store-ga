@@ -222,9 +222,9 @@ function CatalogContent() {
               {/* Botón de filtros mobile */}
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" aria-label={t("openFilters") || "Abrir filtros"}>
                     <SlidersHorizontal className="h-4 w-4 mr-2" />
-                    Filters
+                    {t("filters") || "Filters"}
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-full sm:w-80 overflow-y-auto">

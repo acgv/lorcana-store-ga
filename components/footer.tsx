@@ -83,11 +83,13 @@ export function Footer() {
               {/* Certification Badge - inline with social icons */}
               <div className="inline-block" title="Desarrollador Certificado por Mercado Pago">
                 <Image
-                  src="/mercadopago-certified-badge.png"
+                  src="/mercadopago-certified-badge.webp"
                   alt="Certificado Mercado Pago"
-                  width={80}
-                  height={27}
-                  className="opacity-90"
+                  width={140}
+                  height={101}
+                  className="opacity-90 h-auto w-auto max-w-[80px] max-h-[27px]"
+                  loading="lazy"
+                  priority={false}
                 />
               </div>
             </div>

@@ -87,7 +87,7 @@ export function Header() {
           {/* Botón de menú móvil */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" aria-label={t("openNavigationMenu") || "Abrir menú de navegación"}>
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
@@ -183,6 +183,7 @@ export function Header() {
                         handleSignOut()
                       }}
                       className="w-full text-left text-base font-sans font-medium text-destructive hover:text-destructive/80 transition-colors px-2 py-2 hover:bg-muted rounded-md flex items-center gap-2"
+                      aria-label={t("signOut") || "Cerrar sesión"}
                     >
                       <LogOut className="h-4 w-4" />
                       {t("signOut")}
@@ -214,7 +215,7 @@ export function Header() {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 hidden md:flex">
+                <Button variant="outline" size="sm" className="gap-2 hidden md:flex" aria-label="Abrir menú de usuario">
                   <User className="h-4 w-4" />
                   <span className="hidden lg:inline-block">
                     {user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Usuario"}
@@ -255,13 +256,20 @@ export function Header() {
               size="sm" 
               className="hidden md:flex gap-2"
               onClick={() => router.push("/login")}
+              aria-label={t("signIn") || "Iniciar sesión"}
             >
               <User className="h-4 w-4" />
               <span className="hidden lg:inline-block">{t("signIn")}</span>
             </Button>
           )}
           
-          <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative" 
+            onClick={() => setCartOpen(true)}
+            aria-label={t("openCart") || `Abrir carrito de compras${totalItems > 0 ? ` (${totalItems} ${totalItems === 1 ? 'artículo' : 'artículos'})` : ''}`}
+          >
             <ShoppingCart className="h-5 w-5" />
             {totalItems > 0 && (
               <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">
