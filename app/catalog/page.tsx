@@ -80,7 +80,7 @@ function CatalogContent() {
     router.replace(newUrl, { scroll: false })
   }, [filters, sortBy, viewMode, router])
 
-  // Contar cartas por rareza
+  // Contar stock disponible por rareza
   const rarityCounts = useMemo(() => {
     const counts = {
       common: 0,
@@ -90,10 +90,15 @@ function CatalogContent() {
     }
     
     cards.forEach((card) => {
-      if (card.rarity === "common") counts.common++
-      else if (card.rarity === "rare") counts.rare++
-      else if (card.rarity === "superRare") counts.superRare++
-      else if (card.rarity === "legendary" || card.rarity === "enchanted") counts.legendary++
+      // Sumar stock normal y foil disponible
+      const normalStock = (card.normalStock || card.stock || 0)
+      const foilStock = (card.foilStock || 0)
+      const totalStock = normalStock + foilStock
+      
+      if (card.rarity === "common") counts.common += totalStock
+      else if (card.rarity === "rare") counts.rare += totalStock
+      else if (card.rarity === "superRare") counts.superRare += totalStock
+      else if (card.rarity === "legendary" || card.rarity === "enchanted") counts.legendary += totalStock
     })
     
     return counts
@@ -196,25 +201,25 @@ function CatalogContent() {
             <div className="p-4 bg-card border rounded-lg">
               <h3 className="font-semibold mb-2">Comunes</h3>
               <p className="text-sm text-muted-foreground">
-                {rarityCounts.common} {rarityCounts.common === 1 ? "carta disponible" : "cartas disponibles"}
+                {rarityCounts.common} {rarityCounts.common === 1 ? "unidad disponible" : "unidades disponibles"}
               </p>
             </div>
             <div className="p-4 bg-card border rounded-lg">
               <h3 className="font-semibold mb-2">Raras</h3>
               <p className="text-sm text-muted-foreground">
-                {rarityCounts.rare} {rarityCounts.rare === 1 ? "carta disponible" : "cartas disponibles"}
+                {rarityCounts.rare} {rarityCounts.rare === 1 ? "unidad disponible" : "unidades disponibles"}
               </p>
             </div>
             <div className="p-4 bg-card border rounded-lg">
               <h3 className="font-semibold mb-2">Super Raras</h3>
               <p className="text-sm text-muted-foreground">
-                {rarityCounts.superRare} {rarityCounts.superRare === 1 ? "carta disponible" : "cartas disponibles"}
+                {rarityCounts.superRare} {rarityCounts.superRare === 1 ? "unidad disponible" : "unidades disponibles"}
               </p>
             </div>
             <div className="p-4 bg-card border rounded-lg">
               <h3 className="font-semibold mb-2">Luminares / Legendarias</h3>
               <p className="text-sm text-muted-foreground">
-                {rarityCounts.legendary} {rarityCounts.legendary === 1 ? "carta disponible" : "cartas disponibles"}
+                {rarityCounts.legendary} {rarityCounts.legendary === 1 ? "unidad disponible" : "unidades disponibles"}
               </p>
             </div>
           </div>
