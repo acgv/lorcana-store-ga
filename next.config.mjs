@@ -6,6 +6,22 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
     legacyBrowsers: false,
+    css: {
+      optimize: true,
+      inlining: true, // fuerza inline CSS crítico
+    },
+    esmExternals: true,
+    forceSwcTransforms: false,
+  },
+  compiler: {
+    removeConsole: false,
+  },
+  browserslist: {
+    production: [
+      "last 2 Chrome versions",
+      "last 2 Edge versions",
+      "last 2 Safari versions",
+    ],
   },
   images: {
     unoptimized: true,

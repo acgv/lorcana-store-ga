@@ -52,6 +52,13 @@ export default function RootLayout({
 
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        {/* Preconnect para fuentes de Google */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Preconnect para API de imágenes de Lorcana */}
+        <link rel="preconnect" href="https://api.lorcana.ravensburger.com" />
+      </head>
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
         <Script
           id="store-schema"
