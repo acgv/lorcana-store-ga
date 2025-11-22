@@ -71,7 +71,7 @@ pnpm dev
 ✅ **Carrito de compras funcional** con checkout a Mercado Pago ⭐  
 ✅ **Colección Personal Virtual** - Trackea tus cartas (Tengo/Deseo) con cantidades 🆕  
 ✅ **Sistema de envío de cartas** - Usuarios pueden proponer cartas ⭐  
-✅ **Google OAuth** - Login con cuenta de Google 🆕  
+✅ **Google OAuth** - Login con cuenta de Google y selección de cuenta forzada 🆕  
 ✅ **Modo Claro/Oscuro** - Toggle entre temas ⭐  
 ✅ Diseño responsive mobile-first con **menú hamburguesa** ⭐  
 ✅ **Página educativa** completa sobre cómo jugar Lorcana  
@@ -115,7 +115,7 @@ pnpm dev
 ✅ Edición en masa con "Save All Changes"  
 ✅ **Spinners visuales** durante guardado  
 ✅ **Validación de errores** de Supabase en tiempo real  
-✅ Autenticación segura con logout  
+✅ Autenticación segura con logout (redirige a home)  
 ✅ **Navegación con tabs** entre 5 secciones principales 🆕  
 ✅ **Multi-idioma completo** (EN, ES, FR, DE) - 300+ keys ⭐  
 ✅ Integración con **Supabase** en tiempo real  
