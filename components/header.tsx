@@ -257,9 +257,9 @@ export function Header() {
             </DropdownMenu>
           ) : (
             <Button 
-              variant="outline" 
+              variant="ghost" 
               size="sm" 
-              className="hidden md:flex gap-2"
+              className="gap-2 hidden md:flex font-semibold text-foreground border border-border hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
               onClick={() => router.push("/login")}
               aria-label={t("signIn") || "Iniciar sesión"}
             >
