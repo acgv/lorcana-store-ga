@@ -7,7 +7,7 @@ import { useUser } from "@/hooks/use-user"
 import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
 import { LogOut, User, Users, Package, ShoppingBag, FileText, Activity, Wrench } from "lucide-react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,7 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
   const { user: googleUser, signOut: userSignOut } = useUser()
   const { t } = useLanguage()
   const pathname = usePathname()
+  const router = useRouter()
   
   // SSR-safe state for display name
   const [displayName, setDisplayName] = useState("Admin")
@@ -56,16 +57,19 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
   }, [googleUser, adminUser])
 
   const handleLogout = async () => {
-    // Si hay sesión de Google, cerrar todo y hacer redirect (última acción)
+    // Limpiar todos los datos de sesión
+    localStorage.removeItem("admin_token")
+    localStorage.removeItem("user_name")
+    localStorage.removeItem("user_email")
+    document.cookie = "admin_token=; path=/; max-age=0"
+    
+    // Cerrar sesión de Google OAuth si existe
     if (googleUser) {
-      // Limpiar también el admin_token antes del redirect
-      localStorage.removeItem("admin_token")
-      document.cookie = "admin_token=; path=/; max-age=0"
-      await userSignOut() // Esto hará redirect a Google Logout
-    } else {
-      // Solo cerrar sesión de admin tradicional
-      logout()
+      await userSignOut()
     }
+    
+    // Redirigir a la home con sesión cerrada
+    router.push("/")
   }
 
   const navItems = [

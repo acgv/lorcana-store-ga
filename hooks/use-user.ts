@@ -80,16 +80,11 @@ export function useUser() {
   }
 
   const signOut = async () => {
-    // Verificar si hay sesión de Google antes de cerrar
-    const hasGoogleSession = !!user
     await supabase.auth.signOut()
     setUser(null)
     setIsAdmin(false)
-    // Cerrar sesión completa de Google para permitir cambio de cuenta
-    // Solo si había una sesión activa de Google
-    if (hasGoogleSession && typeof window !== "undefined") {
-      window.location.href = `https://accounts.google.com/Logout?continue=${encodeURIComponent(window.location.origin)}`
-    }
+    // Nota: No necesitamos cerrar sesión de Google manualmente.
+    // El prompt: "select_account" en el login forzará la selección de cuenta.
   }
 
   return {
