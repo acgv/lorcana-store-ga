@@ -5,38 +5,19 @@ const nextConfig = {
   },
   experimental: {
     optimizeCss: true,
-    legacyBrowsers: false,
-    css: {
-      optimize: true,
-      inlining: true, // fuerza inline CSS crítico
-    },
     esmExternals: true,
-    forceSwcTransforms: false,
+    // Nota: legacyBrowsers y css.inlining no están disponibles en Next.js 16
+    // Next.js 16 ya optimiza CSS automáticamente
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
       exclude: ['error', 'warn'],
     } : false,
   },
-  // Optimizar bundle size y tree-shaking
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      // Optimizar para reducir JS no usado
-      config.optimization = {
-        ...config.optimization,
-        usedExports: true,
-        sideEffects: false,
-      }
-    }
-    return config
-  },
-  browserslist: {
-    production: [
-      "last 2 Chrome versions",
-      "last 2 Edge versions",
-      "last 2 Safari versions",
-    ],
-  },
+  // Next.js 16 usa Turbopack por defecto (más rápido que webpack)
+  // Turbopack ya hace tree-shaking y optimizaciones automáticamente
+  // No necesitamos configuración de webpack
+  turbopack: {},
   images: {
     unoptimized: true,
     remotePatterns: [
