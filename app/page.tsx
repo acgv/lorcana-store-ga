@@ -63,7 +63,7 @@ export default function HomePage() {
             </div>
             <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black mb-8 text-balance leading-[0.9]">
               <span className="text-magical bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent inline-block">
-                {t("heroTitle")}
+                Comprar Cartas Lorcana en Chile
               </span>
             </h1>
             <p className="font-sans text-xl md:text-3xl text-muted-foreground/90 mb-10 max-w-3xl mx-auto text-pretty leading-relaxed font-light">
@@ -79,12 +79,13 @@ export default function HomePage() {
 
         {/* Featured Section */}
         <section className="container mx-auto px-4 py-20">
+          <h2 className="font-display text-3xl md:text-4xl font-bold mb-8 text-center">Categorías Disponibles</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="p-6 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">{t("legendaryCards")}</h3>
+              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Cartas Individuales</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-sans">
                 {t("legendaryCardsDesc")}
               </p>
@@ -93,7 +94,7 @@ export default function HomePage() {
               <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-6 w-6 text-accent" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">{t("foilVariants")}</h3>
+              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Accesorios TCG</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-sans">
                 {t("foilVariantsDesc")}
               </p>
@@ -102,11 +103,21 @@ export default function HomePage() {
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">{t("advancedFilters")}</h3>
+              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Sellos y Productos Sellados</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-sans">
                 {t("advancedFiltersDesc")}
               </p>
             </div>
+          </div>
+        </section>
+
+        {/* Por Qué Comprar con Nosotros */}
+        <section className="container mx-auto px-4 py-20">
+          <h2 className="font-display text-3xl md:text-4xl font-bold mb-8 text-center">Por Qué Comprar con Nosotros</h2>
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              Stock actualizado, precios competitivos y envíos a todo Chile. Tu tienda de confianza para cartas Disney Lorcana.
+            </p>
           </div>
         </section>
 

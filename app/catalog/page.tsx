@@ -165,10 +165,38 @@ function CatalogContent() {
         <div className="mb-4 md:mb-6">
           <h1 className="font-display text-4xl md:text-5xl lg:text-7xl font-black text-balance tracking-tight leading-none">
             <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              {t("catalog")}
+              Catálogo de Cartas Lorcana
             </span>
           </h1>
         </div>
+        
+        {/* Sección Tipos de Cartas */}
+        <section className="mb-8">
+          <h2 className="font-display text-2xl md:text-3xl font-bold mb-4">Tipos de Cartas</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="p-4 bg-card border rounded-lg">
+              <h3 className="font-semibold mb-2">Comunes</h3>
+              <p className="text-sm text-muted-foreground">Cartas comunes disponibles</p>
+            </div>
+            <div className="p-4 bg-card border rounded-lg">
+              <h3 className="font-semibold mb-2">Raras</h3>
+              <p className="text-sm text-muted-foreground">Cartas raras disponibles</p>
+            </div>
+            <div className="p-4 bg-card border rounded-lg">
+              <h3 className="font-semibold mb-2">Super Raras</h3>
+              <p className="text-sm text-muted-foreground">Cartas super raras disponibles</p>
+            </div>
+            <div className="p-4 bg-card border rounded-lg">
+              <h3 className="font-semibold mb-2">Luminares / Legendarias</h3>
+              <p className="text-sm text-muted-foreground">Cartas legendarias disponibles</p>
+            </div>
+          </div>
+        </section>
+        
+        {/* Sección Accesorios */}
+        <section className="mb-8">
+          <h2 className="font-display text-2xl md:text-3xl font-bold mb-4">Accesorios Disponibles</h2>
+        </section>
 
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
           {/* Filtros Desktop (ocultos en mobile) */}

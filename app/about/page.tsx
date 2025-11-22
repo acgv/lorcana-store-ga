@@ -16,7 +16,7 @@ export default function AboutPage() {
         <div className="max-w-6xl mx-auto">
           {/* Título principal */}
           <div className="text-center mb-8 md:mb-12">
-            <h1 className="font-serif text-3xl md:text-4xl font-bold mb-4">Aprende a Jugar Disney Lorcana</h1>
+            <h1 className="font-serif text-3xl md:text-4xl font-bold mb-4">Cómo Jugar Disney Lorcana</h1>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Guía completa para principiantes y jugadores avanzados. Aprende las reglas, cómo armar tu mazo y domina todas las variantes del juego.
             </p>
@@ -62,7 +62,7 @@ export default function AboutPage() {
           <section id="como-jugar" className="mb-12 scroll-mt-20">
             <div className="flex items-center gap-3 mb-6">
               <BookOpen className="h-7 w-7 text-primary" />
-              <h2 className="text-2xl md:text-3xl font-bold">Cómo Jugar Disney Lorcana</h2>
+              <h2 className="text-2xl md:text-3xl font-bold">Reglas Básicas</h2>
             </div>
 
             <Card className="mb-6">
@@ -139,7 +139,7 @@ export default function AboutPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Conceptos Clave</CardTitle>
+                <CardTitle>Tipos de Cartas</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -295,7 +295,7 @@ export default function AboutPage() {
           <section id="armar-mazo" className="mb-12 scroll-mt-20">
             <div className="flex items-center gap-3 mb-6">
               <Layers className="h-7 w-7 text-primary" />
-              <h2 className="text-2xl md:text-3xl font-bold">Cómo Armar un Mazo</h2>
+              <h2 className="text-2xl md:text-3xl font-bold">Cómo Construir un Mazo</h2>
             </div>
 
             <Card className="mb-6">
@@ -432,7 +432,7 @@ export default function AboutPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Consejos para Armar tu Primer Mazo</CardTitle>
+                <CardTitle>Consejos para Principiantes</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">

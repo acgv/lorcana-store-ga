@@ -46,48 +46,51 @@ export default function ContactPage() {
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
         <div className="max-w-4xl mx-auto">
-          <h1 className="font-serif text-3xl md:text-4xl font-bold mb-4 text-center">{t("contact")}</h1>
+          <h1 className="font-serif text-3xl md:text-4xl font-bold mb-4 text-center">Contacto y Horarios de Atención</h1>
           <p className="text-muted-foreground text-center mb-8 md:mb-12">
             ¿Tienes alguna pregunta? Estamos aquí para ayudarte
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            {contactInfo.map((contact) => {
-              const Icon = contact.icon
-              return (
-                <Card key={contact.label} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <Icon className="h-5 w-5 text-primary" />
+          <section className="mb-12">
+            <h2 className="font-serif text-xl md:text-2xl font-bold mb-6 text-center">Medios de Contacto</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              {contactInfo.map((contact) => {
+                const Icon = contact.icon
+                return (
+                  <Card key={contact.label} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <Icon className="h-5 w-5 text-primary" />
+                        </div>
+                        <CardTitle className="text-lg">{contact.label}</CardTitle>
                       </div>
-                      <CardTitle className="text-lg">{contact.label}</CardTitle>
-                    </div>
-                    <CardDescription>{contact.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      asChild
-                    >
-                      <a href={contact.href} target="_blank" rel="noopener noreferrer">
-                        <span className="truncate">{contact.value}</span>
-                      </a>
-                    </Button>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-
-          <div className="mt-12 p-6 md:p-8 bg-muted rounded-lg text-center">
-            <h2 className="font-serif text-xl md:text-2xl font-bold mb-3">Horario de Atención</h2>
+                      <CardDescription>{contact.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        asChild
+                      >
+                        <a href={contact.href} target="_blank" rel="noopener noreferrer">
+                          <span className="truncate">{contact.value}</span>
+                        </a>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </section>
+          
+          <section className="p-6 md:p-8 bg-muted rounded-lg text-center">
+            <h2 className="font-serif text-xl md:text-2xl font-bold mb-3">Horarios</h2>
             <p className="text-muted-foreground">
               Lunes a Sábado: 10:00 AM - 8:00 PM<br />
               Domingo: Cerrado
             </p>
-          </div>
+          </section>
         </div>
       </main>
       <Footer />

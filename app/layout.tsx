@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Playfair_Display, Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import Script from "next/script"
 import "./globals.css"
 import { LanguageProvider } from "@/components/language-provider"
 import { CartProvider } from "@/components/cart-provider"
@@ -23,8 +24,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Lorcana Singles - Find Your Perfect Card",
-  description: "Discover, filter and collect your favorite Disney Lorcana TCG single cards",
+  title: "Comprar Cartas Lorcana en Chile – GA Company TCG Store",
+  description: "Tienda online de tarjetas Disney Lorcana en Chile. Cartas individuales, boosters, accesorios y más. Stock actualizado, buenos precios y envíos a todo Chile. Revisa nuestro catálogo ahora.",
   generator: "v0.app",
   icons: {
     icon: '/logo-ga.jpg',
@@ -36,9 +37,27 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Store",
+    "name": "GA Company TCG Store",
+    "url": "https://www.gacompany.cl",
+    "description": "Tienda online especializada en cartas Disney Lorcana en Chile. Venta de cartas individuales, productos sellados y accesorios TCG.",
+    "image": "https://www.gacompany.cl/logo-ga.jpg",
+    "currenciesAccepted": "CLP",
+    "paymentAccepted": "CreditCard, DebitCard, Transfer",
+    "areaServed": "CL",
+    "sameAs": []
+  }
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
+        <Script
+          id="store-schema"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <ThemeProvider>
           <LanguageProvider>
             <CartProvider>{children}</CartProvider>
