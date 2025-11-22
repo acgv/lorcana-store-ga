@@ -10,6 +10,7 @@ import { CardFilters } from "@/components/card-filters"
 import { useLanguage } from "@/components/language-provider"
 import { useUser } from "@/hooks/use-user"
 import { useCollection } from "@/hooks/use-collection"
+import { useCart } from "@/components/cart-provider"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -19,7 +20,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { SlidersHorizontal } from "lucide-react"
 import { 
   Loader2, Lock, Package, Heart, Trash2, ExternalLink, 
-  TrendingUp, Plus, Minus, Check, List, Sparkles
+  TrendingUp, Plus, Minus, Check, List, Sparkles, ShoppingCart, AlertCircle
 } from "lucide-react"
 import type { Card as CardType } from "@/lib/types"
 
@@ -39,6 +40,7 @@ function MyCollectionContent() {
   const searchParams = useSearchParams()
   const { user, loading: userLoading } = useUser()
   const { collection, isInCollection, addToCollection, removeFromCollection, refresh } = useCollection()
+  const { addToCart } = useCart()
   const { toast } = useToast()
   
   const [allCards, setAllCards] = useState<CardType[]>([])
@@ -129,6 +131,19 @@ function MyCollectionContent() {
   const ownedItems = getCollectionWithCards("owned")
   const wantedItems = getCollectionWithCards("wanted")
 
+  // Identificar cartas deseadas que están en stock
+  const wantedItemsInStock = wantedItems.filter((item) => {
+    if (!item.card) return false
+    const normalStock = item.card.normalStock || item.card.stock || 0
+    const foilStock = item.card.foilStock || 0
+    
+    if (item.version === "normal") {
+      return normalStock > 0
+    } else {
+      return foilStock > 0
+    }
+  })
+
   // Calculate stats
   const totalOwned = ownedItems.reduce((sum, item) => sum + item.quantity, 0)
   const totalWanted = wantedItems.reduce((sum, item) => sum + item.quantity, 0)
@@ -138,6 +153,61 @@ function MyCollectionContent() {
       : (item.card?.price || 0)
     return sum + (price * item.quantity)
   }, 0)
+
+  // Función para agregar carta deseada al carrito
+  const handleAddWantedToCart = (item: CollectionItem) => {
+    if (!item.card) return
+
+    const normalStock = item.card.normalStock || item.card.stock || 0
+    const foilStock = item.card.foilStock || 0
+    const hasStock = item.version === "normal" ? normalStock > 0 : foilStock > 0
+
+    if (!hasStock) {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: t("outOfStock") || "Esta carta no está disponible en stock",
+      })
+      return
+    }
+
+    addToCart({
+      id: item.card.id,
+      name: item.card.name,
+      price: item.version === "foil" ? (item.card.foilPrice || 0) : (item.card.price || 0),
+      image: item.card.image,
+      version: item.version,
+    })
+
+    toast({
+      title: t("success"),
+      description: `${item.card.name} (${item.version === "foil" ? t("foil") : t("normal")}) ${t("addedToCart") || "agregada al carrito"}`,
+    })
+  }
+
+  // Función para agregar todas las cartas deseadas disponibles al carrito
+  const handleAddAllAvailableToCart = () => {
+    let addedCount = 0
+    wantedItemsInStock.forEach((item) => {
+      if (item.card) {
+        addToCart({
+          id: item.card.id,
+          name: item.card.name,
+          price: item.version === "foil" ? (item.card.foilPrice || 0) : (item.card.price || 0),
+          image: item.card.image,
+          version: item.version,
+        })
+        addedCount++
+      }
+    })
+
+    if (addedCount > 0) {
+      toast({
+        title: t("success"),
+        description: `${addedCount} ${addedCount === 1 ? t("cardFound") : t("cardsFound")} ${t("addedToCart") || "agregadas al carrito"}`,
+      })
+    }
+  }
 
   // Filter cards for "All Cards" tab
   // NOTE: NO filtramos por stock/version porque esto es para crear colección personal
@@ -434,16 +504,91 @@ function MyCollectionContent() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                  {wantedItems.map((item) => (
-                    <CollectionCard
-                      key={item.id}
-                      item={item}
-                      onRemove={() => removeFromCollection(item.card_id, "wanted", item.version)}
-                      t={t}
-                    />
-                  ))}
-                </div>
+                <>
+                  {/* Banner informativo si hay cartas disponibles */}
+                  {wantedItemsInStock.length > 0 && (
+                    <Card className="mb-6 border-primary/20 bg-primary/5">
+                      <CardContent className="p-4">
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-full bg-primary/10">
+                              <ShoppingCart className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-lg">
+                                ¡{wantedItemsInStock.length} {wantedItemsInStock.length === 1 ? "carta deseada está disponible" : "cartas deseadas están disponibles"}!
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Puedes agregarlas al carrito ahora mismo
+                              </p>
+                            </div>
+                          </div>
+                          <Button 
+                            onClick={handleAddAllAvailableToCart}
+                            className="w-full md:w-auto"
+                          >
+                            <ShoppingCart className="h-4 w-4 mr-2" />
+                            Agregar Todas al Carrito
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Sección destacada: Cartas Disponibles */}
+                  {wantedItemsInStock.length > 0 && (
+                    <div className="mb-8">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xl font-semibold flex items-center gap-2">
+                          <Sparkles className="h-5 w-5 text-primary" />
+                          Disponibles Ahora
+                        </h3>
+                        <Badge variant="secondary" className="text-sm">
+                          {wantedItemsInStock.length} {wantedItemsInStock.length === 1 ? "carta" : "cartas"}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 mb-8">
+                        {wantedItemsInStock.map((item) => (
+                          <CollectionCard
+                            key={`available-${item.id}`}
+                            item={item}
+                            onRemove={() => removeFromCollection(item.card_id, "wanted", item.version)}
+                            t={t}
+                            onAddToCart={() => handleAddWantedToCart(item)}
+                            isAvailable={true}
+                          />
+                        ))}
+                      </div>
+                      {wantedItems.length > wantedItemsInStock.length && (
+                        <div className="border-t pt-6 mt-6">
+                          <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                            <Heart className="h-5 w-5 text-muted-foreground" />
+                            Todas las Cartas Deseadas
+                          </h3>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Todas las cartas deseadas */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                    {wantedItems.map((item) => {
+                      const isInStock = wantedItemsInStock.some(
+                        (available) => available.id === item.id
+                      )
+                      return (
+                        <CollectionCard
+                          key={item.id}
+                          item={item}
+                          onRemove={() => removeFromCollection(item.card_id, "wanted", item.version)}
+                          t={t}
+                          onAddToCart={isInStock ? () => handleAddWantedToCart(item) : undefined}
+                          isAvailable={isInStock}
+                        />
+                      )
+                    })}
+                  </div>
+                </>
               )}
             </TabsContent>
           </Tabs>
@@ -809,10 +954,14 @@ function CollectionCard({
   item,
   onRemove,
   t,
+  onAddToCart,
+  isAvailable = false,
 }: {
   item: CollectionItem
   onRemove: () => void
   t: (key: string) => string
+  onAddToCart?: () => void
+  isAvailable?: boolean
 }) {
   const card = item.card
   const [quantity, setQuantity] = useState(item.quantity)
@@ -820,6 +969,11 @@ function CollectionCard({
   const { toast } = useToast()
 
   if (!card) return null
+
+  // Verificar stock disponible
+  const normalStock = card.normalStock || card.stock || 0
+  const foilStock = card.foilStock || 0
+  const hasStock = item.version === "normal" ? normalStock > 0 : foilStock > 0
 
   const handleUpdateQuantity = async (newQuantity: number) => {
     if (newQuantity < 1) return
@@ -847,7 +1001,13 @@ function CollectionCard({
           {item.version === "foil" && <Sparkles className="h-3 w-3 mr-1" />}
           {item.version === "normal" ? t("normal") : t("foil")}
         </Badge>
-        {item.quantity > 1 && (
+        {hasStock && isAvailable && (
+          <Badge className="absolute top-2 right-2 bg-primary/90 animate-pulse">
+            <ShoppingCart className="h-3 w-3 mr-1" />
+            Disponible
+          </Badge>
+        )}
+        {item.quantity > 1 && (!hasStock || !isAvailable) && (
           <Badge className="absolute top-2 right-2 bg-primary/90">
             x{item.quantity}
           </Badge>
@@ -891,6 +1051,29 @@ function CollectionCard({
         <div className="text-xs text-muted-foreground mb-3 text-center">
           {t("price")}: ${Math.floor((item.version === "foil" ? card.foilPrice : card.price) || 0).toLocaleString()}
         </div>
+
+        {/* Botón de Agregar al Carrito si está disponible */}
+        {hasStock && isAvailable && onAddToCart && (
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full mb-2"
+            onClick={onAddToCart}
+          >
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Agregar al Carrito
+          </Button>
+        )}
+
+        {/* Mensaje si no está disponible */}
+        {!hasStock && item.status === "wanted" && (
+          <div className="mb-2 p-2 bg-muted rounded-md text-center">
+            <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              Sin stock disponible
+            </p>
+          </div>
+        )}
 
         <div className="flex gap-2">
           <Button
