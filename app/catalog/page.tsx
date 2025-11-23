@@ -128,7 +128,9 @@ function CatalogContent() {
       // Version filter (Normal/Foil availability)
       if (filters.version && filters.version !== "all") {
         const hasNormalStock = (card.normalStock || card.stock || 0) > 0
-        const hasFoilStock = (card.foilStock || 0) > 0 || (card.foilPrice && Number(card.foilPrice) > 0)
+        // Verificar stock foil: solo si tiene foilStock > 0 (no solo precio)
+        const foilStock = Number(card.foilStock) || 0
+        const hasFoilStock = foilStock > 0
         
         if (filters.version === "normal" && !hasNormalStock) return false
         if (filters.version === "foil" && !hasFoilStock) return false
@@ -144,6 +146,15 @@ function CatalogContent() {
       }
       return true
     })
+
+    // Debug: Log información del filtro foil
+    if (filters.version === "foil") {
+      const foilCards = filtered.filter(card => {
+        const foilStock = Number(card.foilStock) || 0
+        return foilStock > 0
+      })
+      console.log(`🔍 Filtro "Solo Foil" activo: ${foilCards.length} cartas con foilStock > 0 de ${filtered.length} cartas filtradas`)
+    }
 
     // Sort - Prioriza cartas con stock
     filtered.sort((a, b) => {
