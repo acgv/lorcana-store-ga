@@ -21,13 +21,17 @@ function CatalogContent() {
   const [loading, setLoading] = useState(true)
   
   // Inicializar filtros desde URL
+  const versionParam = searchParams.get("version") || "all"
+  // Convertir "both" a "all" ya que esa opción ya no existe
+  const validVersion = versionParam === "both" ? "all" : versionParam
+  
   const [filters, setFilters] = useState({
     type: searchParams.get("type") || "all",
     set: searchParams.get("set") || "all",
     rarity: searchParams.get("rarity") || "all",
     minPrice: Number(searchParams.get("minPrice")) || 0,
     maxPrice: Number(searchParams.get("maxPrice")) || 100000, // Aumentado a $100,000 para incluir legendarias
-    version: searchParams.get("version") || "all",
+    version: validVersion,
     search: searchParams.get("search") || "",
   })
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "cardNumberLowHigh")
@@ -134,7 +138,6 @@ function CatalogContent() {
         
         if (filters.version === "normal" && !hasNormalStock) return false
         if (filters.version === "foil" && !hasFoilStock) return false
-        if (filters.version === "both" && (!hasNormalStock || !hasFoilStock)) return false
       }
       
       // Search filter

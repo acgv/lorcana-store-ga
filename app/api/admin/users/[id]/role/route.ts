@@ -1,13 +1,31 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/db"
 
+// Helper function to validate UUID
+function isValidUUID(uuid: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(uuid)
+}
+
 // POST - Assign admin role to user
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = params.id
+    const { id } = await params
+    const userId = id
+
+    // Validate UUID format
+    if (!isValidUUID(userId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid user ID format. Expected UUID.",
+        },
+        { status: 400 }
+      )
+    }
 
     if (!supabaseAdmin) {
       throw new Error("Supabase admin not configured")
@@ -16,7 +34,28 @@ export async function POST(
     // Check if user exists
     const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
 
-    if (userError || !user) {
+    if (userError) {
+      console.error("Error fetching user:", userError)
+      // Si el error es que no es un UUID válido, ya lo validamos antes, pero por si acaso
+      if (userError.message.includes("UUID")) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Invalid user ID: ${userError.message}`,
+          },
+          { status: 400 }
+        )
+      }
+      return NextResponse.json(
+        {
+          success: false,
+          error: userError.message || "User not found",
+        },
+        { status: 404 }
+      )
+    }
+
+    if (!user || !user.user) {
       return NextResponse.json(
         {
           success: false,
@@ -58,10 +97,22 @@ export async function POST(
 // DELETE - Remove admin role from user
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = params.id
+    const { id } = await params
+    const userId = id
+
+    // Validate UUID format
+    if (!isValidUUID(userId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid user ID format. Expected UUID.",
+        },
+        { status: 400 }
+      )
+    }
 
     if (!supabaseAdmin) {
       throw new Error("Supabase admin not configured")

@@ -116,7 +116,6 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
             <SelectItem value="all">{t("allVersions")}</SelectItem>
             <SelectItem value="normal">{t("normalOnly")}</SelectItem>
             <SelectItem value="foil">{t("foilOnly")}</SelectItem>
-            <SelectItem value="both">{t("bothAvailable")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
