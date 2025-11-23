@@ -45,6 +45,9 @@ export default function UsersManagementPage() {
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null)
   const [actionType, setActionType] = useState<"add" | "remove" | null>(null)
   const [processing, setProcessing] = useState(false)
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null)
+  const [passwordUserEmail, setPasswordUserEmail] = useState<string | null>(null)
 
   useEffect(() => {
     fetchUsers()
@@ -124,19 +127,14 @@ export default function UsersManagementPage() {
       const data = await response.json()
 
       if (data.success) {
-        // If temporary password was generated, show it in the toast
-        if (data.temporaryPassword) {
-          const passwordMessage = `${t("adminRoleAssigned")}\n\n${t("temporaryPassword")}: ${data.temporaryPassword}\n\n${t("sharePasswordWithUser")}`
-          toast({
-            title: t("success"),
-            description: passwordMessage,
-            duration: 15000, // Show for 15 seconds to give time to copy
-          })
+        // If temporary password was generated, show it in a dialog
+        if (data.temporaryPassword && actionType === "add") {
+          setTemporaryPassword(data.temporaryPassword)
+          setPasswordUserEmail(selectedUser.email || null)
+          setShowPasswordDialog(true)
           // Also show in console for easy copying
           console.log("🔑 Temporary password for new admin:", data.temporaryPassword)
           console.log("📧 User email:", selectedUser.email)
-          // Optionally show an alert with the password for easy copying
-          alert(`${t("adminRoleAssigned")}\n\n${t("temporaryPassword")}: ${data.temporaryPassword}\n\n${t("sharePasswordWithUser")}\n\n${t("userCanAlsoUseOAuth")}`)
         } else {
           toast({
             title: t("success"),
@@ -331,8 +329,69 @@ export default function UsersManagementPage() {
           )}
         </main>
 
+        {/* Temporary Password Dialog */}
+        <AlertDialog open={showPasswordDialog} onOpenChange={(open) => {
+          if (!open) {
+            setShowPasswordDialog(false)
+            setTemporaryPassword(null)
+            setPasswordUserEmail(null)
+          }
+        }}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-xl">{t("adminRoleAssigned")}</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-4 pt-4">
+                <p className="text-sm text-muted-foreground">
+                  {t("sharePasswordWithUser")}
+                </p>
+                <div className="bg-muted p-4 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{t("email")}:</span>
+                    <code className="text-sm bg-background px-2 py-1 rounded break-all">{passwordUserEmail || "—"}</code>
+                  </div>
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium block">{t("temporaryPassword")}:</span>
+                    <div className="flex items-center gap-2">
+                      <code className="text-sm bg-background px-3 py-2 rounded font-mono flex-1 text-center font-bold text-primary select-all">
+                        {temporaryPassword}
+                      </code>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (temporaryPassword) {
+                            navigator.clipboard.writeText(temporaryPassword)
+                            toast({
+                              title: t("copied") || "Copied!",
+                              description: t("passwordCopied") || "Password copied to clipboard",
+                            })
+                          }
+                        }}
+                      >
+                        {t("copy") || "Copy"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground italic pt-2">
+                  {t("userCanAlsoUseOAuth")}
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => {
+                setShowPasswordDialog(false)
+                setTemporaryPassword(null)
+                setPasswordUserEmail(null)
+              }}>
+                {t("close") || "Close"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Confirmation Dialog */}
-        <AlertDialog open={!!selectedUser} onOpenChange={(open) => !open && cancelAction()}>
+        <AlertDialog open={!!selectedUser && !showPasswordDialog} onOpenChange={(open) => !open && cancelAction()}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
