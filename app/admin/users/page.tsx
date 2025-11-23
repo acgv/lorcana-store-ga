@@ -124,11 +124,26 @@ export default function UsersManagementPage() {
       const data = await response.json()
 
       if (data.success) {
-        toast({
-          title: t("success"),
-          description:
-            actionType === "add" ? t("adminRoleAssigned") : t("adminRoleRemoved"),
-        })
+        // If temporary password was generated, show it in the toast
+        if (data.temporaryPassword) {
+          const passwordMessage = `${t("adminRoleAssigned")}\n\n${t("temporaryPassword")}: ${data.temporaryPassword}\n\n${t("sharePasswordWithUser")}`
+          toast({
+            title: t("success"),
+            description: passwordMessage,
+            duration: 15000, // Show for 15 seconds to give time to copy
+          })
+          // Also show in console for easy copying
+          console.log("🔑 Temporary password for new admin:", data.temporaryPassword)
+          console.log("📧 User email:", selectedUser.email)
+          // Optionally show an alert with the password for easy copying
+          alert(`${t("adminRoleAssigned")}\n\n${t("temporaryPassword")}: ${data.temporaryPassword}\n\n${t("sharePasswordWithUser")}\n\n${t("userCanAlsoUseOAuth")}`)
+        } else {
+          toast({
+            title: t("success"),
+            description:
+              actionType === "add" ? t("adminRoleAssigned") : t("adminRoleRemoved"),
+          })
+        }
         fetchUsers() // Reload users
       } else {
         toast({

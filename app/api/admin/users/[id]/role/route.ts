@@ -65,6 +65,9 @@ export async function POST(
       )
     }
 
+    // Check if user has password set (not OAuth only)
+    const userHasPassword = user.user.encrypted_password !== null
+
     // Insert admin role (skip if already exists)
     const { error: insertError } = await supabaseAdmin.from("user_roles").insert({
       user_id: userId,
@@ -78,9 +81,32 @@ export async function POST(
       throw insertError
     }
 
+    // If user doesn't have password (OAuth only), generate a temporary password
+    let temporaryPassword: string | null = null
+    if (!userHasPassword) {
+      // Generate a secure random password
+      temporaryPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12).toUpperCase() + "!@#"
+      
+      // Update user password with temporary password
+      const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: temporaryPassword,
+      })
+
+      if (passwordError) {
+        console.error("Error setting temporary password:", passwordError)
+        // Don't fail the admin assignment, just log the error
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Admin role assigned successfully",
+      message: userHasPassword 
+        ? "Admin role assigned successfully. User can login with their existing password."
+        : "Admin role assigned successfully. A temporary password has been set.",
+      temporaryPassword: temporaryPassword, // Only sent if password was set
+      note: !userHasPassword 
+        ? "The user can now login with email/password OR continue using Google OAuth."
+        : undefined,
     })
   } catch (error) {
     console.error("Error in POST /api/admin/users/[id]/role:", error)
