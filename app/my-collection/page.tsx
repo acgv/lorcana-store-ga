@@ -295,6 +295,7 @@ function MyCollectionContent() {
 
   // Calculate stats
   const totalOwned = ownedItems.reduce((sum, item) => sum + item.quantity, 0)
+  const totalOwnedCards = groupedOwnedItems.length // Cartas únicas (agrupadas)
   const totalMissing = missingCards.length
   // Contar cuántas cartas faltantes están disponibles en stock
   const missingAvailable = missingCards.filter(item => 
