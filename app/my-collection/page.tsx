@@ -986,6 +986,8 @@ function MyCollectionContent() {
                       )
                     })}
                   </div>
+                    </>
+                  )}
                 </div>
               </div>
             </TabsContent>
