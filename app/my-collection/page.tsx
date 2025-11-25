@@ -54,7 +54,7 @@ function MyCollectionContent() {
     set: "all",
     rarity: "all",
     minPrice: 0,
-    maxPrice: 10000,
+    maxPrice: 100000, // Aumentado para incluir cartas legendarias (30000) y enchanted (50000)
     version: "all",
     search: "",
   })
