@@ -31,6 +31,7 @@ export interface Card {
   submittedBy?: string
   approvedBy?: string
   rejectionReason?: string
+  isPromotional?: boolean // Flag para identificar cartas promocionales
 }
 
 export interface CardSubmission {

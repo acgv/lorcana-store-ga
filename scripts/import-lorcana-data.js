@@ -19,6 +19,7 @@ const setMap = {
   "Archazia's Island": 'archazia',
   'Reign of Jafar': 'reignOfJafar',
   'Fabled': 'fabled',
+  'Whispers in the Well': 'whi',
   'Chapter 1': 'firstChapter',
   'Chapter 2': 'riseOfFloodborn',
   'Chapter 3': 'intoInklands',
@@ -58,20 +59,19 @@ const typeMap = {
   'Song': 'song',
 };
 
-// Función para generar precio aleatorio basado en rareza
-function generatePrice(rarity) {
-  const priceRanges = {
-    'common': { min: 0.50, max: 2.99 },
-    'uncommon': { min: 1.99, max: 4.99 },
-    'rare': { min: 4.99, max: 12.99 },
-    'superRare': { min: 9.99, max: 24.99 },
-    'legendary': { min: 19.99, max: 79.99 },
-    'enchanted': { min: 49.99, max: 299.99 },
+// Precios estándar por rareza (basados en los precios estándar del proyecto)
+// Estos son valores por defecto, no se usarán si la carta ya existe en la BD
+function getStandardPrice(rarity) {
+  const standardPrices = {
+    'common': 500,        // $5.00
+    'uncommon': 1000,     // $10.00
+    'rare': 2500,         // $25.00
+    'superRare': 5000,    // $50.00
+    'legendary': 30000,   // $300.00
+    'enchanted': 50000,   // $500.00 (estimado)
   };
 
-  const range = priceRanges[rarity] || { min: 1, max: 10 };
-  const price = Math.random() * (range.max - range.min) + range.min;
-  return Math.round(price * 100) / 100;
+  return standardPrices[rarity] || 500;
 }
 
 // Sets desconocidos (para debug)
@@ -80,8 +80,10 @@ const unknownSets = new Set();
 // Transformar carta de Lorcana API a nuestro formato
 function transformCard(lorcanaCard) {
   const rarity = rarityMap[lorcanaCard.Rarity] || 'common';
-  const normalPrice = generatePrice(rarity);
-  const foilPrice = Math.round(normalPrice * 1.8 * 100) / 100;
+  // Precios estándar (no se usarán si la carta ya existe en BD)
+  const normalPrice = getStandardPrice(rarity);
+  // Foil es aproximadamente 1.6x el precio normal según el estándar del proyecto
+  const foilPrice = Math.round(normalPrice * 1.6);
   
   // Mapear set - si no existe, usar Set_ID o registrarlo como desconocido
   let mappedSet = setMap[lorcanaCard.Set_Name];
@@ -91,22 +93,44 @@ function transformCard(lorcanaCard) {
     mappedSet = lorcanaCard.Set_ID ? lorcanaCard.Set_ID.toLowerCase() : 'unknown';
   }
 
+  // Detectar si es una carta promocional - NO IMPORTAR PROMOCIONALES
+  // Cualquier carta con imagen promocional será filtrada
+  const isPromotional = lorcanaCard.Image && (
+    lorcanaCard.Image.includes('/promo') ||
+    lorcanaCard.Image.includes('/promo2/') ||
+    lorcanaCard.Image.includes('/promo3/')
+  );
+
+  // Si es promocional, retornar null para que se filtre
+  if (isPromotional) {
+    return null;
+  }
+
+  // Generar ID único
+  const cardId = `${lorcanaCard.Set_ID}-${lorcanaCard.Card_Num}`.toLowerCase();
+
+  // Generar cardNumber
+  const cardNumber = `${lorcanaCard.Card_Num}/${lorcanaCard.Set_Total || 204}`;
+
   return {
-    id: `${lorcanaCard.Set_ID}-${lorcanaCard.Card_Num}`.toLowerCase(),
+    id: cardId,
     name: lorcanaCard.Name + (lorcanaCard.Title ? ` - ${lorcanaCard.Title}` : ''),
     image: lorcanaCard.Image || '/placeholder.svg',
     set: mappedSet,
     rarity: rarity,
     type: typeMap[lorcanaCard.Type] || 'character',
     number: lorcanaCard.Card_Num,
-    cardNumber: `${lorcanaCard.Card_Num}/${lorcanaCard.Set_Total || 204}`,
+    cardNumber: cardNumber,
     price: normalPrice,
     foilPrice: foilPrice,
     description: lorcanaCard.Body_Text || lorcanaCard.Flavor_Text || 'A Disney Lorcana card',
     version: 'normal',
     language: 'en',
     status: 'approved',
-    stock: Math.floor(Math.random() * 20) + 5,
+    // Stock inicial en 0 para nuevas cartas
+    stock: 0,
+    normalStock: 0,
+    foilStock: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -132,9 +156,16 @@ async function importLorcanaCards() {
     let processed = 0;
     let errors = 0;
 
+    let skippedPromos = 0;
+    
     for (const card of lorcanaCards) {
       try {
         const transformed = transformCard(card);
+        // Filtrar promocionales (retornan null)
+        if (transformed === null) {
+          skippedPromos++;
+          continue;
+        }
         transformedCards.push(transformed);
         processed++;
         
@@ -145,6 +176,10 @@ async function importLorcanaCards() {
         errors++;
         console.error(`✗ Error processing ${card.Name}:`, error.message);
       }
+    }
+    
+    if (skippedPromos > 0) {
+      console.log(`\n⚠️  Skipped ${skippedPromos} promotional cards`);
     }
 
     console.log(`\n✅ Successfully transformed ${transformedCards.length} cards`);
