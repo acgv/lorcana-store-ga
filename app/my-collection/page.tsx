@@ -47,8 +47,8 @@ function MyCollectionContent() {
   const [loadingCards, setLoadingCards] = useState(true)
   
   // Leer tab y filtros desde URL o usar defaults
-  const tabFromUrl = searchParams.get("tab") as "all" | "owned" | "wanted" | "missing" | null
-  const [activeTab, setActiveTab] = useState<"all" | "owned" | "wanted" | "missing">(tabFromUrl || "all")
+  const tabFromUrl = searchParams.get("tab") as "all" | "owned" | "missing" | null
+  const [activeTab, setActiveTab] = useState<"all" | "owned" | "missing">(tabFromUrl || "all")
   const [filters, setFilters] = useState({
     type: searchParams.get("type") || "all",
     set: searchParams.get("set") || "all",
@@ -74,6 +74,12 @@ function MyCollectionContent() {
     
     // Agregar tab a la URL
     if (activeTab !== "all") params.set("tab", activeTab)
+    
+    // Si el tab es "wanted", redirigir a "missing"
+    if (activeTab === "wanted") {
+      setActiveTab("missing")
+      return
+    }
     
     // Agregar filtros a la URL
     if (filters.type !== "all") params.set("type", filters.type)
@@ -140,31 +146,67 @@ function MyCollectionContent() {
   const ownedItems = getCollectionWithCards("owned")
   const wantedItems = getCollectionWithCards("wanted")
 
-  // Filter owned items
-  const filteredOwnedItems = ownedItems.filter((item) => {
-    if (!item.card) return false
+  // Agrupar owned items por card_id para mostrar una sola carta con sus versiones
+  const groupedOwnedItems = ownedItems.reduce((acc, item) => {
+    if (!item.card) return acc
+    
+    const existing = acc.find(g => g.card.id === item.card_id)
+    if (existing) {
+      // Agregar versión al grupo existente
+      if (item.version === "normal") {
+        existing.hasNormal = true
+        existing.normalQuantity = item.quantity
+      } else {
+        existing.hasFoil = true
+        existing.foilQuantity = item.quantity
+      }
+    } else {
+      // Crear nuevo grupo
+      acc.push({
+        card: item.card,
+        hasNormal: item.version === "normal",
+        hasFoil: item.version === "foil",
+        normalQuantity: item.version === "normal" ? item.quantity : 0,
+        foilQuantity: item.version === "foil" ? item.quantity : 0,
+      })
+    }
+    return acc
+  }, [] as Array<{
+    card: CardType
+    hasNormal: boolean
+    hasFoil: boolean
+    normalQuantity: number
+    foilQuantity: number
+  }>)
+
+  // Filter owned items (agrupados)
+  const filteredOwnedItems = groupedOwnedItems.filter((group) => {
+    const card = group.card
     
     // Type filter
-    if (filters.type && filters.type !== "all" && item.card.type !== filters.type) return false
+    if (filters.type && filters.type !== "all" && card.type !== filters.type) return false
     
     // Set filter
-    if (filters.set && filters.set !== "all" && item.card.set !== filters.set) return false
+    if (filters.set && filters.set !== "all" && card.set !== filters.set) return false
     
     // Rarity filter
-    if (filters.rarity && filters.rarity !== "all" && item.card.rarity !== filters.rarity) return false
+    if (filters.rarity && filters.rarity !== "all" && card.rarity !== filters.rarity) return false
     
     // Price range filter
-    const cardPrice = item.card.price || 0
+    const cardPrice = card.price || 0
     if (cardPrice < filters.minPrice || cardPrice > filters.maxPrice) return false
     
-    // Version filter
-    if (filters.version && filters.version !== "all" && item.version !== filters.version) return false
+    // Version filter - mostrar si tiene la versión filtrada
+    if (filters.version && filters.version !== "all") {
+      if (filters.version === "normal" && !group.hasNormal) return false
+      if (filters.version === "foil" && !group.hasFoil) return false
+    }
     
     // Search filter
     if (filters.search) {
       const searchLower = filters.search.toLowerCase()
-      if (!item.card.name.toLowerCase().includes(searchLower) && 
-          !item.card.id.toLowerCase().includes(searchLower)) {
+      if (!card.name.toLowerCase().includes(searchLower) && 
+          !card.id.toLowerCase().includes(searchLower)) {
         return false
       }
     }
@@ -204,7 +246,7 @@ function MyCollectionContent() {
     return true
   })
 
-  // Calcular cartas faltantes: todas las cartas con información de qué versión falta
+  // Calcular cartas faltantes: todas las cartas con información de qué versión falta y disponibilidad
   const missingCards = allCards.map((card) => {
     const hasNormalOwned = collection.some(
       (item) => item.card_id === card.id && item.status === "owned" && item.version === "normal"
@@ -217,10 +259,22 @@ function MyCollectionContent() {
     const missingNormal = !hasNormalOwned
     const missingFoil = !hasFoilOwned
     
+    // Verificar disponibilidad en stock
+    const normalStock = card.normalStock || card.stock || 0
+    const foilStock = card.foilStock || 0
+    const hasNormalStock = normalStock > 0
+    const hasFoilStock = foilStock > 0
+    
+    // Determinar qué versiones faltantes están disponibles
+    const missingNormalAvailable = missingNormal && hasNormalStock
+    const missingFoilAvailable = missingFoil && hasFoilStock
+    
     return {
       card,
       missingNormal,
       missingFoil,
+      missingNormalAvailable,
+      missingFoilAvailable,
       // Una carta está "faltante" si le falta al menos una versión
       isMissing: missingNormal || missingFoil
     }
@@ -241,8 +295,11 @@ function MyCollectionContent() {
 
   // Calculate stats
   const totalOwned = ownedItems.reduce((sum, item) => sum + item.quantity, 0)
-  const totalWanted = wantedItems.reduce((sum, item) => sum + item.quantity, 0)
   const totalMissing = missingCards.length
+  // Contar cuántas cartas faltantes están disponibles en stock
+  const missingAvailable = missingCards.filter(item => 
+    item.missingNormalAvailable || item.missingFoilAvailable
+  ).length
   const collectionValue = ownedItems.reduce((sum, item) => {
     const price = item.version === "foil" 
       ? (item.card?.foilPrice || 0) 
@@ -418,29 +475,30 @@ function MyCollectionContent() {
     }
   })
 
-  // Sort filtered owned items
+  // Sort filtered owned items (agrupados)
   const sortedOwnedItems = [...filteredOwnedItems].sort((a, b) => {
-    if (!a.card || !b.card) return 0
+    const cardA = a.card
+    const cardB = b.card
     switch (sortBy) {
       case "nameAZ":
-        return a.card.name.localeCompare(b.card.name)
+        return cardA.name.localeCompare(cardB.name)
       case "nameZA":
-        return b.card.name.localeCompare(a.card.name)
+        return cardB.name.localeCompare(cardA.name)
       case "priceLowHigh":
-        return (a.card.price || 0) - (b.card.price || 0)
+        return (cardA.price || 0) - (cardB.price || 0)
       case "priceHighLow":
-        return (b.card.price || 0) - (a.card.price || 0)
+        return (cardB.price || 0) - (cardA.price || 0)
       case "rarityHighLow":
         const rarityOrder = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
-        return (rarityOrder[b.card.rarity as keyof typeof rarityOrder] || 0) - 
-               (rarityOrder[a.card.rarity as keyof typeof rarityOrder] || 0)
+        return (rarityOrder[cardB.rarity as keyof typeof rarityOrder] || 0) - 
+               (rarityOrder[cardA.rarity as keyof typeof rarityOrder] || 0)
       case "rarityLowHigh":
         const rarityOrder2 = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
-        return (rarityOrder2[a.card.rarity as keyof typeof rarityOrder2] || 0) - 
-               (rarityOrder2[b.card.rarity as keyof typeof rarityOrder2] || 0)
+        return (rarityOrder2[cardA.rarity as keyof typeof rarityOrder2] || 0) - 
+               (rarityOrder2[cardB.rarity as keyof typeof rarityOrder2] || 0)
       case "cardNumberLowHigh":
       default:
-        return (a.card.number || 0) - (b.card.number || 0)
+        return (cardA.number || 0) - (cardB.number || 0)
     }
   })
 
@@ -530,18 +588,6 @@ function MyCollectionContent() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("totalWanted")}</CardTitle>
-                <Heart className="h-4 w-4 text-red-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-500">{totalWanted}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {wantedItems.length} {wantedItems.length === 1 ? t("cardFound") : t("cardsFound")}
-                </p>
-              </CardContent>
-            </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -574,18 +620,14 @@ function MyCollectionContent() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-            <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-4 mb-8">
+            <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-3 mb-8">
               <TabsTrigger value="all" className="gap-2">
                 <List className="h-4 w-4" />
                 {t("allCards")}
               </TabsTrigger>
               <TabsTrigger value="owned" className="gap-2">
                 <Package className="h-4 w-4" />
-                {t("owned")} ({ownedItems.length})
-              </TabsTrigger>
-              <TabsTrigger value="wanted" className="gap-2">
-                <Heart className="h-4 w-4" />
-                {t("wanted")} ({wantedItems.length})
+                {t("owned")} ({totalOwnedCards})
               </TabsTrigger>
               <TabsTrigger value="missing" className="gap-2">
                 <AlertCircle className="h-4 w-4" />
@@ -738,13 +780,22 @@ function MyCollectionContent() {
                       <div className="mb-4 text-sm text-muted-foreground">
                         {sortedOwnedItems.length} {sortedOwnedItems.length === 1 ? t("cardFound") : t("cardsFound")}
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                        {sortedOwnedItems.map((item) => (
-                          <CollectionCard
-                            key={item.id}
-                            item={item}
-                            onRemove={() => removeFromCollection(item.card_id, "owned", item.version)}
-                            t={t}
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                        {sortedOwnedItems.map((group) => (
+                          <AllCardsCard 
+                            key={group.card.id} 
+                            card={group.card} 
+                            t={t} 
+                            user={user}
+                            collection={collection}
+                            isInCollection={isInCollection}
+                            addToCollection={addToCollection}
+                            removeFromCollection={removeFromCollection}
+                            refresh={refresh}
+                            ownedNormal={group.hasNormal}
+                            ownedFoil={group.hasFoil}
+                            ownedNormalQuantity={group.normalQuantity}
+                            ownedFoilQuantity={group.foilQuantity}
                           />
                         ))}
                       </div>
@@ -837,6 +888,8 @@ function MyCollectionContent() {
                           refresh={refresh}
                           missingNormal={item.missingNormal}
                           missingFoil={item.missingFoil}
+                          missingNormalAvailable={item.missingNormalAvailable}
+                          missingFoilAvailable={item.missingFoilAvailable}
                         />
                       ))}
                     </div>
@@ -845,164 +898,6 @@ function MyCollectionContent() {
               </div>
             </TabsContent>
 
-            {/* Tab 4: Wanted Cards */}
-            <TabsContent value="wanted">
-              {/* Filters - Mobile Sheet */}
-              <div className="lg:hidden mb-6">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" className="w-full">
-                      <SlidersHorizontal className="mr-2 h-4 w-4" />
-                      {t("filtersAndSort")}
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-80 overflow-y-auto">
-                    <SheetHeader>
-                      <SheetTitle>{t("filtersAndSort")}</SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-6">
-                      <CardFilters
-                        filters={filters}
-                        setFilters={setFilters}
-                        sortBy={sortBy}
-                        setSortBy={setSortBy}
-                        viewMode={viewMode}
-                        setViewMode={setViewMode}
-                      />
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              </div>
-
-              <div className="grid lg:grid-cols-[280px_1fr] gap-6">
-                {/* Filters - Desktop Sidebar */}
-                <aside className="hidden lg:block">
-                  <div className="sticky top-4">
-                    <CardFilters
-                      filters={filters}
-                      setFilters={setFilters}
-                      sortBy={sortBy}
-                      setSortBy={setSortBy}
-                      viewMode={viewMode}
-                      setViewMode={setViewMode}
-                    />
-                  </div>
-                </aside>
-
-                {/* Cards Grid */}
-                <div>
-                  {loadingCards ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : sortedWantedItems.length === 0 ? (
-                    <Card className="border-dashed">
-                      <CardContent className="flex flex-col items-center justify-center py-12">
-                        <Heart className="h-16 w-16 text-muted-foreground/50 mb-4" />
-                        <h3 className="text-xl font-semibold mb-2">{t("noWantedCards")}</h3>
-                        <p className="text-muted-foreground text-center mb-6">
-                          {t("allCardsDesc")}
-                        </p>
-                        <Button onClick={() => setActiveTab("all")}>
-                          {t("allCards")}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <>
-                      {/* Banner informativo si hay cartas disponibles */}
-                      {wantedItemsInStock.length > 0 && (
-                    <Card className="mb-6 border-primary/20 bg-primary/5">
-                      <CardContent className="p-4">
-                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-full bg-primary/10">
-                              <ShoppingCart className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-lg">
-                                ¡{wantedItemsInStock.length} {wantedItemsInStock.length === 1 ? "carta deseada está disponible" : "cartas deseadas están disponibles"}!
-                              </h3>
-                              <p className="text-sm text-muted-foreground">
-                                Puedes agregarlas al carrito ahora mismo
-                              </p>
-                            </div>
-                          </div>
-                          <Button 
-                            onClick={handleAddAllAvailableToCart}
-                            className="w-full md:w-auto"
-                          >
-                            <ShoppingCart className="h-4 w-4 mr-2" />
-                            Agregar Todas al Carrito
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Sección destacada: Cartas Disponibles */}
-                  {wantedItemsInStock.length > 0 && (
-                    <div className="mb-8">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-xl font-semibold flex items-center gap-2">
-                          <Sparkles className="h-5 w-5 text-primary" />
-                          Disponibles Ahora
-                        </h3>
-                        <Badge variant="secondary" className="text-sm">
-                          {wantedItemsInStock.length} {wantedItemsInStock.length === 1 ? "carta" : "cartas"}
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 mb-8">
-                        {wantedItemsInStock.map((item) => (
-                          <CollectionCard
-                            key={`available-${item.id}`}
-                            item={item}
-                            onRemove={() => removeFromCollection(item.card_id, "wanted", item.version)}
-                            t={t}
-                            onAddToCart={() => handleAddWantedToCart(item)}
-                            isAvailable={true}
-                          />
-                        ))}
-                      </div>
-                      {sortedWantedItems.length > wantedItemsInStock.length && (
-                        <div className="border-t pt-6 mt-6">
-                          <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                            <Heart className="h-5 w-5 text-muted-foreground" />
-                            Todas las Cartas Deseadas
-                          </h3>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Results count */}
-                  <div className="mb-4 text-sm text-muted-foreground">
-                    {sortedWantedItems.length} {sortedWantedItems.length === 1 ? t("cardFound") : t("cardsFound")}
-                  </div>
-
-                  {/* Todas las cartas deseadas */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                    {sortedWantedItems.map((item) => {
-                      const isInStock = wantedItemsInStock.some(
-                        (available) => available.id === item.id
-                      )
-                      return (
-                        <CollectionCard
-                          key={item.id}
-                          item={item}
-                          onRemove={() => removeFromCollection(item.card_id, "wanted", item.version)}
-                          t={t}
-                          onAddToCart={isInStock ? () => handleAddWantedToCart(item) : undefined}
-                          isAvailable={isInStock}
-                        />
-                      )
-                    })}
-                  </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
           </Tabs>
         </div>
       </main>
@@ -1035,7 +930,13 @@ function AllCardsCard({
   removeFromCollection,
   refresh,
   missingNormal,
-  missingFoil
+  missingFoil,
+  missingNormalAvailable,
+  missingFoilAvailable,
+  ownedNormal,
+  ownedFoil,
+  ownedNormalQuantity,
+  ownedFoilQuantity
 }: { 
   card: CardType
   t: (key: string) => string
@@ -1047,8 +948,15 @@ function AllCardsCard({
   refresh: () => void
   missingNormal?: boolean
   missingFoil?: boolean
+  missingNormalAvailable?: boolean
+  missingFoilAvailable?: boolean
+  ownedNormal?: boolean
+  ownedFoil?: boolean
+  ownedNormalQuantity?: number
+  ownedFoilQuantity?: number
 }) {
   const { toast } = useToast()
+  const { addToCart } = useCart()
   const [updating, setUpdating] = useState<string | null>(null)
 
   // Get quantities from collection
@@ -1140,13 +1048,14 @@ function AllCardsCard({
     }
   }
 
-  const hasNormalOwned = isInCollection(card.id, "owned", "normal")
-  const hasFoilOwned = isInCollection(card.id, "owned", "foil")
+  // Usar props si están disponibles (pestaña "Tengo" agrupada), sino calcular desde collection
+  const hasNormalOwned = ownedNormal !== undefined ? ownedNormal : isInCollection(card.id, "owned", "normal")
+  const hasFoilOwned = ownedFoil !== undefined ? ownedFoil : isInCollection(card.id, "owned", "foil")
   const hasNormalWanted = isInCollection(card.id, "wanted", "normal")
   const hasFoilWanted = isInCollection(card.id, "wanted", "foil")
   
-  const qtyNormalOwned = getQuantity("owned", "normal")
-  const qtyFoilOwned = getQuantity("owned", "foil")
+  const qtyNormalOwned = ownedNormalQuantity !== undefined ? ownedNormalQuantity : getQuantity("owned", "normal")
+  const qtyFoilOwned = ownedFoilQuantity !== undefined ? ownedFoilQuantity : getQuantity("owned", "foil")
   const qtyNormalWanted = getQuantity("wanted", "normal")
   const qtyFoilWanted = getQuantity("wanted", "foil")
 
@@ -1164,15 +1073,33 @@ function AllCardsCard({
           {missingNormal !== undefined && missingFoil !== undefined ? (
             <>
               {missingNormal && (
-                <Badge variant="outline" className="bg-orange-500/90 text-white border-orange-400">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  Falta {t("normal")}
+                <Badge variant="outline" className={`${missingNormalAvailable ? 'bg-green-500/90' : 'bg-orange-500/90'} text-white border-orange-400`}>
+                  {missingNormalAvailable ? (
+                    <>
+                      <ShoppingCart className="h-3 w-3 mr-1" />
+                      Falta {t("normal")} ✓
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Falta {t("normal")}
+                    </>
+                  )}
                 </Badge>
               )}
               {missingFoil && (
-                <Badge variant="outline" className="bg-orange-500/90 text-white border-orange-400">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  Falta {t("foil")}
+                <Badge variant="outline" className={`${missingFoilAvailable ? 'bg-green-500/90' : 'bg-orange-500/90'} text-white border-orange-400`}>
+                  {missingFoilAvailable ? (
+                    <>
+                      <ShoppingCart className="h-3 w-3 mr-1" />
+                      Falta {t("foil")} ✓
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Falta {t("foil")}
+                    </>
+                  )}
                 </Badge>
               )}
             </>
@@ -1192,18 +1119,6 @@ function AllCardsCard({
                 </Badge>
               )}
             </>
-          )}
-        </div>
-        <div className="absolute top-2 right-2 flex flex-col gap-1">
-          {hasNormalWanted && (
-            <Badge className="bg-red-500/90">
-              <Heart className="h-3 w-3" />
-            </Badge>
-          )}
-          {hasFoilWanted && (
-            <Badge className="bg-red-500/90">
-              <Heart className="h-3 w-3" />
-            </Badge>
           )}
         </div>
       </div>
