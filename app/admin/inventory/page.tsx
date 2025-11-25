@@ -451,6 +451,7 @@ export default function InventoryPage() {
                   <SelectItem value="archazia">Set 7 - Archazia's Island</SelectItem>
                   <SelectItem value="reignOfJafar">Set 8 - Reign of Jafar</SelectItem>
                   <SelectItem value="fabled">Set 9 - Fabled</SelectItem>
+                  <SelectItem value="whi">{t("whispersInTheWell")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
