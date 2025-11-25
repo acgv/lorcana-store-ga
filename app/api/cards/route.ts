@@ -107,57 +107,71 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const card: Card = await request.json()
+    const product: any = await request.json()
+    const productType = product.productType || "card"
 
-    // Validate required fields
-    if (!card.name || !card.type || !card.rarity) {
+    // Validar campos requeridos según el tipo de producto
+    if (!product.name) {
       return NextResponse.json(
         {
           success: false,
-          error: "Missing required fields: name, type, rarity",
+          error: "Missing required field: name",
+        } as ApiResponse,
+        { status: 400 }
+      )
+    }
+
+    // Para cartas, validar campos específicos
+    if (productType === "card" && (!product.type || !product.rarity)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Missing required fields for card: type, rarity",
         } as ApiResponse,
         { status: 400 }
       )
     }
 
     // Intentar crear en Supabase si está configurado
-    let newCard: Card | null = null
+    let newProduct: any = null
     let dataSource = "mock"
     
     if (supabase) {
       try {
       const row: any = {
-        id: card.id || `card_${Date.now()}`,
-        name: card.name,
-        image: (card as any).image ?? null,
-        set: (card as any).set ?? "firstChapter",
-        rarity: card.rarity,
-        type: card.type,
-        number: (card as any).number ?? 0,
-        cardNumber: (card as any).cardNumber ?? null,
-        price: (card as any).price ?? null,
-        foilPrice: (card as any).foilPrice ?? null,
-        description: (card as any).description ?? null,
-        version: (card as any).version ?? "normal",
-        language: (card as any).language ?? "en",
-        status: (card as any).status ?? "approved",
-        normalStock: (card as any).normalStock ?? (card as any).stock ?? 0,
-        foilStock: (card as any).foilStock ?? 0,
+        id: product.id || `${productType}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name: product.name,
+        image: product.image ?? null,
+        price: product.price ?? null,
+        description: product.description ?? null,
+        status: product.status ?? "approved",
+        productType: productType,
+        // Campos específicos de cartas
+        set: product.set ?? (productType === "card" ? "firstChapter" : null),
+        rarity: product.rarity ?? null,
+        type: product.type ?? null,
+        number: product.number ?? 0,
+        cardNumber: product.cardNumber ?? null,
+        foilPrice: product.foilPrice ?? null,
+        version: product.version ?? "normal",
+        language: product.language ?? "en",
+        normalStock: product.normalStock ?? product.stock ?? 0,
+        foilStock: product.foilStock ?? 0,
       }
 
       const { data, error } = await supabase.from("cards").insert(row).select("*").single()
       if (!error && data) {
-        newCard = data as unknown as Card
+        newProduct = data as unknown as Card
         dataSource = "supabase"
-        console.log(`✓ POST /api/cards - Created in SUPABASE: ${newCard.id}`)
+        console.log(`✓ POST /api/cards - Created in SUPABASE: ${newProduct.id} (${productType})`)
         // Crear log
         await supabase.from("logs").insert({
           id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           userId: "system",
-          action: "card_created",
+          action: `${productType}_created`,
           entityType: "card",
           entityId: row.id,
-          details: { source: "api" },
+          details: { source: "api", productType },
         })
       } else {
         console.log(`⚠ POST /api/cards - Supabase error: ${error?.message || "unknown"}, using MOCK`)
@@ -170,21 +184,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Fallback mock
-    if (!newCard) {
-      newCard = await Database.createCard(card)
-      console.log(`✓ POST /api/cards - Created in MOCK: ${newCard.id}`)
+    if (!newProduct) {
+      if (productType === "card") {
+        newProduct = await Database.createCard(product as Card)
+      } else {
+        // Para otros productos, crear directamente en Supabase o mock
+        newProduct = { ...product, id: product.id || `${productType}_${Date.now()}` }
+      }
+      console.log(`✓ POST /api/cards - Created in MOCK: ${newProduct.id} (${productType})`)
       await Database.createLog({
         userId: "system",
-        action: "card_created",
+        action: `${productType}_created`,
         entityType: "card",
-        entityId: newCard.id,
+        entityId: newProduct.id,
       })
     }
 
     const response: ApiResponse<Card> = {
       success: true,
-      data: newCard,
-      message: "Card created successfully",
+      data: newProduct,
+      message: `${productType === "card" ? "Card" : "Product"} created successfully`,
       meta: {
         source: dataSource,
       } as any,

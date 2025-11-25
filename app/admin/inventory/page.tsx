@@ -12,22 +12,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Package, Search, Save, AlertCircle, Loader2, Download } from "lucide-react"
+import { Package, Search, Save, AlertCircle, Loader2, Download, Plus } from "lucide-react"
 import Image from "next/image"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 
 interface InventoryItem {
   id: string
   name: string
-  set: string
-  type: string
-  rarity: string
-  number: number
+  set?: string
+  type?: string
+  rarity?: string
+  number?: number
   cardNumber?: string
   price: number
-  foilPrice: number
+  foilPrice?: number
   normalStock: number
-  foilStock: number
+  foilStock?: number
   image: string
+  productType?: string
 }
 
 export default function InventoryPage() {
@@ -39,8 +42,27 @@ export default function InventoryPage() {
     set: "all",
     type: "all",
     rarity: "all",
+    productType: "all", // all, card, booster, playmat, sleeves, deckbox, dice, accessory
     stockStatus: "all", // all, inStock, outOfStock, lowStock
     stockType: "all", // all, hasNormal, hasFoil, hasBoth
+  })
+  const [showAddProduct, setShowAddProduct] = useState(false)
+  const [newProduct, setNewProduct] = useState({
+    name: "",
+    productType: "booster" as "booster" | "playmat" | "sleeves" | "deckbox" | "dice" | "accessory",
+    price: 0,
+    stock: 0,
+    image: "",
+    description: "",
+    set: "",
+    // Campos específicos por tipo
+    cardsPerPack: 12, // para boosters
+    count: 50, // para sleeves
+    capacity: 60, // para deckbox
+    material: "", // para playmat y deckbox
+    size: "", // para playmat y sleeves
+    color: "", // para dice
+    category: "", // para accessory
   })
   const [editedCards, setEditedCards] = useState<Map<string, { normalStock?: number; foilStock?: number; price?: number; foilPrice?: number }>>(new Map())
   const [savingCard, setSavingCard] = useState<string | null>(null) // ID de la carta que se está guardando
@@ -289,8 +311,16 @@ export default function InventoryPage() {
       filtered = filtered.filter(item => 
         item.name.toLowerCase().includes(lowerSearch) ||
         item.cardNumber?.toLowerCase().includes(lowerSearch) ||
-        item.set.toLowerCase().includes(lowerSearch)
+        (item.set && item.set.toLowerCase().includes(lowerSearch))
       )
+    }
+
+    // Product Type filter
+    if (filters.productType !== "all") {
+      filtered = filtered.filter(item => {
+        const productType = item.productType || "card"
+        return productType === filters.productType
+      })
     }
 
     // Set filter
@@ -298,9 +328,12 @@ export default function InventoryPage() {
       filtered = filtered.filter(item => item.set === filters.set)
     }
 
-    // Type filter
+    // Type filter (solo para cartas)
     if (filters.type !== "all") {
-      filtered = filtered.filter(item => item.type === filters.type)
+      filtered = filtered.filter(item => {
+        const productType = item.productType || "card"
+        return productType === "card" && item.type === filters.type
+      })
     }
 
     // Rarity filter
@@ -456,22 +489,44 @@ export default function InventoryPage() {
               </Select>
             </div>
 
-            {/* Type Filter */}
+            {/* Product Type Filter */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">{t("type")}</Label>
-              <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
+              <Label className="text-xs text-muted-foreground mb-1 block">Tipo de Producto</Label>
+              <Select value={filters.productType} onValueChange={(value) => setFilters({ ...filters, productType: value })}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder={t("allTypes")} />
+                  <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t("allTypes")}</SelectItem>
-                  <SelectItem value="character">{t("character")}</SelectItem>
-                  <SelectItem value="action">{t("action")}</SelectItem>
-                  <SelectItem value="item">{t("item")}</SelectItem>
-                  <SelectItem value="song">{t("song")}</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="card">Cartas</SelectItem>
+                  <SelectItem value="booster">Boosters</SelectItem>
+                  <SelectItem value="playmat">Play Mats</SelectItem>
+                  <SelectItem value="sleeves">Fundas</SelectItem>
+                  <SelectItem value="deckbox">Deck Boxes</SelectItem>
+                  <SelectItem value="dice">Dados</SelectItem>
+                  <SelectItem value="accessory">Accesorios</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Type Filter (solo para cartas) */}
+            {(!filters.productType || filters.productType === "all" || filters.productType === "card") && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">{t("type")}</Label>
+                <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder={t("allTypes")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("allTypes")}</SelectItem>
+                    <SelectItem value="character">{t("character")}</SelectItem>
+                    <SelectItem value="action">{t("action")}</SelectItem>
+                    <SelectItem value="item">{t("item")}</SelectItem>
+                    <SelectItem value="song">{t("song")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Rarity Filter */}
             <div>
@@ -535,6 +590,7 @@ export default function InventoryPage() {
                     set: "all",
                     type: "all",
                     rarity: "all",
+                    productType: "all",
                     stockStatus: "all",
                     stockType: "all",
                   })

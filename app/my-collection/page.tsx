@@ -57,6 +57,7 @@ function MyCollectionContent() {
     maxPrice: Number(searchParams.get("maxPrice")) || 100000, // Aumentado para incluir cartas legendarias (30000) y enchanted (50000)
     version: searchParams.get("version") || "all",
     search: searchParams.get("search") || "",
+    productType: searchParams.get("productType") || "all",
   })
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "cardNumberLowHigh")
   const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
@@ -89,6 +90,7 @@ function MyCollectionContent() {
     if (filters.maxPrice !== 100000) params.set("maxPrice", filters.maxPrice.toString())
     if (filters.version !== "all") params.set("version", filters.version)
     if (filters.search) params.set("search", filters.search)
+    if (filters.productType && filters.productType !== "all") params.set("productType", filters.productType)
     if (sortBy !== "cardNumberLowHigh") params.set("sortBy", sortBy)
     if (viewMode !== "grid") params.set("viewMode", viewMode)
     
@@ -183,8 +185,17 @@ function MyCollectionContent() {
   const filteredOwnedItems = groupedOwnedItems.filter((group) => {
     const card = group.card
     
-    // Type filter
-    if (filters.type && filters.type !== "all" && card.type !== filters.type) return false
+    // Product Type filter
+    if (filters.productType && filters.productType !== "all") {
+      const productType = (card as any).productType || "card"
+      if (productType !== filters.productType) return false
+    }
+    
+    // Type filter (solo para cartas)
+    if (filters.type && filters.type !== "all") {
+      const productType = (card as any).productType || "card"
+      if (productType === "card" && card.type !== filters.type) return false
+    }
     
     // Set filter
     if (filters.set && filters.set !== "all" && card.set !== filters.set) return false
@@ -395,8 +406,17 @@ function MyCollectionContent() {
   // NOTE: NO filtramos por stock/version porque esto es para crear colección personal
   // Los usuarios deben ver TODAS las cartas disponibles, no solo las en stock
   const filteredAllCards = allCards.filter((card) => {
-    // Type filter
-    if (filters.type && filters.type !== "all" && card.type !== filters.type) return false
+    // Product Type filter
+    if (filters.productType && filters.productType !== "all") {
+      const productType = (card as any).productType || "card"
+      if (productType !== filters.productType) return false
+    }
+    
+    // Type filter (solo para cartas)
+    if (filters.type && filters.type !== "all") {
+      const productType = (card as any).productType || "card"
+      if (productType === "card" && card.type !== filters.type) return false
+    }
     
     // Set filter
     if (filters.set && filters.set !== "all" && card.set !== filters.set) return false

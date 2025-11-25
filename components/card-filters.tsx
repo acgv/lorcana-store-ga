@@ -17,6 +17,7 @@ interface CardFiltersProps {
     maxPrice: number
     version: string
     search: string
+    productType?: string
   }
   setFilters: (filters: any) => void
   sortBy: string
@@ -47,22 +48,44 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
         />
       </div>
 
-      {/* Type */}
+      {/* Product Type */}
       <div className="space-y-3">
-        <Label className="text-sm font-semibold text-foreground/90">{t("type")}</Label>
-        <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
+        <Label className="text-sm font-semibold text-foreground/90">Tipo de Producto</Label>
+        <Select value={filters.productType || "all"} onValueChange={(value) => setFilters({ ...filters, productType: value })}>
           <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors">
-            <SelectValue placeholder={t("type")} />
+            <SelectValue placeholder="Tipo de Producto" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t("all")}</SelectItem>
-            <SelectItem value="character">{t("character")}</SelectItem>
-            <SelectItem value="item">{t("item")}</SelectItem>
-            <SelectItem value="action">{t("action")}</SelectItem>
-            <SelectItem value="song">{t("song")}</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="card">Cartas</SelectItem>
+            <SelectItem value="booster">Boosters</SelectItem>
+            <SelectItem value="playmat">Play Mats</SelectItem>
+            <SelectItem value="sleeves">Fundas</SelectItem>
+            <SelectItem value="deckbox">Deck Boxes</SelectItem>
+            <SelectItem value="dice">Dados</SelectItem>
+            <SelectItem value="accessory">Accesorios</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {/* Type (solo para cartas) */}
+      {(!filters.productType || filters.productType === "all" || filters.productType === "card") && (
+        <div className="space-y-3">
+          <Label className="text-sm font-semibold text-foreground/90">{t("type")}</Label>
+          <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
+            <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors">
+              <SelectValue placeholder={t("type")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("all")}</SelectItem>
+              <SelectItem value="character">{t("character")}</SelectItem>
+              <SelectItem value="item">{t("item")}</SelectItem>
+              <SelectItem value="action">{t("action")}</SelectItem>
+              <SelectItem value="song">{t("song")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Set */}
       <div className="space-y-3">
