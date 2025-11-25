@@ -1160,20 +1160,8 @@ function AllCardsCard({
           className="object-cover"
         />
         <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {hasNormalOwned && (
-            <Badge className="bg-green-500/90">
-              <Check className="h-3 w-3 mr-1" />
-              {t("normal")}
-            </Badge>
-          )}
-          {hasFoilOwned && (
-            <Badge className="bg-green-500/90">
-              <Check className="h-3 w-3 mr-1" />
-              {t("foil")}
-            </Badge>
-          )}
-          {/* Mostrar qué versiones faltan en la pestaña de faltantes */}
-          {missingNormal !== undefined && missingFoil !== undefined && (
+          {/* En la pestaña de faltantes, solo mostrar lo que falta */}
+          {missingNormal !== undefined && missingFoil !== undefined ? (
             <>
               {missingNormal && (
                 <Badge variant="outline" className="bg-orange-500/90 text-white border-orange-400">
@@ -1185,6 +1173,22 @@ function AllCardsCard({
                 <Badge variant="outline" className="bg-orange-500/90 text-white border-orange-400">
                   <AlertCircle className="h-3 w-3 mr-1" />
                   Falta {t("foil")}
+                </Badge>
+              )}
+            </>
+          ) : (
+            <>
+              {/* En otras pestañas, mostrar lo que tienes */}
+              {hasNormalOwned && (
+                <Badge className="bg-green-500/90">
+                  <Check className="h-3 w-3 mr-1" />
+                  {t("normal")}
+                </Badge>
+              )}
+              {hasFoilOwned && (
+                <Badge className="bg-green-500/90">
+                  <Check className="h-3 w-3 mr-1" />
+                  {t("foil")}
                 </Badge>
               )}
             </>
