@@ -46,20 +46,20 @@ function MyCollectionContent() {
   const [allCards, setAllCards] = useState<CardType[]>([])
   const [loadingCards, setLoadingCards] = useState(true)
   
-  // Leer tab desde URL o usar default
+  // Leer tab y filtros desde URL o usar defaults
   const tabFromUrl = searchParams.get("tab") as "all" | "owned" | "wanted" | "missing" | null
   const [activeTab, setActiveTab] = useState<"all" | "owned" | "wanted" | "missing">(tabFromUrl || "all")
   const [filters, setFilters] = useState({
-    type: "all",
-    set: "all",
-    rarity: "all",
-    minPrice: 0,
-    maxPrice: 100000, // Aumentado para incluir cartas legendarias (30000) y enchanted (50000)
-    version: "all",
-    search: "",
+    type: searchParams.get("type") || "all",
+    set: searchParams.get("set") || "all",
+    rarity: searchParams.get("rarity") || "all",
+    minPrice: Number(searchParams.get("minPrice")) || 0,
+    maxPrice: Number(searchParams.get("maxPrice")) || 100000, // Aumentado para incluir cartas legendarias (30000) y enchanted (50000)
+    version: searchParams.get("version") || "all",
+    search: searchParams.get("search") || "",
   })
-  const [sortBy, setSortBy] = useState("cardNumberLowHigh")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "cardNumberLowHigh")
+  const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -68,20 +68,29 @@ function MyCollectionContent() {
     }
   }, [user, userLoading, router])
 
-  // Sync activeTab with URL
+  // Actualizar URL cuando cambien los filtros, tab, sortBy o viewMode
   useEffect(() => {
-    const newUrl = activeTab === "all" 
-      ? "/my-collection" 
-      : `/my-collection?tab=${activeTab}`
+    const params = new URLSearchParams()
+    
+    // Agregar tab a la URL
+    if (activeTab !== "all") params.set("tab", activeTab)
+    
+    // Agregar filtros a la URL
+    if (filters.type !== "all") params.set("type", filters.type)
+    if (filters.set !== "all") params.set("set", filters.set)
+    if (filters.rarity !== "all") params.set("rarity", filters.rarity)
+    if (filters.minPrice !== 0) params.set("minPrice", filters.minPrice.toString())
+    if (filters.maxPrice !== 100000) params.set("maxPrice", filters.maxPrice.toString())
+    if (filters.version !== "all") params.set("version", filters.version)
+    if (filters.search) params.set("search", filters.search)
+    if (sortBy !== "cardNumberLowHigh") params.set("sortBy", sortBy)
+    if (viewMode !== "grid") params.set("viewMode", viewMode)
+    
+    const queryString = params.toString()
+    const newUrl = queryString ? `/my-collection?${queryString}` : "/my-collection"
+    
     router.replace(newUrl, { scroll: false })
-  }, [activeTab, router])
-
-  // Restore tab from URL on mount
-  useEffect(() => {
-    if (tabFromUrl && ["all", "owned", "wanted", "missing"].includes(tabFromUrl)) {
-      setActiveTab(tabFromUrl)
-    }
-  }, []) // Solo al montar
+  }, [activeTab, filters, sortBy, viewMode, router])
 
   // Load all cards
   useEffect(() => {

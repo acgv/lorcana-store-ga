@@ -72,7 +72,7 @@ function CatalogContent() {
     if (filters.set !== "all") params.set("set", filters.set)
     if (filters.rarity !== "all") params.set("rarity", filters.rarity)
     if (filters.minPrice !== 0) params.set("minPrice", filters.minPrice.toString())
-    if (filters.maxPrice !== 10000) params.set("maxPrice", filters.maxPrice.toString())
+    if (filters.maxPrice !== 100000) params.set("maxPrice", filters.maxPrice.toString())
     if (filters.version !== "all") params.set("version", filters.version)
     if (filters.search) params.set("search", filters.search)
     if (sortBy !== "cardNumberLowHigh") params.set("sortBy", sortBy)
