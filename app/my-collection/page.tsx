@@ -93,15 +93,15 @@ function MyCollectionContent() {
   const loadAllCards = async () => {
     try {
       setLoadingCards(true)
-      console.log("🔍 Fetching cards from /api/inventory...")
-      const response = await fetch("/api/inventory")
+      console.log("🔍 Fetching cards from /api/cards...")
+      const response = await fetch("/api/cards")
       const data = await response.json()
       
       console.log("📦 API Response:", data)
-      console.log("📊 Cards loaded:", data.inventory?.length || 0)
+      console.log("📊 Cards loaded:", data.data?.length || 0)
       
       if (data.success) {
-        setAllCards(data.inventory || [])
+        setAllCards(data.data || [])
       } else {
         console.error("❌ API returned success:false", data)
       }
