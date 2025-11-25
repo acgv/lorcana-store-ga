@@ -140,6 +140,70 @@ function MyCollectionContent() {
   const ownedItems = getCollectionWithCards("owned")
   const wantedItems = getCollectionWithCards("wanted")
 
+  // Filter owned items
+  const filteredOwnedItems = ownedItems.filter((item) => {
+    if (!item.card) return false
+    
+    // Type filter
+    if (filters.type && filters.type !== "all" && item.card.type !== filters.type) return false
+    
+    // Set filter
+    if (filters.set && filters.set !== "all" && item.card.set !== filters.set) return false
+    
+    // Rarity filter
+    if (filters.rarity && filters.rarity !== "all" && item.card.rarity !== filters.rarity) return false
+    
+    // Price range filter
+    const cardPrice = item.card.price || 0
+    if (cardPrice < filters.minPrice || cardPrice > filters.maxPrice) return false
+    
+    // Version filter
+    if (filters.version && filters.version !== "all" && item.version !== filters.version) return false
+    
+    // Search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase()
+      if (!item.card.name.toLowerCase().includes(searchLower) && 
+          !item.card.id.toLowerCase().includes(searchLower)) {
+        return false
+      }
+    }
+    
+    return true
+  })
+
+  // Filter wanted items
+  const filteredWantedItems = wantedItems.filter((item) => {
+    if (!item.card) return false
+    
+    // Type filter
+    if (filters.type && filters.type !== "all" && item.card.type !== filters.type) return false
+    
+    // Set filter
+    if (filters.set && filters.set !== "all" && item.card.set !== filters.set) return false
+    
+    // Rarity filter
+    if (filters.rarity && filters.rarity !== "all" && item.card.rarity !== filters.rarity) return false
+    
+    // Price range filter
+    const cardPrice = item.card.price || 0
+    if (cardPrice < filters.minPrice || cardPrice > filters.maxPrice) return false
+    
+    // Version filter
+    if (filters.version && filters.version !== "all" && item.version !== filters.version) return false
+    
+    // Search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase()
+      if (!item.card.name.toLowerCase().includes(searchLower) && 
+          !item.card.id.toLowerCase().includes(searchLower)) {
+        return false
+      }
+    }
+    
+    return true
+  })
+
   // Calcular cartas faltantes: todas las cartas que NO están en la colección como "owned"
   const missingCards = allCards.filter((card) => {
     // Una carta está "faltante" si NO tiene ninguna versión (normal o foil) marcada como "owned"
@@ -153,8 +217,8 @@ function MyCollectionContent() {
     return !hasNormalOwned && !hasFoilOwned
   })
 
-  // Identificar cartas deseadas que están en stock
-  const wantedItemsInStock = wantedItems.filter((item) => {
+  // Identificar cartas deseadas que están en stock (usando los items filtrados)
+  const wantedItemsInStock = filteredWantedItems.filter((item) => {
     if (!item.card) return false
     const normalStock = item.card.normalStock || item.card.stock || 0
     const foilStock = item.card.foilStock || 0
@@ -341,6 +405,58 @@ function MyCollectionContent() {
       default:
         // Usar 'number' (numérico) en lugar de 'cardNumber' (string)
         return (a.number || 0) - (b.number || 0)
+    }
+  })
+
+  // Sort filtered owned items
+  const sortedOwnedItems = [...filteredOwnedItems].sort((a, b) => {
+    if (!a.card || !b.card) return 0
+    switch (sortBy) {
+      case "nameAZ":
+        return a.card.name.localeCompare(b.card.name)
+      case "nameZA":
+        return b.card.name.localeCompare(a.card.name)
+      case "priceLowHigh":
+        return (a.card.price || 0) - (b.card.price || 0)
+      case "priceHighLow":
+        return (b.card.price || 0) - (a.card.price || 0)
+      case "rarityHighLow":
+        const rarityOrder = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
+        return (rarityOrder[b.card.rarity as keyof typeof rarityOrder] || 0) - 
+               (rarityOrder[a.card.rarity as keyof typeof rarityOrder] || 0)
+      case "rarityLowHigh":
+        const rarityOrder2 = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
+        return (rarityOrder2[a.card.rarity as keyof typeof rarityOrder2] || 0) - 
+               (rarityOrder2[b.card.rarity as keyof typeof rarityOrder2] || 0)
+      case "cardNumberLowHigh":
+      default:
+        return (a.card.number || 0) - (b.card.number || 0)
+    }
+  })
+
+  // Sort filtered wanted items
+  const sortedWantedItems = [...filteredWantedItems].sort((a, b) => {
+    if (!a.card || !b.card) return 0
+    switch (sortBy) {
+      case "nameAZ":
+        return a.card.name.localeCompare(b.card.name)
+      case "nameZA":
+        return b.card.name.localeCompare(a.card.name)
+      case "priceLowHigh":
+        return (a.card.price || 0) - (b.card.price || 0)
+      case "priceHighLow":
+        return (b.card.price || 0) - (a.card.price || 0)
+      case "rarityHighLow":
+        const rarityOrder = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
+        return (rarityOrder[b.card.rarity as keyof typeof rarityOrder] || 0) - 
+               (rarityOrder[a.card.rarity as keyof typeof rarityOrder] || 0)
+      case "rarityLowHigh":
+        const rarityOrder2 = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
+        return (rarityOrder2[a.card.rarity as keyof typeof rarityOrder2] || 0) - 
+               (rarityOrder2[b.card.rarity as keyof typeof rarityOrder2] || 0)
+      case "cardNumberLowHigh":
+      default:
+        return (a.card.number || 0) - (b.card.number || 0)
     }
   })
 
@@ -545,35 +661,87 @@ function MyCollectionContent() {
 
             {/* Tab 2: Owned Cards */}
             <TabsContent value="owned">
-              {loadingCards ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              ) : ownedItems.length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <Package className="h-16 w-16 text-muted-foreground/50 mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">{t("noOwnedCards")}</h3>
-                    <p className="text-muted-foreground text-center mb-6">
-                      {t("allCardsDesc")}
-                    </p>
-                    <Button onClick={() => setActiveTab("all")}>
-                      {t("allCards")}
+              {/* Filters - Mobile Sheet */}
+              <div className="lg:hidden mb-6">
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                      {t("filtersAndSort")}
                     </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                  {ownedItems.map((item) => (
-                    <CollectionCard
-                      key={item.id}
-                      item={item}
-                      onRemove={() => removeFromCollection(item.card_id, "owned", item.version)}
-                      t={t}
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-80 overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>{t("filtersAndSort")}</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-6">
+                      <CardFilters
+                        filters={filters}
+                        setFilters={setFilters}
+                        sortBy={sortBy}
+                        setSortBy={setSortBy}
+                        viewMode={viewMode}
+                        setViewMode={setViewMode}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+
+              <div className="grid lg:grid-cols-[280px_1fr] gap-6">
+                {/* Filters - Desktop Sidebar */}
+                <aside className="hidden lg:block">
+                  <div className="sticky top-4">
+                    <CardFilters
+                      filters={filters}
+                      setFilters={setFilters}
+                      sortBy={sortBy}
+                      setSortBy={setSortBy}
+                      viewMode={viewMode}
+                      setViewMode={setViewMode}
                     />
-                  ))}
+                  </div>
+                </aside>
+
+                {/* Cards Grid */}
+                <div>
+                  {loadingCards ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : sortedOwnedItems.length === 0 ? (
+                    <Card className="border-dashed">
+                      <CardContent className="flex flex-col items-center justify-center py-12">
+                        <Package className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                        <h3 className="text-xl font-semibold mb-2">{t("noOwnedCards")}</h3>
+                        <p className="text-muted-foreground text-center mb-6">
+                          {t("allCardsDesc")}
+                        </p>
+                        <Button onClick={() => setActiveTab("all")}>
+                          {t("allCards")}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
+                      {/* Results count */}
+                      <div className="mb-4 text-sm text-muted-foreground">
+                        {sortedOwnedItems.length} {sortedOwnedItems.length === 1 ? t("cardFound") : t("cardsFound")}
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                        {sortedOwnedItems.map((item) => (
+                          <CollectionCard
+                            key={item.id}
+                            item={item}
+                            onRemove={() => removeFromCollection(item.card_id, "owned", item.version)}
+                            t={t}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
             </TabsContent>
 
             {/* Tab 3: Missing Cards */}
@@ -667,27 +835,71 @@ function MyCollectionContent() {
 
             {/* Tab 4: Wanted Cards */}
             <TabsContent value="wanted">
-              {loadingCards ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              ) : wantedItems.length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <Heart className="h-16 w-16 text-muted-foreground/50 mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">{t("noWantedCards")}</h3>
-                    <p className="text-muted-foreground text-center mb-6">
-                      {t("allCardsDesc")}
-                    </p>
-                    <Button onClick={() => setActiveTab("all")}>
-                      {t("allCards")}
+              {/* Filters - Mobile Sheet */}
+              <div className="lg:hidden mb-6">
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                      {t("filtersAndSort")}
                     </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <>
-                  {/* Banner informativo si hay cartas disponibles */}
-                  {wantedItemsInStock.length > 0 && (
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-80 overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>{t("filtersAndSort")}</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-6">
+                      <CardFilters
+                        filters={filters}
+                        setFilters={setFilters}
+                        sortBy={sortBy}
+                        setSortBy={setSortBy}
+                        viewMode={viewMode}
+                        setViewMode={setViewMode}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+
+              <div className="grid lg:grid-cols-[280px_1fr] gap-6">
+                {/* Filters - Desktop Sidebar */}
+                <aside className="hidden lg:block">
+                  <div className="sticky top-4">
+                    <CardFilters
+                      filters={filters}
+                      setFilters={setFilters}
+                      sortBy={sortBy}
+                      setSortBy={setSortBy}
+                      viewMode={viewMode}
+                      setViewMode={setViewMode}
+                    />
+                  </div>
+                </aside>
+
+                {/* Cards Grid */}
+                <div>
+                  {loadingCards ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : sortedWantedItems.length === 0 ? (
+                    <Card className="border-dashed">
+                      <CardContent className="flex flex-col items-center justify-center py-12">
+                        <Heart className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                        <h3 className="text-xl font-semibold mb-2">{t("noWantedCards")}</h3>
+                        <p className="text-muted-foreground text-center mb-6">
+                          {t("allCardsDesc")}
+                        </p>
+                        <Button onClick={() => setActiveTab("all")}>
+                          {t("allCards")}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
+                      {/* Banner informativo si hay cartas disponibles */}
+                      {wantedItemsInStock.length > 0 && (
                     <Card className="mb-6 border-primary/20 bg-primary/5">
                       <CardContent className="p-4">
                         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -740,7 +952,7 @@ function MyCollectionContent() {
                           />
                         ))}
                       </div>
-                      {wantedItems.length > wantedItemsInStock.length && (
+                      {sortedWantedItems.length > wantedItemsInStock.length && (
                         <div className="border-t pt-6 mt-6">
                           <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
                             <Heart className="h-5 w-5 text-muted-foreground" />
@@ -751,9 +963,14 @@ function MyCollectionContent() {
                     </div>
                   )}
 
+                  {/* Results count */}
+                  <div className="mb-4 text-sm text-muted-foreground">
+                    {sortedWantedItems.length} {sortedWantedItems.length === 1 ? t("cardFound") : t("cardsFound")}
+                  </div>
+
                   {/* Todas las cartas deseadas */}
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                    {wantedItems.map((item) => {
+                    {sortedWantedItems.map((item) => {
                       const isInStock = wantedItemsInStock.some(
                         (available) => available.id === item.id
                       )
@@ -769,8 +986,8 @@ function MyCollectionContent() {
                       )
                     })}
                   </div>
-                </>
-              )}
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
