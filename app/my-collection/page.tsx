@@ -204,18 +204,27 @@ function MyCollectionContent() {
     return true
   })
 
-  // Calcular cartas faltantes: todas las cartas que NO están en la colección como "owned"
-  const missingCards = allCards.filter((card) => {
-    // Una carta está "faltante" si NO tiene ninguna versión (normal o foil) marcada como "owned"
+  // Calcular cartas faltantes: todas las cartas con información de qué versión falta
+  const missingCards = allCards.map((card) => {
     const hasNormalOwned = collection.some(
       (item) => item.card_id === card.id && item.status === "owned" && item.version === "normal"
     )
     const hasFoilOwned = collection.some(
       (item) => item.card_id === card.id && item.status === "owned" && item.version === "foil"
     )
-    // Si tiene al menos una versión (normal o foil) como owned, NO está faltante
-    return !hasNormalOwned && !hasFoilOwned
-  })
+    
+    // Determinar qué versiones faltan
+    const missingNormal = !hasNormalOwned
+    const missingFoil = !hasFoilOwned
+    
+    return {
+      card,
+      missingNormal,
+      missingFoil,
+      // Una carta está "faltante" si le falta al menos una versión
+      isMissing: missingNormal || missingFoil
+    }
+  }).filter(item => item.isMissing) // Solo mostrar cartas que faltan
 
   // Identificar cartas deseadas que están en stock (usando los items filtrados)
   const wantedItemsInStock = filteredWantedItems.filter((item) => {
@@ -297,7 +306,8 @@ function MyCollectionContent() {
   }
 
   // Filter cards for "Missing Cards" tab
-  const filteredMissingCards = missingCards.filter((card) => {
+  const filteredMissingCards = missingCards.filter((item) => {
+    const card = item.card
     // Type filter
     if (filters.type && filters.type !== "all" && card.type !== filters.type) return false
     
@@ -814,10 +824,10 @@ function MyCollectionContent() {
                     </Card>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                      {sortedMissingCards.map((card) => (
+                      {sortedMissingCards.map((item) => (
                         <AllCardsCard 
-                          key={card.id} 
-                          card={card} 
+                          key={item.card.id} 
+                          card={item.card} 
                           t={t} 
                           user={user}
                           collection={collection}
@@ -825,6 +835,8 @@ function MyCollectionContent() {
                           addToCollection={addToCollection}
                           removeFromCollection={removeFromCollection}
                           refresh={refresh}
+                          missingNormal={item.missingNormal}
+                          missingFoil={item.missingFoil}
                         />
                       ))}
                     </div>
@@ -1021,7 +1033,9 @@ function AllCardsCard({
   isInCollection,
   addToCollection,
   removeFromCollection,
-  refresh
+  refresh,
+  missingNormal,
+  missingFoil
 }: { 
   card: CardType
   t: (key: string) => string
@@ -1031,6 +1045,8 @@ function AllCardsCard({
   addToCollection: (cardId: string, status: "owned" | "wanted", version: "normal" | "foil", quantity: number) => Promise<any>
   removeFromCollection: (cardId: string, status: "owned" | "wanted", version: "normal" | "foil") => Promise<any>
   refresh: () => void
+  missingNormal?: boolean
+  missingFoil?: boolean
 }) {
   const { toast } = useToast()
   const [updating, setUpdating] = useState<string | null>(null)
@@ -1155,6 +1171,23 @@ function AllCardsCard({
               <Check className="h-3 w-3 mr-1" />
               {t("foil")}
             </Badge>
+          )}
+          {/* Mostrar qué versiones faltan en la pestaña de faltantes */}
+          {missingNormal !== undefined && missingFoil !== undefined && (
+            <>
+              {missingNormal && (
+                <Badge variant="outline" className="bg-orange-500/90 text-white border-orange-400">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Falta {t("normal")}
+                </Badge>
+              )}
+              {missingFoil && (
+                <Badge variant="outline" className="bg-orange-500/90 text-white border-orange-400">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Falta {t("foil")}
+                </Badge>
+              )}
+            </>
           )}
         </div>
         <div className="absolute top-2 right-2 flex flex-col gap-1">
