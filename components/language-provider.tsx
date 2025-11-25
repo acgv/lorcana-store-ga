@@ -369,6 +369,10 @@ const translations: Record<Language, Record<string, string>> = {
     addFoil: "Add Foil",
     increaseQuantity: "Increase quantity",
     decreaseQuantity: "Decrease quantity",
+    missingCards: "Missing Cards",
+    missingCardsDesc: "Cards you don't have in your collection yet",
+    noMissingCards: "You have all cards!",
+    totalMissing: "Total Missing",
     // Shipping
     shippingMethod: "Shipping Method",
     shippingAddress: "Shipping Address",
@@ -691,6 +695,10 @@ const translations: Record<Language, Record<string, string>> = {
     addFoil: "Ajouter Foil",
     increaseQuantity: "Augmenter la quantité",
     decreaseQuantity: "Diminuer la quantité",
+    missingCards: "Cartes Manquantes",
+    missingCardsDesc: "Cartes que vous n'avez pas encore dans votre collection",
+    noMissingCards: "Vous avez toutes les cartes!",
+    totalMissing: "Total Manquantes",
     // Shipping
     shippingMethod: "Méthode de Livraison",
     shippingAddress: "Adresse de Livraison",
@@ -1013,6 +1021,10 @@ const translations: Record<Language, Record<string, string>> = {
     addFoil: "Foil Hinzufügen",
     increaseQuantity: "Menge erhöhen",
     decreaseQuantity: "Menge verringern",
+    missingCards: "Fehlende Karten",
+    missingCardsDesc: "Karten, die Sie noch nicht in Ihrer Sammlung haben",
+    noMissingCards: "Sie haben alle Karten!",
+    totalMissing: "Gesamt Fehlend",
     // Shipping
     shippingMethod: "Versandmethode",
     shippingAddress: "Lieferadresse",
@@ -1394,6 +1406,10 @@ const translations: Record<Language, Record<string, string>> = {
     addFoil: "Agregar Foil",
     increaseQuantity: "Aumentar cantidad",
     decreaseQuantity: "Disminuir cantidad",
+    missingCards: "Cartas Faltantes",
+    missingCardsDesc: "Cartas que aún no tienes en tu colección",
+    noMissingCards: "¡Tienes todas las cartas!",
+    totalMissing: "Total Faltantes",
     // Shipping
     shippingMethod: "Método de Envío",
     shippingAddress: "Dirección de Envío",
