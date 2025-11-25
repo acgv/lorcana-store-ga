@@ -1292,6 +1292,60 @@ function AllCardsCard({
               {t("foil")}
             </Button>
           )}
+
+          {/* Botones para agregar al carrito si está disponible en faltantes */}
+          {missingNormal !== undefined && missingFoil !== undefined && (
+            <>
+              {missingNormalAvailable && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="w-full bg-green-600 hover:bg-green-700 mb-2"
+                  onClick={() => {
+                    addToCart({
+                      id: card.id,
+                      name: card.name,
+                      image: card.image,
+                      price: card.price || 0,
+                      version: "normal",
+                      quantity: 1,
+                    })
+                    toast({
+                      title: t("success"),
+                      description: `${card.name} (${t("normal")}) ${t("addedToCart")}`,
+                    })
+                  }}
+                >
+                  <ShoppingCart className="h-3 w-3 mr-1" />
+                  Agregar {t("normal")} al Carrito
+                </Button>
+              )}
+              {missingFoilAvailable && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    addToCart({
+                      id: card.id,
+                      name: card.name,
+                      image: card.image,
+                      price: card.foilPrice || card.price || 0,
+                      version: "foil",
+                      quantity: 1,
+                    })
+                    toast({
+                      title: t("success"),
+                      description: `${card.name} (${t("foil")}) ${t("addedToCart")}`,
+                    })
+                  }}
+                >
+                  <ShoppingCart className="h-3 w-3 mr-1" />
+                  Agregar {t("foil")} al Carrito
+                </Button>
+              )}
+            </>
+          )}
         </div>
 
         <div className="text-xs text-muted-foreground text-center">
