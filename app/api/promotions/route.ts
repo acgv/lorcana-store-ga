@@ -90,13 +90,35 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    // Filtrar solo campos válidos que existen en la tabla
+    const allowedFields = [
+      "is_active",
+      "title",
+      "description",
+      "discount_percentage",
+      "discount_minimum_amount",
+      "shipping_discount_percentage",
+      "free_shipping",
+      "free_shipping_minimum_amount",
+      "start_date",
+      "end_date",
+      "banner_text",
+      "banner_color",
+    ]
+
+    // Construir objeto con solo campos permitidos
+    const validFields: any = {}
+    allowedFields.forEach((field) => {
+      if (updates.hasOwnProperty(field)) {
+        validFields[field] = updates[field]
+      }
+    })
+
+    // No incluir updated_at manualmente - el trigger lo maneja automáticamente
     // Actualizar promoción
     const { data, error } = await supabaseAdmin
       .from("promotions")
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
+      .update(validFields)
       .eq("id", id)
       .select()
       .single()
