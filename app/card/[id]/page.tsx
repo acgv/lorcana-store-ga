@@ -25,23 +25,56 @@ export default function CardDetailPage() {
   const [loading, setLoading] = useState(true)
   const [buyingNow, setBuyingNow] = useState(false)
 
-  // Cargar carta desde API
+  // Cargar carta o producto desde API
   useEffect(() => {
     const loadCard = async () => {
       try {
-        console.log(`🔍 Cargando carta con ID: "${id}"`)
-        const response = await fetch(`/api/cards/${id}`)
-        const result = await response.json()
+        console.log(`🔍 Cargando carta/producto con ID: "${id}"`)
+        
+        // Primero intentar buscar como carta
+        let response = await fetch(`/api/cards/${id}`)
+        let result = await response.json()
         
         if (result.success && result.data) {
           console.log(`✅ Carta encontrada: ${result.data.name} (${result.data.id})`)
           setCard(result.data)
+          setLoading(false)
+          return
+        }
+        
+        // Si no es una carta, intentar buscar como producto
+        console.log(`🔍 No es una carta, buscando como producto...`)
+        response = await fetch(`/api/products/${id}`)
+        result = await response.json()
+        
+        if (result.success && result.data) {
+          console.log(`✅ Producto encontrado: ${result.data.name} (${result.data.id})`)
+          // Normalizar producto para que sea compatible con el formato de carta
+          const normalizedProduct: any = {
+            id: result.data.id,
+            name: result.data.name,
+            image: result.data.image,
+            price: result.data.price,
+            foilPrice: null,
+            normalStock: result.data.stock || 0,
+            foilStock: 0,
+            stock: result.data.stock || 0,
+            set: result.data.metadata?.set || null,
+            type: null,
+            rarity: null,
+            number: 0,
+            cardNumber: null,
+            productType: result.data.producttype || result.data.productType || "booster",
+            description: result.data.description,
+            metadata: result.data.metadata,
+          }
+          setCard(normalizedProduct)
         } else {
-          console.log(`❌ Carta no encontrada`)
+          console.log(`❌ Carta/Producto no encontrado`)
           setCard(null)
         }
       } catch (error) {
-        console.error("Error loading card:", error)
+        console.error("Error loading card/product:", error)
         setCard(null)
       } finally {
         setLoading(false)
@@ -50,6 +83,9 @@ export default function CardDetailPage() {
     
     loadCard()
   }, [id])
+  
+  // Detectar si es un producto (no carta)
+  const isProduct = card && (card as any).productType && (card as any).productType !== "card"
   
   // Stock management
   const normalStock = card?.normalStock || 0
@@ -90,7 +126,8 @@ export default function CardDetailPage() {
     )
   }
 
-  const price = version === "normal" ? card.price : card.foilPrice
+  // Para productos, solo hay un precio (no normal/foil)
+  const price = isProduct ? card.price : (version === "normal" ? card.price : card.foilPrice)
 
   const handleAddToCart = () => {
     addToCart({
@@ -98,7 +135,7 @@ export default function CardDetailPage() {
       name: card.name,
       image: card.image,
       price,
-      version,
+      version: isProduct ? "normal" : version, // Productos siempre usan "normal"
     })
   }
 
@@ -169,32 +206,100 @@ export default function CardDetailPage() {
             <div>
               <div className="flex items-start justify-between mb-2">
                 <h1 className="font-display text-4xl font-bold text-balance">{card.name}</h1>
-                {card.rarity === "legendary" && <Sparkles className="h-8 w-8 text-accent flex-shrink-0" />}
+                {!isProduct && card.rarity === "legendary" && <Sparkles className="h-8 w-8 text-accent flex-shrink-0" />}
               </div>
-              <p className="text-muted-foreground font-sans">#{card.number}</p>
+              {!isProduct && card.number > 0 && (
+                <p className="text-muted-foreground font-sans">#{card.number}</p>
+              )}
+              {isProduct && (card as any).metadata?.set && (
+                <p className="text-muted-foreground font-sans">Set: {t((card as any).metadata.set) || (card as any).metadata.set}</p>
+              )}
             </div>
 
-            <div className="flex gap-2">
-              <span className="px-3 py-1 rounded-full bg-primary/10 text-primary capitalize font-sans">{t(card.type)}</span>
-              <span className="px-3 py-1 rounded-full bg-accent/10 text-accent capitalize font-sans">{t(card.rarity)}</span>
-              <span className="px-3 py-1 rounded-full bg-muted text-muted-foreground capitalize font-sans">{t(card.set)}</span>
-            </div>
+            {!isProduct && (
+              <div className="flex gap-2">
+                {card.type && (
+                  <span className="px-3 py-1 rounded-full bg-primary/10 text-primary capitalize font-sans">{t(card.type)}</span>
+                )}
+                {card.rarity && (
+                  <span className="px-3 py-1 rounded-full bg-accent/10 text-accent capitalize font-sans">{t(card.rarity)}</span>
+                )}
+                {card.set && (
+                  <span className="px-3 py-1 rounded-full bg-muted text-muted-foreground capitalize font-sans">{t(card.set)}</span>
+                )}
+              </div>
+            )}
 
-            <p className="text-foreground/80 leading-relaxed font-sans">{card.description}</p>
+            {isProduct && (
+              <div className="flex gap-2">
+                <span className="px-3 py-1 rounded-full bg-primary/10 text-primary capitalize font-sans">
+                  {(card as any).productType === "booster" && "Booster"}
+                  {(card as any).productType === "playmat" && "Play Mat"}
+                  {(card as any).productType === "sleeves" && "Fundas"}
+                  {(card as any).productType === "deckbox" && "Deck Box"}
+                  {(card as any).productType === "dice" && "Dados"}
+                  {(card as any).productType === "accessory" && "Accesorio"}
+                </span>
+                {(card as any).metadata?.set && (
+                  <span className="px-3 py-1 rounded-full bg-muted text-muted-foreground capitalize font-sans">
+                    {t((card as any).metadata.set) || (card as any).metadata.set}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {card.description && (
+              <p className="text-foreground/80 leading-relaxed font-sans">{card.description}</p>
+            )}
+            
+            {/* Mostrar información adicional de productos */}
+            {isProduct && (card as any).metadata && (
+              <div className="space-y-2 text-sm text-muted-foreground">
+                {(card as any).metadata.cardsPerPack && (
+                  <p>Cartas por booster: {(card as any).metadata.cardsPerPack}</p>
+                )}
+                {(card as any).metadata.material && (
+                  <p>Material: {(card as any).metadata.material}</p>
+                )}
+                {(card as any).metadata.size && (
+                  <p>Tamaño: {(card as any).metadata.size}</p>
+                )}
+                {(card as any).metadata.count && (
+                  <p>Cantidad: {(card as any).metadata.count}</p>
+                )}
+                {(card as any).metadata.capacity && (
+                  <p>Capacidad: {(card as any).metadata.capacity} cartas</p>
+                )}
+                {(card as any).metadata.color && (
+                  <p>Color: {(card as any).metadata.color}</p>
+                )}
+                {(card as any).metadata.category && (
+                  <p>Categoría: {(card as any).metadata.category}</p>
+                )}
+              </div>
+            )}
 
             {/* Stock Information */}
             <div className="flex gap-3 items-center p-4 rounded-lg bg-muted/30 border border-border">
               <Package className="h-5 w-5 text-muted-foreground" />
               <div className="flex-1">
                 <p className="text-sm font-semibold font-sans">{t("stockAvailability")}</p>
-                <div className="flex gap-3 mt-1">
-                  <span className="text-xs text-muted-foreground font-sans">
-                    Normal: <span className={normalStock > 0 ? "text-green-500 font-semibold" : "text-red-500"}>{normalStock}</span>
-                  </span>
-                  <span className="text-xs text-muted-foreground font-sans">
-                    Foil: <span className={foilStock > 0 ? "text-green-500 font-semibold" : "text-red-500"}>{foilStock}</span>
-                  </span>
-                </div>
+                {isProduct ? (
+                  <div className="flex gap-3 mt-1">
+                    <span className="text-xs text-muted-foreground font-sans">
+                      Stock: <span className={normalStock > 0 ? "text-green-500 font-semibold" : "text-red-500"}>{normalStock}</span>
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex gap-3 mt-1">
+                    <span className="text-xs text-muted-foreground font-sans">
+                      Normal: <span className={normalStock > 0 ? "text-green-500 font-semibold" : "text-red-500"}>{normalStock}</span>
+                    </span>
+                    <span className="text-xs text-muted-foreground font-sans">
+                      Foil: <span className={foilStock > 0 ? "text-green-500 font-semibold" : "text-red-500"}>{foilStock}</span>
+                    </span>
+                  </div>
+                )}
               </div>
               {!isInStock && (
                 <Badge variant="destructive">
@@ -212,24 +317,8 @@ export default function CardDetailPage() {
 
             {(normalStock > 0 || foilStock > 0) ? (
               <div className="space-y-4 p-6 rounded-lg bg-card border border-border">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block font-sans">{t("version")}</label>
-                    <Select value={version} onValueChange={(v) => setVersion(v as "normal" | "foil")}>
-                      <SelectTrigger className="font-sans">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="normal" className="font-sans" disabled={normalStock === 0}>
-                          {t("normal")} {normalStock > 0 && `- $${Math.floor(card.price)}`} {normalStock === 0 && `(${t("outOfStock")})`}
-                        </SelectItem>
-                        <SelectItem value="foil" className="font-sans" disabled={foilStock === 0}>
-                          {t("foil")} {foilStock > 0 && `- $${Math.floor(card.foilPrice)}`} {foilStock === 0 && `(${t("outOfStock")})`}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
+                {isProduct ? (
+                  // Para productos: solo cantidad
                   <div>
                     <label className="text-sm font-medium mb-2 block font-sans">{t("quantity")}</label>
                     <Select 
@@ -249,7 +338,47 @@ export default function CardDetailPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
+                ) : (
+                  // Para cartas: versión y cantidad
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block font-sans">{t("version")}</label>
+                      <Select value={version} onValueChange={(v) => setVersion(v as "normal" | "foil")}>
+                        <SelectTrigger className="font-sans">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="normal" className="font-sans" disabled={normalStock === 0}>
+                            {t("normal")} {normalStock > 0 && `- $${Math.floor(card.price)}`} {normalStock === 0 && `(${t("outOfStock")})`}
+                          </SelectItem>
+                          <SelectItem value="foil" className="font-sans" disabled={foilStock === 0}>
+                            {t("foil")} {foilStock > 0 && `- $${Math.floor(card.foilPrice || 0)}`} {foilStock === 0 && `(${t("outOfStock")})`}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-2 block font-sans">{t("quantity")}</label>
+                      <Select 
+                        value={quantity.toString()} 
+                        onValueChange={(v) => setQuantity(parseInt(v))}
+                        disabled={!isInStock}
+                      >
+                        <SelectTrigger className="font-sans">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: Math.min(currentStock, 10) }, (_, i) => i + 1).map((num) => (
+                            <SelectItem key={num} value={num.toString()} className="font-sans">
+                              {num}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
 
                 <div className="pt-4 border-t border-border space-y-4">
                   <div className="flex items-center justify-between">
