@@ -142,13 +142,13 @@ function ProductsContent() {
     filtered.sort((a, b) => {
       switch (sortBy) {
         case "nameAZ":
-          return a.name.localeCompare(b.name)
+          return (a.name || "").localeCompare(b.name || "")
         case "nameZA":
-          return b.name.localeCompare(a.name)
+          return (b.name || "").localeCompare(a.name || "")
         case "priceLowHigh":
-          return a.price - b.price
+          return (a.price || 0) - (b.price || 0)
         case "priceHighLow":
-          return b.price - a.price
+          return (b.price || 0) - (a.price || 0)
         default:
           return 0
       }
