@@ -22,6 +22,7 @@ import { useUser } from "@/hooks/use-user"
 import { useAuth } from "@/hooks/use-auth"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { PromotionBanner } from "@/components/promotion-banner"
 
 export function Header() {
   const { t } = useLanguage()
@@ -45,7 +46,9 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <>
+      <PromotionBanner />
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2.5 text-2xl font-display font-black tracking-tight hover:opacity-90 transition-opacity">
@@ -305,5 +308,6 @@ export function Header() {
       </div>
       <CartSheet open={cartOpen} onOpenChange={setCartOpen} />
     </header>
+    </>
   )
 }

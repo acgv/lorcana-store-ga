@@ -11,7 +11,6 @@ import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Sparkles, Package, AlertCircle, ShoppingCart, CreditCard, Loader2, Shield } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import type { Card } from "@/lib/types"
 
 export default function CardDetailPage() {
