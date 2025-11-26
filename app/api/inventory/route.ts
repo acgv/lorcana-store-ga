@@ -139,9 +139,9 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    const { cardId, normalStock, foilStock, price, foilPrice } = body
+    const { cardId, normalStock, foilStock, price, foilPrice, stock } = body
 
-    console.log(`📝 POST /api/inventory - Request:`, { cardId, normalStock, foilStock, price, foilPrice })
+    console.log(`📝 POST /api/inventory - Request:`, { cardId, normalStock, foilStock, price, foilPrice, stock })
 
     if (!cardId) {
       return NextResponse.json(
@@ -153,36 +153,95 @@ export async function POST(request: Request) {
     // Si Supabase Admin está configurado, actualizar allí (con service role)
     if (supabaseAdmin) {
       try {
-        const updates: any = { updatedAt: new Date().toISOString() }
-        if (normalStock !== undefined) updates.normalStock = Math.max(0, Number(normalStock) || 0)
-        if (foilStock !== undefined) updates.foilStock = Math.max(0, Number(foilStock) || 0)
-        if (price !== undefined) updates.price = Math.max(0, Number(price) || 0)
-        if (foilPrice !== undefined) updates.foilPrice = Math.max(0, Number(foilPrice) || 0)
-
-        console.log(`📝 POST /api/inventory - Updating Supabase (admin):`, updates)
-
-        const { data, error } = await supabaseAdmin
-          .from("cards")
-          .update(updates)
+        // Primero verificar si es un producto (en tabla products) o una carta (en tabla cards)
+        // Intentar buscar en products primero
+        const { data: productData } = await supabaseAdmin
+          .from("products")
+          .select("id, producttype")
           .eq("id", cardId)
-          .select("id,name,normalStock,foilStock,price,foilPrice")
           .single()
 
-        if (!error && data) {
-          console.log(`✓ POST /api/inventory - Updated in SUPABASE:`, data)
-          return NextResponse.json({ success: true, card: data, meta: { source: "supabase" } })
+        if (productData) {
+          // Es un producto, actualizar en tabla products
+          console.log(`📝 POST /api/inventory - Updating PRODUCT in Supabase:`, cardId)
+          
+          const updates: any = {}
+          if (stock !== undefined) updates.stock = Math.max(0, Number(stock) || 0)
+          if (price !== undefined) updates.price = Math.max(0, Number(price) || 0)
+          
+          // Si no hay updates, retornar error
+          if (Object.keys(updates).length === 0) {
+            return NextResponse.json(
+              { success: false, error: "No valid fields to update" },
+              { status: 400 }
+            )
+          }
+
+          const { data, error } = await supabaseAdmin
+            .from("products")
+            .update(updates)
+            .eq("id", cardId)
+            .select("id, name, stock, price")
+            .single()
+
+          if (!error && data) {
+            console.log(`✓ POST /api/inventory - Updated PRODUCT in SUPABASE:`, data)
+            return NextResponse.json({ 
+              success: true, 
+              card: {
+                id: data.id,
+                name: data.name,
+                normalStock: data.stock,
+                stock: data.stock,
+                price: data.price
+              }, 
+              meta: { source: "supabase", type: "product" } 
+            })
+          } else {
+            console.log(`⚠ POST /api/inventory - Supabase PRODUCT error:`, error)
+            return NextResponse.json(
+              { 
+                success: false, 
+                error: error?.message || "Failed to update product in Supabase",
+                details: error?.details || null,
+                hint: error?.hint || "Check Supabase RLS policies for UPDATE permission on products table"
+              },
+              { status: 500 }
+            )
+          }
         } else {
-          // Si Supabase está configurado pero falla, retornar error en lugar de usar mock
-          console.log(`⚠ POST /api/inventory - Supabase error:`, error)
-          return NextResponse.json(
-            { 
-              success: false, 
-              error: error?.message || "Failed to update in Supabase",
-              details: error?.details || null,
-              hint: error?.hint || "Check Supabase RLS policies for UPDATE permission"
-            },
-            { status: 500 }
-          )
+          // Es una carta, actualizar en tabla cards
+          console.log(`📝 POST /api/inventory - Updating CARD in Supabase:`, cardId)
+          
+          const updates: any = {}
+          if (normalStock !== undefined) updates.normalStock = Math.max(0, Number(normalStock) || 0)
+          if (foilStock !== undefined) updates.foilStock = Math.max(0, Number(foilStock) || 0)
+          if (price !== undefined) updates.price = Math.max(0, Number(price) || 0)
+          if (foilPrice !== undefined) updates.foilPrice = Math.max(0, Number(foilPrice) || 0)
+
+          const { data, error } = await supabaseAdmin
+            .from("cards")
+            .update(updates)
+            .eq("id", cardId)
+            .select("id,name,normalStock,foilStock,price,foilPrice")
+            .single()
+
+          if (!error && data) {
+            console.log(`✓ POST /api/inventory - Updated CARD in SUPABASE:`, data)
+            return NextResponse.json({ success: true, card: data, meta: { source: "supabase", type: "card" } })
+          } else {
+            // Si Supabase está configurado pero falla, retornar error en lugar de usar mock
+            console.log(`⚠ POST /api/inventory - Supabase CARD error:`, error)
+            return NextResponse.json(
+              { 
+                success: false, 
+                error: error?.message || "Failed to update card in Supabase",
+                details: error?.details || null,
+                hint: error?.hint || "Check Supabase RLS policies for UPDATE permission"
+              },
+              { status: 500 }
+            )
+          }
         }
       } catch (err) {
         console.log(`⚠ POST /api/inventory - Supabase connection error:`, err)

@@ -79,7 +79,7 @@ export default function InventoryPage() {
     image: "",
     description: "",
   })
-  const [editedCards, setEditedCards] = useState<Map<string, { normalStock?: number; foilStock?: number; price?: number; foilPrice?: number }>>(new Map())
+  const [editedCards, setEditedCards] = useState<Map<string, { normalStock?: number; foilStock?: number; stock?: number; price?: number; foilPrice?: number }>>(new Map())
   const [savingCard, setSavingCard] = useState<string | null>(null) // ID de la carta que se está guardando
   const [savingAll, setSavingAll] = useState(false) // Estado para Save All
   const [importing, setImporting] = useState(false) // Estado para importación de cartas
@@ -129,11 +129,19 @@ export default function InventoryPage() {
   const handleStockChange = (cardId: string, type: 'normal' | 'foil', value: string) => {
     const numValue = parseInt(value) || 0
     const current = editedCards.get(cardId) || {}
+    const item = inventory.find(i => i.id === cardId)
+    const isProduct = item?.productType && item.productType !== "card"
     
-    if (type === 'normal') {
-      setEditedCards(new Map(editedCards.set(cardId, { ...current, normalStock: numValue })))
+    if (isProduct) {
+      // Para productos, usar 'stock' en lugar de 'normalStock'
+      setEditedCards(new Map(editedCards.set(cardId, { ...current, stock: numValue })))
     } else {
-      setEditedCards(new Map(editedCards.set(cardId, { ...current, foilStock: numValue })))
+      // Para cartas, usar normalStock o foilStock
+      if (type === 'normal') {
+        setEditedCards(new Map(editedCards.set(cardId, { ...current, normalStock: numValue })))
+      } else {
+        setEditedCards(new Map(editedCards.set(cardId, { ...current, foilStock: numValue })))
+      }
     }
   }
 
@@ -182,17 +190,27 @@ export default function InventoryPage() {
       }
 
       // Éxito - actualizar estado local
-      setInventory(prev => prev.map(item => 
-        item.id === cardId 
-          ? { 
-              ...item, 
-              normalStock: changes.normalStock ?? item.normalStock, 
+      setInventory(prev => prev.map(item => {
+        if (item.id === cardId) {
+          const isProduct = item.productType && item.productType !== "card"
+          if (isProduct) {
+            return {
+              ...item,
+              normalStock: changes.stock ?? item.normalStock,
+              price: changes.price ?? item.price
+            }
+          } else {
+            return {
+              ...item,
+              normalStock: changes.normalStock ?? item.normalStock,
               foilStock: changes.foilStock ?? item.foilStock,
               price: changes.price ?? item.price,
               foilPrice: changes.foilPrice ?? item.foilPrice
             }
-          : item
-      ))
+          }
+        }
+        return item
+      }))
       
       // Remover de edited cards
       const newEdited = new Map(editedCards)
