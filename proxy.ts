@@ -32,13 +32,19 @@ export function proxy(request: NextRequest) {
   // Rutas públicas que no requieren auth
   const publicPaths = [
     "/",
-    "/catalog",
-    "/card",
-    "/about",
-    "/news",
-    "/contact",
-    "/privacy",
+    "/lorcana-tcg",
+    "/lorcana-tcg/catalog",
+    "/lorcana-tcg/products",
+    "/lorcana-tcg/card",
+    "/lorcana-tcg/product",
+    "/lorcana-tcg/about",
+    "/lorcana-tcg/news",
+    "/lorcana-tcg/contact",
+    "/lorcana-tcg/privacy",
+    "/lorcana-tcg/submit-card",
+    "/lorcana-tcg/login",
     "/api/cards", // Lectura pública
+    "/api/products", // Lectura pública
   ]
 
   // Redirigir /admin a /admin/inventory por defecto

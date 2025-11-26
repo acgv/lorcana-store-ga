@@ -23,6 +23,14 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
   const { toast } = useToast()
   const [adding, setAdding] = useState<string | null>(null)
 
+  // Detectar si es un producto (no carta)
+  const isProduct = (card as any).productType && (card as any).productType !== "card"
+  
+  // Determinar la ruta correcta según el tipo
+  const detailUrl = isProduct 
+    ? `/lorcana-tcg/product/${card.id}`
+    : `/lorcana-tcg/card/${card.id}`
+
   // Check version availability and stock
   const normalStock = card.normalStock || 0
   const foilStock = card.foilStock || 0
@@ -78,7 +86,7 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
 
   if (viewMode === "list") {
     return (
-      <Link href={`/lorcana-tcg/card/${card.id}`}>
+      <Link href={detailUrl}>
         <div className="flex gap-4 p-4 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
           <div className="relative h-32 w-24 flex-shrink-0 rounded overflow-hidden foil-effect">
             <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" priority={priority} />
@@ -150,7 +158,7 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
   return (
     <div className="group rounded-lg bg-card border border-border overflow-hidden hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
       {/* Image - clickeable para ver detalle */}
-      <Link href={`/card/${card.id}`} className="block">
+      <Link href={detailUrl} className="block">
         <div className="relative aspect-[3/4] overflow-hidden foil-effect">
           <Image
             src={card.image || "/placeholder.svg"}
@@ -172,7 +180,7 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
       </Link>
 
       <div className="p-4">
-        <Link href={`/lorcana-tcg/card/${card.id}`}>
+        <Link href={detailUrl}>
           <h3 className="font-display font-bold mb-1 truncate text-balance tracking-wide hover:text-primary transition-colors">{card.name}</h3>
         </Link>
         
@@ -274,7 +282,7 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
             )}
 
             {/* Ver Detalles */}
-            <Link href={`/lorcana-tcg/card/${card.id}`}>
+            <Link href={detailUrl}>
               <Button
                 size="sm"
                 variant="ghost"
