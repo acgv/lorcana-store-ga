@@ -152,8 +152,8 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
         <div className="pt-3">
           <Slider
             min={0}
-            max={100000}
-            step={500}
+            max={1000000}
+            step={1000}
             value={[filters.minPrice, filters.maxPrice]}
             onValueChange={([min, max]) => setFilters({ ...filters, minPrice: min, maxPrice: max })}
             className="cursor-pointer"

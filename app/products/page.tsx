@@ -23,8 +23,11 @@ function ProductsContent() {
     productType: searchParams.get("productType") || "all",
     set: searchParams.get("set") || "all",
     minPrice: Number(searchParams.get("minPrice")) || 0,
-    maxPrice: Number(searchParams.get("maxPrice")) || 100000,
+    maxPrice: Number(searchParams.get("maxPrice")) || 1000000, // Aumentado para incluir productos caros como booster displays
     search: searchParams.get("search") || "",
+    type: "all", // No usado en productos pero necesario para CardFilters
+    rarity: "all", // No usado en productos pero necesario para CardFilters
+    version: "all", // No usado en productos pero necesario para CardFilters
   })
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "nameAZ")
   const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
@@ -59,6 +62,14 @@ function ProductsContent() {
           }))
           setProducts(normalizedProducts)
           console.log(`✅ Productos cargados: ${normalizedProducts.length}`)
+          if (normalizedProducts.length > 0) {
+            console.log("📦 Productos:", normalizedProducts.map(p => `${p.name} - $${p.price}`))
+          } else {
+            console.warn("⚠️ No se cargaron productos. Verifica que haya productos con status='approved' en la BD")
+          }
+        } else {
+          console.error("❌ Error en API products:", result.error)
+          setProducts([])
         }
       } catch (error) {
         console.error("Error loading products:", error)
@@ -78,7 +89,7 @@ function ProductsContent() {
     if (filters.productType && filters.productType !== "all") params.set("productType", filters.productType)
     if (filters.set !== "all") params.set("set", filters.set)
     if (filters.minPrice !== 0) params.set("minPrice", filters.minPrice.toString())
-    if (filters.maxPrice !== 100000) params.set("maxPrice", filters.maxPrice.toString())
+    if (filters.maxPrice !== 1000000) params.set("maxPrice", filters.maxPrice.toString())
     if (filters.search) params.set("search", filters.search)
     if (sortBy !== "nameAZ") params.set("sortBy", sortBy)
     if (viewMode !== "grid") params.set("viewMode", viewMode)
@@ -162,12 +173,7 @@ function ProductsContent() {
           {/* Filtros Desktop */}
           <aside className="hidden lg:block lg:w-64 flex-shrink-0">
             <CardFilters
-              filters={{
-                ...filters,
-                type: "all",
-                rarity: "all",
-                version: "all",
-              }}
+              filters={filters}
               setFilters={setFilters}
               sortBy={sortBy}
               setSortBy={setSortBy}
@@ -193,12 +199,7 @@ function ProductsContent() {
                   </SheetHeader>
                   <div className="mt-4">
                     <CardFilters
-                      filters={{
-                        ...filters,
-                        type: "all",
-                        rarity: "all",
-                        version: "all",
-                      }}
+                      filters={filters}
                       setFilters={setFilters}
                       sortBy={sortBy}
                       setSortBy={setSortBy}

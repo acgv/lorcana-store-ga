@@ -47,6 +47,7 @@ export default function InventoryPage() {
     stockType: "all", // all, hasNormal, hasFoil, hasBoth
   })
   const [showAddProduct, setShowAddProduct] = useState(false)
+  const [showAddCard, setShowAddCard] = useState(false)
   const [newProduct, setNewProduct] = useState({
     name: "",
     productType: "booster" as "booster" | "playmat" | "sleeves" | "deckbox" | "dice" | "accessory",
@@ -63,6 +64,20 @@ export default function InventoryPage() {
     size: "", // para playmat y sleeves
     color: "", // para dice
     category: "", // para accessory
+  })
+  const [newCard, setNewCard] = useState({
+    name: "",
+    set: "firstChapter",
+    type: "character" as "character" | "action" | "item" | "song",
+    rarity: "common" as "common" | "uncommon" | "rare" | "superRare" | "legendary" | "enchanted",
+    number: 0,
+    cardNumber: "",
+    price: 0,
+    foilPrice: 0,
+    normalStock: 0,
+    foilStock: 0,
+    image: "",
+    description: "",
   })
   const [editedCards, setEditedCards] = useState<Map<string, { normalStock?: number; foilStock?: number; price?: number; foilPrice?: number }>>(new Map())
   const [savingCard, setSavingCard] = useState<string | null>(null) // ID de la carta que se está guardando
@@ -399,6 +414,91 @@ export default function InventoryPage() {
         variant: "destructive",
         title: "Error",
         description: "Failed to create product",
+      })
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  // Create new card manually
+  const handleCreateCard = async () => {
+    if (!newCard.name || !newCard.type || !newCard.rarity) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Nombre, tipo y rareza son requeridos",
+      })
+      return
+    }
+
+    setImporting(true)
+    
+    try {
+      const cardData: any = {
+        name: newCard.name,
+        productType: "card",
+        set: newCard.set,
+        type: newCard.type,
+        rarity: newCard.rarity,
+        number: Number(newCard.number) || 0,
+        cardNumber: newCard.cardNumber || null,
+        price: Number(newCard.price) || 0,
+        foilPrice: Number(newCard.foilPrice) || 0,
+        normalStock: Number(newCard.normalStock) || 0,
+        foilStock: Number(newCard.foilStock) || 0,
+        image: newCard.image || "",
+        description: newCard.description || "",
+        status: "approved",
+      }
+
+      const response = await fetch('/api/cards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(cardData),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "✅ Carta Creada",
+          description: `${newCard.name} agregada exitosamente`,
+        })
+        
+        // Reset form
+        setNewCard({
+          name: "",
+          set: "firstChapter",
+          type: "character",
+          rarity: "common",
+          number: 0,
+          cardNumber: "",
+          price: 0,
+          foilPrice: 0,
+          normalStock: 0,
+          foilStock: 0,
+          image: "",
+          description: "",
+        })
+        setShowAddCard(false)
+        
+        // Refresh inventory
+        await fetchInventory()
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: data.error || "Failed to create card",
+        })
+      }
+    } catch (error) {
+      console.error("Error creating card:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create card",
       })
     } finally {
       setImporting(false)

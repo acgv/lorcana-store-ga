@@ -22,6 +22,12 @@ export async function GET(request: NextRequest) {
         }
 
         const { data, error } = await query.order("createdAt", { ascending: false })
+        
+        console.log(`🔍 GET /api/products - Query result:`, { 
+          count: data?.length || 0, 
+          productType, 
+          error: error?.message 
+        })
 
         if (!error && data) {
           return NextResponse.json({
