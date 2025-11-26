@@ -301,6 +301,107 @@ export default function InventoryPage() {
     }
   }
 
+  // Create new product
+  const handleCreateProduct = async () => {
+    if (!newProduct.name || !newProduct.price) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Nombre y precio son requeridos",
+      })
+      return
+    }
+
+    setImporting(true)
+    
+    try {
+      const productData: any = {
+        name: newProduct.name,
+        productType: newProduct.productType,
+        price: Number(newProduct.price),
+        stock: Number(newProduct.stock) || 0,
+        normalStock: Number(newProduct.stock) || 0,
+        image: newProduct.image || "",
+        description: newProduct.description || "",
+        status: "approved",
+      }
+
+      // Campos específicos por tipo
+      if (newProduct.productType === "booster") {
+        productData.set = newProduct.set || "firstChapter"
+        productData.cardsPerPack = newProduct.cardsPerPack || 12
+      } else if (newProduct.productType === "playmat") {
+        productData.material = newProduct.material || ""
+        productData.size = newProduct.size || ""
+      } else if (newProduct.productType === "sleeves") {
+        productData.count = newProduct.count || 50
+        productData.size = newProduct.size || "Standard"
+      } else if (newProduct.productType === "deckbox") {
+        productData.capacity = newProduct.capacity || 60
+        productData.material = newProduct.material || ""
+      } else if (newProduct.productType === "dice") {
+        productData.count = newProduct.count || 1
+        productData.color = newProduct.color || ""
+      } else if (newProduct.productType === "accessory") {
+        productData.category = newProduct.category || ""
+      }
+
+      const response = await fetch('/api/cards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "✅ Producto Creado",
+          description: `${newProduct.name} agregado exitosamente`,
+        })
+        
+        // Reset form
+        setNewProduct({
+          name: "",
+          productType: "booster",
+          price: 0,
+          stock: 0,
+          image: "",
+          description: "",
+          set: "",
+          cardsPerPack: 12,
+          count: 50,
+          capacity: 60,
+          material: "",
+          size: "",
+          color: "",
+          category: "",
+        })
+        setShowAddProduct(false)
+        
+        // Refresh inventory
+        await fetchInventory()
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: data.error || "Failed to create product",
+        })
+      }
+    } catch (error) {
+      console.error("Error creating product:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create product",
+      })
+    } finally {
+      setImporting(false)
+    }
+  }
+
   // Filter inventory
   const filteredInventory = useMemo(() => {
     let filtered = inventory
