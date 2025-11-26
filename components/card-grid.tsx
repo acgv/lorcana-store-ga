@@ -21,7 +21,7 @@ export function CardGrid({ cards, viewMode }: CardGridProps) {
         <p className="text-muted-foreground mb-6">{t("noCardsFound")}</p>
         {/* TODO: Re-habilitar funcionalidad de envío de cartas */}
         {/*
-        <Link href="/submit-card">
+        <Link href="/lorcana-tcg/submit-card">
           <Button variant="outline" className="gap-2">
             <Send className="h-4 w-4" />
             {t("submitCardInstead")}

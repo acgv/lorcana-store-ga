@@ -19,7 +19,7 @@ function LoginContent() {
   const [error, setError] = useState<string | null>(null)
 
   // Get redirect URL from query params (default to home)
-  const redirect = searchParams.get("redirect") || "/"
+  const redirect = searchParams.get("redirect") || "/lorcana-tcg"
 
   // If already logged in, redirect
   useEffect(() => {

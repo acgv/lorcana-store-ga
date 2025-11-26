@@ -4,7 +4,7 @@ import { supabase } from "@/lib/db"
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
-  const redirect = requestUrl.searchParams.get("redirect") || "/" // ⭐ Default: home
+  const redirect = requestUrl.searchParams.get("redirect") || "/lorcana-tcg" // ⭐ Default: home
 
   if (code) {
     await supabase.auth.exchangeCodeForSession(code)

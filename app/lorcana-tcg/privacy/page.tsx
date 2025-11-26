@@ -462,7 +462,7 @@ export default function PrivacyPage() {
             </p>
             <div className="flex justify-center mt-6">
               <a
-                href="/contact"
+                href="/lorcana-tcg/contact"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
               >
                 <Mail className="h-4 w-4" />

@@ -134,7 +134,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Crear rutas dinámicas para cada carta
   const cardRoutes: MetadataRoute.Sitemap = cards.map((card) => ({
-    url: `${baseUrl}/card/${card.id}`,
+    url: `${baseUrl}/lorcana-tcg/card/${card.id}`,
     lastModified: card.updatedAt ? new Date(card.updatedAt) : currentDate,
     changeFrequency: 'weekly' as const,
     priority: 0.8,

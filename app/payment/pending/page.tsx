@@ -46,13 +46,13 @@ export default function PaymentPendingPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <Link href="/catalog" className="flex-1">
+              <Link href="/lorcana-tcg/catalog" className="flex-1">
                 <Button variant="outline" className="w-full">
                   Ver Catálogo
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/" className="flex-1">
+              <Link href="/lorcana-tcg" className="flex-1">
                 <Button className="w-full">
                   Volver al Inicio
                 </Button>

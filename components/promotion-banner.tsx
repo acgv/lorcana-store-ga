@@ -64,7 +64,7 @@ export function PromotionBanner() {
       style={{ backgroundColor: promotion.banner_color }}
     >
       <div className="container mx-auto flex items-center justify-center gap-4">
-        <Link href="/catalog" className="flex-1 hover:underline">
+        <Link href="/lorcana-tcg/catalog" className="flex-1 hover:underline">
           {promotion.banner_text}
         </Link>
         <Button

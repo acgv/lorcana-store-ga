@@ -21,23 +21,23 @@ export function Footer() {
             <h4 className="font-medium mb-4">{t("links")}</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/lorcana-tcg/about" className="text-muted-foreground hover:text-foreground transition-colors">
                   {t("about")}
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/lorcana-tcg/contact" className="text-muted-foreground hover:text-foreground transition-colors">
                   {t("contact")}
                 </Link>
               </li>
               <li>
-                <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/lorcana-tcg/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
                   {t("privacy")}
                 </Link>
               </li>
               {/* TODO: Re-habilitar funcionalidad de envío de cartas */}
               {/* <li>
-                <Link href="/submit-card" className="text-primary hover:text-primary/80 transition-colors font-medium">
+                <Link href="/lorcana-tcg/submit-card" className="text-primary hover:text-primary/80 transition-colors font-medium">
                   {t("submitCard")} ✨
                 </Link>
               </li> */}

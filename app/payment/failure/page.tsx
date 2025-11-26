@@ -36,7 +36,7 @@ export default function PaymentFailurePage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <Link href="/catalog" className="flex-1">
+              <Link href="/lorcana-tcg/catalog" className="flex-1">
                 <Button variant="outline" className="w-full">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Volver al Catálogo

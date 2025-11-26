@@ -78,7 +78,7 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
 
   if (viewMode === "list") {
     return (
-      <Link href={`/card/${card.id}`}>
+      <Link href={`/lorcana-tcg/card/${card.id}`}>
         <div className="flex gap-4 p-4 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
           <div className="relative h-32 w-24 flex-shrink-0 rounded overflow-hidden foil-effect">
             <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" priority={priority} />
@@ -172,7 +172,7 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
       </Link>
 
       <div className="p-4">
-        <Link href={`/card/${card.id}`}>
+        <Link href={`/lorcana-tcg/card/${card.id}`}>
           <h3 className="font-display font-bold mb-1 truncate text-balance tracking-wide hover:text-primary transition-colors">{card.name}</h3>
         </Link>
         
@@ -274,7 +274,7 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
             )}
 
             {/* Ver Detalles */}
-            <Link href={`/card/${card.id}`}>
+            <Link href={`/lorcana-tcg/card/${card.id}`}>
               <Button
                 size="sm"
                 variant="ghost"

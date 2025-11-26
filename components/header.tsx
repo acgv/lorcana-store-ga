@@ -42,7 +42,7 @@ export function Header() {
     localStorage.removeItem("user_email")
     await userSignOut()
     await adminLogout()
-    router.push("/")
+    router.push("/lorcana-tcg")
   }
 
   return (
@@ -51,34 +51,34 @@ export function Header() {
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2.5 text-2xl font-display font-black tracking-tight hover:opacity-90 transition-opacity">
+          <Link href="/lorcana-tcg" className="flex items-center gap-2.5 text-2xl font-display font-black tracking-tight hover:opacity-90 transition-opacity">
             <Sparkles className="h-6 w-6 text-primary animate-pulse" />
             <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">Lorcana</span>
           </Link>
           <nav className="hidden md:flex items-center gap-8">
-            <Link href="/" className="text-sm font-sans font-medium text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-105">
+            <Link href="/lorcana-tcg" className="text-sm font-sans font-medium text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-105">
               {t("home")}
             </Link>
             <Link
-              href="/catalog"
+              href="/lorcana-tcg/catalog"
               className="text-sm font-sans font-medium text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-105"
             >
               {t("catalog")}
             </Link>
             <Link
-              href="/products"
+              href="/lorcana-tcg/products"
               className="text-sm font-sans font-medium text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-105"
             >
               Productos
             </Link>
             <Link
-              href="/news"
+              href="/lorcana-tcg/news"
               className="text-sm font-sans font-medium text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-105"
             >
               {t("news")}
             </Link>
             <Link
-              href="/contact"
+              href="/lorcana-tcg/contact"
               className="text-sm font-sans font-medium text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-105"
             >
               {t("contact")}
@@ -86,7 +86,7 @@ export function Header() {
             {/* TODO: Re-habilitar funcionalidad de envío de cartas */}
             {/*
             <Link
-              href="/submit-card"
+              href="/lorcana-tcg/submit-card"
               className="text-sm font-sans font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:scale-105"
             >
               {t("submitCard")}
@@ -114,35 +114,35 @@ export function Header() {
               </SheetHeader>
               <nav className="flex flex-col gap-4 mt-8">
                 <Link 
-                  href="/" 
+                  href="/lorcana-tcg" 
                   className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {t("home")}
                 </Link>
                 <Link
-                  href="/catalog"
+                  href="/lorcana-tcg/catalog"
                   className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {t("catalog")}
                 </Link>
                 <Link
-                  href="/products"
+                  href="/lorcana-tcg/products"
                   className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Productos
                 </Link>
                 <Link
-                  href="/news"
+                  href="/lorcana-tcg/news"
                   className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {t("news")}
                 </Link>
                 <Link
-                  href="/contact"
+                  href="/lorcana-tcg/contact"
                   className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md"
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -151,7 +151,7 @@ export function Header() {
                 {/* TODO: Re-habilitar funcionalidad de envío de cartas */}
                 {/*
                 <Link
-                  href="/submit-card"
+                  href="/lorcana-tcg/submit-card"
                   className="text-base font-sans font-medium text-primary hover:text-primary/80 transition-colors px-2 py-2 hover:bg-muted rounded-md"
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -174,7 +174,7 @@ export function Header() {
                       </div>
                     </div>
                     <Link
-                      href="/my-collection"
+                      href="/lorcana-tcg/my-collection"
                       className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md flex items-center gap-2"
                       onClick={() => setMobileMenuOpen(false)}
                     >
@@ -182,7 +182,7 @@ export function Header() {
                       {t("myCollection")}
                     </Link>
                     <Link
-                      href="/my-submissions"
+                      href="/lorcana-tcg/my-submissions"
                       className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md flex items-center gap-2"
                       onClick={() => setMobileMenuOpen(false)}
                     >
@@ -213,7 +213,7 @@ export function Header() {
                   </>
                 ) : (
                   <Link
-                    href="/login"
+                    href="/lorcana-tcg/login"
                     className="text-base font-sans font-medium text-accent hover:text-accent/80 transition-colors px-2 py-2 hover:bg-muted rounded-md"
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -256,11 +256,11 @@ export function Header() {
                   {user.email}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/my-collection")} className="cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/lorcana-tcg/my-collection")} className="cursor-pointer">
                   <Heart className="mr-2 h-4 w-4" />
                   {t("myCollection")}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/my-submissions")} className="cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/lorcana-tcg/my-submissions")} className="cursor-pointer">
                   <FileText className="mr-2 h-4 w-4" />
                   {t("mySubmissions")}
                 </DropdownMenuItem>
@@ -282,7 +282,7 @@ export function Header() {
               variant="ghost" 
               size="sm" 
               className="gap-2 hidden md:flex font-semibold text-foreground border border-border hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
-              onClick={() => router.push("/login")}
+              onClick={() => router.push("/lorcana-tcg/login")}
               aria-label={t("signIn") || "Iniciar sesión"}
             >
               <User className="h-4 w-4" />

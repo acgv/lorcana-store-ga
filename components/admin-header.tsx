@@ -69,7 +69,7 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
     }
     
     // Redirigir a la home con sesión cerrada
-    router.push("/")
+    router.push("/lorcana-tcg")
   }
 
   const navItems = [
@@ -91,7 +91,7 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
             </span>
           </h1>
           <nav className="flex items-center gap-4">
-            <Link href="/">
+            <Link href="/lorcana-tcg">
               <Button variant="ghost" className="font-sans">
                 {t("viewStore")}
               </Button>

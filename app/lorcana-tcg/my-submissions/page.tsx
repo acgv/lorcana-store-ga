@@ -24,7 +24,7 @@ export default function MySubmissionsPage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!userLoading && !user) {
-      router.push("/login?redirect=/my-submissions")
+      router.push("/lorcana-tcg/login?redirect=/lorcana-tcg/my-submissions")
     }
   }, [user, userLoading, router])
 
@@ -127,7 +127,7 @@ export default function MySubmissionsPage() {
               <CardDescription>{t("signInRequiredDesc")}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" onClick={() => router.push("/login?redirect=/my-submissions")}>
+              <Button className="w-full" onClick={() => router.push("/lorcana-tcg/login?redirect=/lorcana-tcg/my-submissions")}>
                 {t("signIn")}
               </Button>
             </CardContent>
@@ -150,7 +150,7 @@ export default function MySubmissionsPage() {
                 <h1 className="text-4xl font-bold mb-2">{t("mySubmissions")}</h1>
                 <p className="text-muted-foreground">{t("mySubmissionsDesc")}</p>
               </div>
-              <Button onClick={() => router.push("/submit-card")}>
+              <Button onClick={() => router.push("/lorcana-tcg/submit-card")}>
                 <FileText className="h-4 w-4 mr-2" />
                 {t("submitCard")}
               </Button>
@@ -171,7 +171,7 @@ export default function MySubmissionsPage() {
                 <FileText className="h-16 w-16 text-muted-foreground/50 mb-4" />
                 <h3 className="text-xl font-semibold mb-2">{t("noSubmissions")}</h3>
                 <p className="text-muted-foreground text-center mb-6">{t("noSubmissionsDesc")}</p>
-                <Button onClick={() => router.push("/submit-card")}>
+                <Button onClick={() => router.push("/lorcana-tcg/submit-card")}>
                   {t("submitCard")}
                 </Button>
               </CardContent>

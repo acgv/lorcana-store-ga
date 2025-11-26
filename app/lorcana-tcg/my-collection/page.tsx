@@ -65,7 +65,7 @@ function MyCollectionContent() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!userLoading && !user) {
-      router.push("/login?redirect=/my-collection")
+      router.push("/lorcana-tcg/login?redirect=/lorcana-tcg/my-collection")
     }
   }, [user, userLoading, router])
 
@@ -570,7 +570,7 @@ function MyCollectionContent() {
                   <CardDescription>{t("signInRequiredDesc")}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full" onClick={() => router.push("/login?redirect=/my-collection")}>
+                  <Button className="w-full" onClick={() => router.push("/lorcana-tcg/login?redirect=/lorcana-tcg/my-collection")}>
                     {t("signIn")}
                   </Button>
                 </CardContent>
@@ -1509,7 +1509,7 @@ function CollectionCard({
             className="flex-1"
             asChild
           >
-            <Link href={`/card/${item.card_id}`}>
+            <Link href={`/lorcana-tcg/card/${item.card_id}`}>
               <ExternalLink className="h-3 w-3 mr-1" />
               {t("viewDetails")}
             </Link>

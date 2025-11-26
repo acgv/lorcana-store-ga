@@ -567,14 +567,14 @@ export default function AboutPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
-                href="/catalog"
+                href="/lorcana-tcg/catalog"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
               >
                 <Sparkles className="h-5 w-5" />
                 Ver Catálogo de Cartas
               </a>
               <a
-                href="/contact"
+                href="/lorcana-tcg/contact"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-primary text-primary rounded-lg hover:bg-primary/10 transition-colors font-medium"
               >
                 ¿Tienes Preguntas?

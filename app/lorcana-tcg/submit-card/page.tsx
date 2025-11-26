@@ -40,7 +40,7 @@ export default function SubmitCardPage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/login?redirect=/submit-card")
+      router.push("/lorcana-tcg/login?redirect=/lorcana-tcg/submit-card")
     }
   }, [user, loading, router])
 
@@ -75,7 +75,7 @@ export default function SubmitCardPage() {
               <CardDescription>{t("signInRequiredDesc")}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" onClick={() => router.push("/login?redirect=/submit-card")}>
+              <Button className="w-full" onClick={() => router.push("/lorcana-tcg/login?redirect=/lorcana-tcg/submit-card")}>
                 {t("signIn")}
               </Button>
             </CardContent>
@@ -204,7 +204,7 @@ export default function SubmitCardPage() {
                   <Button onClick={() => setSubmitted(false)} variant="outline">
                     {t("submitAnother")}
                   </Button>
-                  <Button onClick={() => router.push("/catalog")}>
+                  <Button onClick={() => router.push("/lorcana-tcg/catalog")}>
                     {t("browseCatalog")}
                   </Button>
                 </div>
@@ -393,7 +393,7 @@ export default function SubmitCardPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => router.push("/catalog")}
+                    onClick={() => router.push("/lorcana-tcg/catalog")}
                   >
                     {t("cancel")}
                   </Button>
