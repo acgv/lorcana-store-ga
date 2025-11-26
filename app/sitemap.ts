@@ -83,46 +83,52 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getBaseUrl()
   const currentDate = new Date()
 
-  // Rutas estáticas públicas
+  // Rutas estáticas públicas (todas bajo /lorcana-tcg/)
   const staticRoutes: MetadataRoute.Sitemap = [
     {
-      url: baseUrl,
+      url: `${baseUrl}/lorcana-tcg`,
       lastModified: currentDate,
       changeFrequency: 'daily',
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/catalog`,
+      url: `${baseUrl}/lorcana-tcg/catalog`,
       lastModified: currentDate,
       changeFrequency: 'daily',
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/about`,
+      url: `${baseUrl}/lorcana-tcg/products`,
+      lastModified: currentDate,
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/lorcana-tcg/about`,
       lastModified: currentDate,
       changeFrequency: 'monthly',
       priority: 0.7,
     },
     {
-      url: `${baseUrl}/news`,
+      url: `${baseUrl}/lorcana-tcg/news`,
       lastModified: currentDate,
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/contact`,
+      url: `${baseUrl}/lorcana-tcg/contact`,
       lastModified: currentDate,
       changeFrequency: 'monthly',
       priority: 0.6,
     },
     {
-      url: `${baseUrl}/privacy`,
+      url: `${baseUrl}/lorcana-tcg/privacy`,
       lastModified: currentDate,
       changeFrequency: 'yearly',
       priority: 0.5,
     },
     {
-      url: `${baseUrl}/submit-card`,
+      url: `${baseUrl}/lorcana-tcg/submit-card`,
       lastModified: currentDate,
       changeFrequency: 'monthly',
       priority: 0.7,

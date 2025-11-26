@@ -139,7 +139,7 @@ function CatalogContent() {
     if (viewMode !== "grid") params.set("viewMode", viewMode)
     
     const queryString = params.toString()
-    const newUrl = queryString ? `/catalog?${queryString}` : "/catalog"
+    const newUrl = queryString ? `/lorcana-tcg/catalog?${queryString}` : "/lorcana-tcg/catalog"
     
     router.replace(newUrl, { scroll: false })
   }, [filters, sortBy, viewMode, router])

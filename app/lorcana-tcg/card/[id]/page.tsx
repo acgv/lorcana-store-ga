@@ -116,7 +116,7 @@ export default function CardDetailPage() {
           <div className="text-center py-12">
             <h2 className="text-2xl font-bold mb-4">Card not found</h2>
             <p className="text-muted-foreground mb-6">The card you're looking for doesn't exist.</p>
-            <Button onClick={() => router.push('/catalog')}>
+            <Button onClick={() => router.push('/lorcana-tcg/catalog')}>
               Go to Catalog
             </Button>
           </div>
@@ -446,7 +446,7 @@ export default function CardDetailPage() {
                 <p className="text-muted-foreground mb-4">{t("cardUnavailable")}</p>
                 <Button 
                   variant="outline"
-                  onClick={() => router.push('/catalog')}
+                  onClick={() => router.push('/lorcana-tcg/catalog')}
                   className="font-sans"
                 >
                   Browse Catalog
