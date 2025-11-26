@@ -5,9 +5,17 @@ CREATE TABLE IF NOT EXISTS public.promotions (
   is_active boolean DEFAULT false,
   title text,
   description text,
+  -- Descuentos en productos
   discount_percentage integer DEFAULT 0,
+  discount_minimum_amount numeric DEFAULT 0,
+  -- Descuentos en envío
+  shipping_discount_percentage integer DEFAULT 0,
+  free_shipping boolean DEFAULT false,
+  free_shipping_minimum_amount numeric DEFAULT 0,
+  -- Fechas
   start_date timestamptz,
   end_date timestamptz,
+  -- Banner
   banner_text text,
   banner_color text DEFAULT '#000000',
   created_at timestamptz DEFAULT now(),
@@ -15,14 +23,23 @@ CREATE TABLE IF NOT EXISTS public.promotions (
 );
 
 -- Insertar promoción inicial (inactiva)
-INSERT INTO public.promotions (id, name, is_active, title, description, discount_percentage, banner_text, banner_color)
+INSERT INTO public.promotions (
+  id, name, is_active, title, description, 
+  discount_percentage, discount_minimum_amount,
+  shipping_discount_percentage, free_shipping, free_shipping_minimum_amount,
+  banner_text, banner_color
+)
 VALUES (
   'black-friday-2025',
   'Black Friday 2025',
   false,
   '¡Viernes Negro!',
   'Descuentos especiales en toda la tienda',
-  0,
+  0, -- discount_percentage
+  0, -- discount_minimum_amount
+  0, -- shipping_discount_percentage
+  false, -- free_shipping
+  0, -- free_shipping_minimum_amount
   '🎉 ¡Viernes Negro! Descuentos especiales',
   '#000000'
 )

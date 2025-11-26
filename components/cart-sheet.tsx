@@ -8,6 +8,7 @@ import { useCart } from "@/components/cart-provider"
 import { useLanguage } from "@/components/language-provider"
 import { useToast } from "@/hooks/use-toast"
 import { ShippingSelector, type ShippingData } from "@/components/shipping-selector"
+import { usePromotion } from "@/hooks/use-promotion"
 import Image from "next/image"
 
 interface CartSheetProps {
@@ -19,13 +20,18 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const { items, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart()
   const { t } = useLanguage()
   const { toast } = useToast()
+  const { calculateProductDiscount, getFinalShippingCost } = usePromotion()
   const [processingCheckout, setProcessingCheckout] = useState(false)
   const [shippingData, setShippingData] = useState<ShippingData>({
     method: "pickup",
     cost: 0,
   })
   
-  const finalTotal = totalPrice + shippingData.cost
+  // Calcular descuentos
+  const productDiscount = calculateProductDiscount(totalPrice)
+  const discountedSubtotal = totalPrice - productDiscount
+  const finalShippingCost = getFinalShippingCost(shippingData.cost, totalPrice)
+  const finalTotal = discountedSubtotal + finalShippingCost
 
   const handleCheckout = async () => {
     console.log('🚀 Checkout initiated')
@@ -104,7 +110,11 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
         },
         body: JSON.stringify({
           items: cartItems,
-          shipping: shippingData,
+          shipping: {
+            ...shippingData,
+            cost: finalShippingCost, // Usar el costo de envío con descuento aplicado
+          },
+          promotionDiscount: productDiscount, // Incluir descuento de productos
           origin: window.location.origin,
         }),
       })
@@ -200,12 +210,24 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                   <span>{t("subtotal")}</span>
                   <span>${Math.floor(totalPrice).toLocaleString()}</span>
                 </div>
+                {productDiscount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Descuento ({Math.round((productDiscount / totalPrice) * 100)}%)</span>
+                    <span className="font-semibold">-${Math.floor(productDiscount).toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span>{t("shippingCost")}</span>
-                  <span className={shippingData.cost === 0 ? "text-green-500 font-medium" : ""}>
-                    {shippingData.cost === 0 ? t("free") : `$${Math.floor(shippingData.cost).toLocaleString()}`}
+                  <span className={finalShippingCost === 0 ? "text-green-500 font-medium" : ""}>
+                    {finalShippingCost === 0 ? t("free") : `$${Math.floor(finalShippingCost).toLocaleString()}`}
                   </span>
                 </div>
+                {finalShippingCost < shippingData.cost && shippingData.cost > 0 && (
+                  <div className="flex justify-between text-xs text-green-600">
+                    <span>Descuento en envío</span>
+                    <span>-${Math.floor(shippingData.cost - finalShippingCost).toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-lg font-bold border-t pt-2">
                   <span>{t("total")}</span>
                   <span className="text-primary">${Math.floor(finalTotal).toLocaleString()}</span>

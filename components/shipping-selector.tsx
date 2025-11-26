@@ -16,6 +16,7 @@ import {
   calculateShippingCost,
   isFreeShipping 
 } from "@/lib/shipping-config"
+import { usePromotion } from "@/hooks/use-promotion"
 
 export interface ShippingData {
   method: "pickup" | "shipping"
@@ -39,6 +40,7 @@ interface ShippingSelectorProps {
 
 export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelectorProps) {
   const { t, language } = useLanguage()
+  const { getFinalShippingCost } = usePromotion()
   
   const [method, setMethod] = useState<"pickup" | "shipping">("pickup")
   const [zone, setZone] = useState<string>("rm")
@@ -52,8 +54,9 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
     notes: "",
   })
 
-  const shippingCost = calculateShippingCost(method, zone, cartTotal)
-  const freeShipping = isFreeShipping(cartTotal)
+  const baseShippingCost = calculateShippingCost(method, zone, cartTotal)
+  const shippingCost = getFinalShippingCost(baseShippingCost, cartTotal)
+  const freeShipping = shippingCost === 0 || isFreeShipping(cartTotal)
 
   // Función para obtener datos actuales (llamada desde padre al checkout)
   const getShippingData = (): ShippingData => {

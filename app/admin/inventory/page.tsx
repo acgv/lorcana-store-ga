@@ -482,6 +482,12 @@ export default function InventoryPage() {
           image: "",
           description: "",
         })
+        
+        // Cerrar diálogo
+        setShowAddCard(false)
+        
+        // Refrescar inventario
+        await fetchInventory()
         setShowAddCard(false)
         
         // Refresh inventory
@@ -815,6 +821,178 @@ export default function InventoryPage() {
             {t("showingCards")} {filteredInventory.length} {t("ofCards")} {inventory.length} {t("cards")}
           </p>
           <div className="flex gap-3">
+            <Dialog open={showAddCard} onOpenChange={setShowAddCard}>
+              <DialogTrigger asChild>
+                <Button variant="default" className="whitespace-nowrap">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar Carta
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Agregar Nueva Carta</DialogTitle>
+                  <DialogDescription>
+                    Completa los campos para agregar una nueva carta al inventario
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label>Nombre de la Carta *</Label>
+                    <Input
+                      value={newCard.name}
+                      onChange={(e) => setNewCard({ ...newCard, name: e.target.value })}
+                      placeholder="Ej: Mickey Mouse - Brave Little Tailor"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Set *</Label>
+                      <Select value={newCard.set} onValueChange={(value) => setNewCard({ ...newCard, set: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar Set" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="firstChapter">First Chapter</SelectItem>
+                          <SelectItem value="riseOfFloodborn">Rise of Floodborn</SelectItem>
+                          <SelectItem value="intoInklands">Into the Inklands</SelectItem>
+                          <SelectItem value="ursulaReturn">Ursula's Return</SelectItem>
+                          <SelectItem value="shimmering">Shimmering Skies</SelectItem>
+                          <SelectItem value="azurite">Azurite</SelectItem>
+                          <SelectItem value="archazia">Set 7 - Archazia's Island</SelectItem>
+                          <SelectItem value="reignOfJafar">Set 8 - Reign of Jafar</SelectItem>
+                          <SelectItem value="fabled">Set 9 - Fabled</SelectItem>
+                          <SelectItem value="whi">Whispers in the Well</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Tipo *</Label>
+                      <Select value={newCard.type} onValueChange={(value: any) => setNewCard({ ...newCard, type: value })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="character">Character</SelectItem>
+                          <SelectItem value="action">Action</SelectItem>
+                          <SelectItem value="item">Item</SelectItem>
+                          <SelectItem value="song">Song</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Rareza *</Label>
+                      <Select value={newCard.rarity} onValueChange={(value: any) => setNewCard({ ...newCard, rarity: value })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="common">Common</SelectItem>
+                          <SelectItem value="uncommon">Uncommon</SelectItem>
+                          <SelectItem value="rare">Rare</SelectItem>
+                          <SelectItem value="superRare">Super Rare</SelectItem>
+                          <SelectItem value="legendary">Legendary</SelectItem>
+                          <SelectItem value="enchanted">Enchanted</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Número de Carta</Label>
+                      <Input
+                        type="number"
+                        value={newCard.number}
+                        onChange={(e) => setNewCard({ ...newCard, number: parseInt(e.target.value) || 0 })}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Card Number (ej: 001/204)</Label>
+                    <Input
+                      value={newCard.cardNumber || ""}
+                      onChange={(e) => setNewCard({ ...newCard, cardNumber: e.target.value })}
+                      placeholder="001/204"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Precio Normal *</Label>
+                      <Input
+                        type="number"
+                        value={newCard.price}
+                        onChange={(e) => setNewCard({ ...newCard, price: Number(e.target.value) })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <Label>Precio Foil</Label>
+                      <Input
+                        type="number"
+                        value={newCard.foilPrice}
+                        onChange={(e) => setNewCard({ ...newCard, foilPrice: Number(e.target.value) })}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Stock Normal</Label>
+                      <Input
+                        type="number"
+                        value={newCard.normalStock}
+                        onChange={(e) => setNewCard({ ...newCard, normalStock: Number(e.target.value) })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <Label>Stock Foil</Label>
+                      <Input
+                        type="number"
+                        value={newCard.foilStock}
+                        onChange={(e) => setNewCard({ ...newCard, foilStock: Number(e.target.value) })}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>URL de Imagen</Label>
+                    <Input
+                      value={newCard.image || ""}
+                      onChange={(e) => setNewCard({ ...newCard, image: e.target.value })}
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Descripción</Label>
+                    <Textarea
+                      value={newCard.description || ""}
+                      onChange={(e) => setNewCard({ ...newCard, description: e.target.value })}
+                      placeholder="Descripción de la carta..."
+                      rows={3}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowAddCard(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleCreateCard} disabled={importing}>
+                    {importing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Agregar Carta
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <Dialog open={showAddProduct} onOpenChange={setShowAddProduct}>
               <DialogTrigger asChild>
                 <Button variant="default" className="whitespace-nowrap">

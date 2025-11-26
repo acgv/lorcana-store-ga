@@ -21,6 +21,10 @@ interface Promotion {
   title: string | null
   description: string | null
   discount_percentage: number
+  discount_minimum_amount: number
+  shipping_discount_percentage: number
+  free_shipping: boolean
+  free_shipping_minimum_amount: number
   start_date: string | null
   end_date: string | null
   banner_text: string | null
@@ -39,6 +43,10 @@ export default function PromotionsPage() {
     title: "¡Viernes Negro!",
     description: "Descuentos especiales en toda la tienda",
     discount_percentage: 0,
+    discount_minimum_amount: 0,
+    shipping_discount_percentage: 0,
+    free_shipping: false,
+    free_shipping_minimum_amount: 0,
     start_date: null,
     end_date: null,
     banner_text: "🎉 ¡Viernes Negro! Descuentos especiales",
@@ -172,6 +180,106 @@ export default function PromotionsPage() {
                     setPromotion({ ...promotion, is_active: checked })
                   }
                 />
+              </div>
+
+              {/* Descuentos en Productos */}
+              <div className="space-y-4 p-4 rounded-lg border border-border bg-card">
+                <h3 className="text-lg font-semibold">Descuentos en Productos</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="discount-percentage">Porcentaje de Descuento (%)</Label>
+                  <Input
+                    id="discount-percentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={promotion.discount_percentage}
+                    onChange={(e) =>
+                      setPromotion({ ...promotion, discount_percentage: parseInt(e.target.value) || 0 })
+                    }
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Descuento aplicado sobre el total de productos
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="discount-minimum">Monto Mínimo para Descuento (CLP)</Label>
+                  <Input
+                    id="discount-minimum"
+                    type="number"
+                    min="0"
+                    value={promotion.discount_minimum_amount}
+                    onChange={(e) =>
+                      setPromotion({ ...promotion, discount_minimum_amount: parseFloat(e.target.value) || 0 })
+                    }
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    El descuento solo se aplica si el total de productos es mayor o igual a este monto
+                  </p>
+                </div>
+              </div>
+
+              {/* Descuentos en Envío */}
+              <div className="space-y-4 p-4 rounded-lg border border-border bg-card">
+                <h3 className="text-lg font-semibold">Descuentos en Envío</h3>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="free-shipping">Envío Gratis</Label>
+                    <Switch
+                      id="free-shipping"
+                      checked={promotion.free_shipping}
+                      onCheckedChange={(checked) =>
+                        setPromotion({ ...promotion, free_shipping: checked })
+                      }
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Si está activo, el envío será gratis cuando se cumpla el monto mínimo
+                  </p>
+                </div>
+
+                {promotion.free_shipping && (
+                  <div className="space-y-2">
+                    <Label htmlFor="free-shipping-minimum">Monto Mínimo para Envío Gratis (CLP)</Label>
+                    <Input
+                      id="free-shipping-minimum"
+                      type="number"
+                      min="0"
+                      value={promotion.free_shipping_minimum_amount}
+                      onChange={(e) =>
+                        setPromotion({ ...promotion, free_shipping_minimum_amount: parseFloat(e.target.value) || 0 })
+                      }
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      El envío será gratis si el total de productos es mayor o igual a este monto
+                    </p>
+                  </div>
+                )}
+
+                {!promotion.free_shipping && (
+                  <div className="space-y-2">
+                    <Label htmlFor="shipping-discount">Descuento en Envío (%)</Label>
+                    <Input
+                      id="shipping-discount"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={promotion.shipping_discount_percentage}
+                      onChange={(e) =>
+                        setPromotion({ ...promotion, shipping_discount_percentage: parseInt(e.target.value) || 0 })
+                      }
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Porcentaje de descuento aplicado al costo de envío
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Configuración del Banner */}
