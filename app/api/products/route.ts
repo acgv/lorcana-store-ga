@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
           query = query.eq("producttype", productType) // La columna en la BD es producttype (minúsculas)
         }
 
-        const { data, error } = await query.order("createdAt", { ascending: false })
+        const { data, error } = await query.order("createdat", { ascending: false })
         
         console.log(`🔍 GET /api/products - Query result:`, { 
           count: data?.length || 0, 
