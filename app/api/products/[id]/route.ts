@@ -5,10 +5,10 @@ import { ApiResponse } from "@/lib/types"
 // GET: Obtener un producto por ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
@@ -19,6 +19,8 @@ export async function GET(
         { status: 400 }
       )
     }
+    
+    console.log(`🔍 GET /api/products/${id} - Buscando producto...`)
 
     if (supabase) {
       try {
