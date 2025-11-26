@@ -35,11 +35,12 @@ export function Footer() {
                   {t("privacy")}
                 </Link>
               </li>
-              <li>
+              {/* TODO: Re-habilitar funcionalidad de envío de cartas */}
+              {/* <li>
                 <Link href="/submit-card" className="text-primary hover:text-primary/80 transition-colors font-medium">
                   {t("submitCard")} ✨
                 </Link>
-              </li>
+              </li> */}
             </ul>
           </div>
           <div>
