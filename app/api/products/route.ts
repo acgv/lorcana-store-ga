@@ -30,13 +30,20 @@ export async function GET(request: NextRequest) {
         })
 
         if (!error && data) {
+          console.log(`✅ GET /api/products - Success: ${data.length} productos encontrados`)
           return NextResponse.json({
             success: true,
             data: data,
             meta: { source: "supabase", count: data.length },
           } as ApiResponse)
         } else {
-          console.log(`⚠ GET /api/products - Supabase error: ${error?.message || "unknown"}`)
+          console.log(`⚠ GET /api/products - Supabase error: ${error?.message || "unknown"}`, error)
+          // Retornar error en lugar de array vacío para debugging
+          return NextResponse.json({
+            success: false,
+            error: error?.message || "Unknown error",
+            data: [],
+          } as ApiResponse, { status: 500 })
         }
       } catch (err) {
         console.log(`⚠ GET /api/products - Supabase connection error: ${err instanceof Error ? err.message : "unknown"}`)

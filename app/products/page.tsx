@@ -28,6 +28,8 @@ function ProductsContent() {
     type: "all", // No usado en productos pero necesario para CardFilters
     rarity: "all", // No usado en productos pero necesario para CardFilters
     version: "all", // No usado en productos pero necesario para CardFilters
+    // Forzar productType a no ser "card" para ocultar filtros de cartas
+    _hideCardFilters: true, // Flag interno para ocultar filtros de cartas
   })
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "nameAZ")
   const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
@@ -37,8 +39,10 @@ function ProductsContent() {
     const loadProducts = async () => {
       setLoading(true)
       try {
-        const response = await fetch(`/api/products`)
+        const response = await fetch(`/api/products?status=approved`)
         const result = await response.json()
+        
+        console.log("🔍 API Response:", { success: result.success, dataLength: result.data?.length, error: result.error })
         
         if (result.success) {
           // Normalizar productos para que sean compatibles con el formato de cartas
@@ -179,6 +183,7 @@ function ProductsContent() {
               setSortBy={setSortBy}
               viewMode={viewMode}
               setViewMode={setViewMode}
+              hideCardOption={true}
             />
           </aside>
 
@@ -205,6 +210,7 @@ function ProductsContent() {
                       setSortBy={setSortBy}
                       viewMode={viewMode}
                       setViewMode={setViewMode}
+                      hideCardOption={true}
                     />
                   </div>
                 </SheetContent>

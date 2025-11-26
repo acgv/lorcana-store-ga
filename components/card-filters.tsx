@@ -24,9 +24,10 @@ interface CardFiltersProps {
   setSortBy: (sort: string) => void
   viewMode: "grid" | "list"
   setViewMode: (mode: "grid" | "list") => void
+  hideCardOption?: boolean // Para ocultar la opción "Cartas" en el filtro de Tipo de Producto
 }
 
-export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, setViewMode }: CardFiltersProps) {
+export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, setViewMode, hideCardOption = false }: CardFiltersProps) {
   const { t } = useLanguage()
 
   return (
@@ -58,7 +59,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="card">Cartas</SelectItem>
+              {!hideCardOption && <SelectItem value="card">Cartas</SelectItem>}
               <SelectItem value="booster">Boosters</SelectItem>
               <SelectItem value="playmat">Play Mats</SelectItem>
               <SelectItem value="sleeves">Fundas</SelectItem>
@@ -70,8 +71,8 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
         </div>
       )}
 
-      {/* Type (solo para cartas) */}
-      {(!filters.productType || filters.productType === "all" || filters.productType === "card") && (
+      {/* Type (solo para cartas) - Ocultar si productType está forzado a "card" o si no hay productType y estamos en productos */}
+      {filters.productType !== "card" && (!filters.productType || filters.productType === "all") && (
         <div className="space-y-3">
           <Label className="text-sm font-semibold text-foreground/90">{t("type")}</Label>
           <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
