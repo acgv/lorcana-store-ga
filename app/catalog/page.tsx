@@ -38,18 +38,57 @@ function CatalogContent() {
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "cardNumberLowHigh")
   const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
 
-  // Cargar cartas desde API (solo cuando cambian filtros que se envían al servidor)
+  // Cargar cartas y productos desde API
   useEffect(() => {
     const loadCards = async () => {
       setLoading(true)
       try {
-        // Cargar todas las cartas aprobadas (sin filtros de servidor para permitir filtrado en cliente)
-        const response = await fetch(`/api/cards`)
-        const result = await response.json()
+        // Cargar todas las cartas aprobadas
+        const cardsResponse = await fetch(`/api/cards`)
+        const cardsResult = await cardsResponse.json()
         
-        if (result.success) {
-          setCards(result.data || [])
-          console.log(`✅ Cartas cargadas: ${result.data?.length || 0} desde ${result.meta?.source || "mock"}`)
+        // Cargar todos los productos (boosters, playmats, etc.)
+        const productsResponse = await fetch(`/api/products`)
+        const productsResult = await productsResponse.json()
+        
+        let allItems: any[] = []
+        
+        if (cardsResult.success) {
+          const cards = (cardsResult.data || []).map((card: any) => ({
+            ...card,
+            productType: card.productType || "card",
+          }))
+          allItems = [...allItems, ...cards]
+          console.log(`✅ Cartas cargadas: ${cards.length}`)
+        }
+        
+        if (productsResult.success) {
+          // Normalizar productos para que sean compatibles con el formato de cartas
+          const products = (productsResult.data || []).map((product: any) => ({
+            id: product.id,
+            name: product.name,
+            image: product.image,
+            price: product.price,
+            foilPrice: null,
+            normalStock: product.stock || 0,
+            foilStock: 0,
+            stock: product.stock || 0,
+            set: product.metadata?.set || null,
+            type: null,
+            rarity: null,
+            number: 0,
+            cardNumber: null,
+            productType: product.producttype || product.productType || "booster",
+            description: product.description,
+            metadata: product.metadata,
+          }))
+          allItems = [...allItems, ...products]
+          console.log(`✅ Productos cargados: ${products.length}`)
+        }
+        
+        if (allItems.length > 0) {
+          setCards(allItems)
+          console.log(`✅ Total items cargados: ${allItems.length}`)
         } else {
           // Fallback a mock si API falla
           setCards(mockCards)

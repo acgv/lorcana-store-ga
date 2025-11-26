@@ -128,6 +128,8 @@ export default function HomePage() {
         </section>
 
         {/* Call to Action - Submit Card */}
+        {/* TODO: Re-habilitar funcionalidad de envío de cartas */}
+        {/*
         <section className="container mx-auto px-4 py-16 md:py-20">
           <div className="max-w-3xl mx-auto text-center">
             <div className="p-8 md:p-12 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/10 to-primary/10 border border-primary/20">
@@ -146,6 +148,7 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+        */}
       </main>
       <Footer />
     </div>

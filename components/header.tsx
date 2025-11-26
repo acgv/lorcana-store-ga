@@ -74,12 +74,15 @@ export function Header() {
             >
               {t("contact")}
             </Link>
+            {/* TODO: Re-habilitar funcionalidad de envío de cartas */}
+            {/*
             <Link
               href="/submit-card"
               className="text-sm font-sans font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:scale-105"
             >
               {t("submitCard")}
             </Link>
+            */}
           </nav>
         </div>
 
@@ -129,6 +132,8 @@ export function Header() {
                 >
                   {t("contact")}
                 </Link>
+                {/* TODO: Re-habilitar funcionalidad de envío de cartas */}
+                {/*
                 <Link
                   href="/submit-card"
                   className="text-base font-sans font-medium text-primary hover:text-primary/80 transition-colors px-2 py-2 hover:bg-muted rounded-md"
@@ -136,6 +141,7 @@ export function Header() {
                 >
                   {t("submitCard")}
                 </Link>
+                */}
 
                 {/* User Menu Mobile */}
                 {user ? (
