@@ -570,9 +570,11 @@ export default function InventoryPage() {
 
     // Ordenar por set y luego por número de carta
     filtered.sort((a, b) => {
-      // Primero ordenar por set
-      if (a.set !== b.set) {
-        return a.set.localeCompare(b.set)
+      // Primero ordenar por set (manejar null/undefined)
+      const setA = String(a.set || "")
+      const setB = String(b.set || "")
+      if (setA !== setB) {
+        return setA.localeCompare(setB)
       }
       // Luego por número de carta
       return (a.number || 0) - (b.number || 0)
