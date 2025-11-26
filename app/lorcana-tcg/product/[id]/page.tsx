@@ -91,13 +91,17 @@ export default function ProductDetailPage() {
   const productType = product.producttype || product.productType || "booster"
 
   const handleAddToCart = () => {
-    addToCart({
+    const result = addToCart({
       id: product.id,
       name: product.name,
       image: product.image,
       price,
       version: "normal", // Productos siempre usan "normal"
-    })
+    }, stock)
+    
+    if (!result.success) {
+      alert(result.error || `No hay suficiente stock disponible. Stock máximo: ${stock}`)
+    }
   }
 
   const handleBuyNow = async () => {

@@ -325,7 +325,8 @@ function MyCollectionContent() {
 
     const normalStock = item.card.normalStock || item.card.stock || 0
     const foilStock = item.card.foilStock || 0
-    const hasStock = item.version === "normal" ? normalStock > 0 : foilStock > 0
+    const currentStock = item.version === "normal" ? normalStock : foilStock
+    const hasStock = currentStock > 0
 
     if (!hasStock) {
       toast({
@@ -336,13 +337,22 @@ function MyCollectionContent() {
       return
     }
 
-    addToCart({
+    const result = addToCart({
       id: item.card.id,
       name: item.card.name,
       price: item.version === "foil" ? (item.card.foilPrice || 0) : (item.card.price || 0),
       image: item.card.image,
       version: item.version,
-    })
+    }, currentStock)
+
+    if (!result.success) {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: result.error || `${t("maxStockReached")} (${currentStock} ${t("available")})`,
+      })
+      return
+    }
 
     toast({
       title: t("success"),
@@ -355,14 +365,21 @@ function MyCollectionContent() {
     let addedCount = 0
     wantedItemsInStock.forEach((item) => {
       if (item.card) {
-        addToCart({
+        const normalStock = item.card.normalStock || item.card.stock || 0
+        const foilStock = item.card.foilStock || 0
+        const currentStock = item.version === "normal" ? normalStock : foilStock
+        
+        const result = addToCart({
           id: item.card.id,
           name: item.card.name,
           price: item.version === "foil" ? (item.card.foilPrice || 0) : (item.card.price || 0),
           image: item.card.image,
           version: item.version,
-        })
-        addedCount++
+        }, currentStock)
+        
+        if (result.success) {
+          addedCount++
+        }
       }
     })
 
@@ -595,48 +612,49 @@ function MyCollectionContent() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid md:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("totalOwned")}</CardTitle>
-                <Package className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-500">{totalOwned}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {ownedItems.length} {ownedItems.length === 1 ? t("cardFound") : t("cardsFound")}
-                </p>
-              </CardContent>
-            </Card>
+          <div className="flex justify-center mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{t("totalOwned")}</CardTitle>
+                  <Package className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-500">{totalOwned}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {ownedItems.length} {ownedItems.length === 1 ? t("cardFound") : t("cardsFound")}
+                  </p>
+                </CardContent>
+              </Card>
 
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{t("totalMissing")}</CardTitle>
+                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-orange-500">{totalMissing}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("missingCardsDesc")}
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("totalMissing")}</CardTitle>
-                <AlertCircle className="h-4 w-4 text-orange-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-500">{totalMissing}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("missingCardsDesc")}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("collectionValue")}</CardTitle>
-                <TrendingUp className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-primary">
-                  ${Math.floor(collectionValue).toLocaleString()} CLP
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("ownedCards")}
-                </p>
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{t("collectionValue")}</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-primary">
+                    ${Math.floor(collectionValue).toLocaleString()} CLP
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("ownedCards")}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* Tabs */}
@@ -1322,14 +1340,24 @@ function AllCardsCard({
                   size="sm"
                   className="w-full bg-green-600 hover:bg-green-700 mb-2"
                   onClick={() => {
-                    addToCart({
+                    const normalStock = card.normalStock || card.stock || 0
+                    const result = addToCart({
                       id: card.id,
                       name: card.name,
                       image: card.image,
                       price: card.price || 0,
                       version: "normal",
-                      quantity: 1,
-                    })
+                    }, normalStock)
+                    
+                    if (!result.success) {
+                      toast({
+                        variant: "destructive",
+                        title: t("error"),
+                        description: result.error || `${t("maxStockReached")} (${normalStock} ${t("available")})`,
+                      })
+                      return
+                    }
+                    
                     toast({
                       title: t("success"),
                       description: `${card.name} (${t("normal")}) ${t("addedToCart")}`,
@@ -1346,14 +1374,24 @@ function AllCardsCard({
                   size="sm"
                   className="w-full bg-green-600 hover:bg-green-700"
                   onClick={() => {
-                    addToCart({
+                    const foilStock = card.foilStock || 0
+                    const result = addToCart({
                       id: card.id,
                       name: card.name,
                       image: card.image,
                       price: card.foilPrice || card.price || 0,
                       version: "foil",
-                      quantity: 1,
-                    })
+                    }, foilStock)
+                    
+                    if (!result.success) {
+                      toast({
+                        variant: "destructive",
+                        title: t("error"),
+                        description: result.error || `${t("maxStockReached")} (${foilStock} ${t("available")})`,
+                      })
+                      return
+                    }
+                    
                     toast({
                       title: t("success"),
                       description: `${card.name} (${t("foil")}) ${t("addedToCart")}`,

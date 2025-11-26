@@ -130,13 +130,18 @@ export default function CardDetailPage() {
   const price = isProduct ? card.price : (version === "normal" ? card.price : card.foilPrice)
 
   const handleAddToCart = () => {
-    addToCart({
+    const currentStock = isProduct ? normalStock : (version === "normal" ? normalStock : foilStock)
+    const result = addToCart({
       id: card.id,
       name: card.name,
       image: card.image,
       price,
       version: isProduct ? "normal" : version, // Productos siempre usan "normal"
-    })
+    }, currentStock)
+    
+    if (!result.success) {
+      alert(result.error || `No hay suficiente stock disponible. Stock máximo: ${currentStock}`)
+    }
   }
 
   const handleBuyNow = async () => {

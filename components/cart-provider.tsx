@@ -9,13 +9,14 @@ export interface CartItem {
   price: number
   version: "normal" | "foil"
   quantity: number
+  maxStock: number // Stock máximo disponible para este item
 }
 
 interface CartContextType {
   items: CartItem[]
-  addToCart: (item: Omit<CartItem, "quantity">) => void
+  addToCart: (item: Omit<CartItem, "quantity">, maxStock: number) => { success: boolean; error?: string }
   removeFromCart: (id: string, version: "normal" | "foil") => void
-  updateQuantity: (id: string, version: "normal" | "foil", quantity: number) => void
+  updateQuantity: (id: string, version: "normal" | "foil", quantity: number) => { success: boolean; error?: string }
   clearCart: () => void
   totalItems: number
   totalPrice: number
@@ -26,16 +27,33 @@ const CartContext = createContext<CartContextType | undefined>(undefined)
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
 
-  const addToCart = (item: Omit<CartItem, "quantity">) => {
+  const addToCart = (item: Omit<CartItem, "quantity" | "maxStock">, maxStock: number) => {
+    // Validar stock disponible
+    if (maxStock <= 0) {
+      return { success: false, error: "No hay stock disponible" }
+    }
+
     setItems((prev) => {
       const existingItem = prev.find((i) => i.id === item.id && i.version === item.version)
+      
       if (existingItem) {
+        // Si ya existe, validar que no exceda el stock
+        const newQuantity = existingItem.quantity + 1
+        if (newQuantity > maxStock) {
+          return prev // No hacer cambios si excede el stock
+        }
         return prev.map((i) =>
-          i.id === item.id && i.version === item.version ? { ...i, quantity: i.quantity + 1 } : i,
+          i.id === item.id && i.version === item.version 
+            ? { ...i, quantity: newQuantity, maxStock } 
+            : i,
         )
       }
-      return [...prev, { ...item, quantity: 1 }]
+      
+      // Si es nuevo, agregar con cantidad 1
+      return [...prev, { ...item, quantity: 1, maxStock }]
     })
+    
+    return { success: true }
   }
 
   const removeFromCart = (id: string, version: "normal" | "foil") => {
@@ -45,9 +63,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const updateQuantity = (id: string, version: "normal" | "foil", quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(id, version)
-      return
+      return { success: true }
     }
-    setItems((prev) => prev.map((i) => (i.id === id && i.version === version ? { ...i, quantity } : i)))
+    
+    let validationError: string | undefined
+    
+    setItems((prev) => {
+      const item = prev.find((i) => i.id === id && i.version === version)
+      if (!item) {
+        return prev
+      }
+      
+      // Validar que la cantidad no exceda el stock máximo
+      if (quantity > item.maxStock) {
+        validationError = `Stock máximo disponible: ${item.maxStock}`
+        return prev // No hacer cambios si excede el stock
+      }
+      
+      return prev.map((i) => (i.id === id && i.version === version ? { ...i, quantity } : i))
+    })
+    
+    if (validationError) {
+      return { success: false, error: validationError }
+    }
+    
+    return { success: true }
   }
 
   const clearCart = () => {

@@ -67,14 +67,23 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
     
     setAdding(version)
     
-    addToCart({
+    const result = addToCart({
       id: card.id,
       name: card.name,
       price: version === "foil" ? card.foilPrice : card.price,
       image: card.image,
       version,
-      quantity: 1,
-    })
+    }, currentStock)
+
+    if (!result.success) {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: result.error || `${t("maxStockReached")} (${currentStock} ${t("available")})`,
+      })
+      setAdding(null)
+      return
+    }
 
     toast({
       title: t("success"),

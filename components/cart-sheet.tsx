@@ -169,16 +169,35 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                           variant="outline"
                           size="icon"
                           className="h-6 w-6 bg-transparent"
-                          onClick={() => updateQuantity(item.id, item.version, item.quantity - 1)}
+                          onClick={() => {
+                            const result = updateQuantity(item.id, item.version, item.quantity - 1)
+                            if (!result.success && result.error) {
+                              toast({
+                                variant: "destructive",
+                                title: t("error"),
+                                description: result.error,
+                              })
+                            }
+                          }}
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
-                        <span className="text-sm w-8 text-center">{item.quantity}</span>
+                        <span className="text-sm w-8 text-center">{item.quantity} / {item.maxStock}</span>
                         <Button
                           variant="outline"
                           size="icon"
                           className="h-6 w-6 bg-transparent"
-                          onClick={() => updateQuantity(item.id, item.version, item.quantity + 1)}
+                          disabled={item.quantity >= item.maxStock}
+                          onClick={() => {
+                            const result = updateQuantity(item.id, item.version, item.quantity + 1)
+                            if (!result.success && result.error) {
+                              toast({
+                                variant: "destructive",
+                                title: t("error"),
+                                description: result.error,
+                              })
+                            }
+                          }}
                         >
                           <Plus className="h-3 w-3" />
                         </Button>
