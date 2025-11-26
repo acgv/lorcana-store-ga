@@ -1318,8 +1318,13 @@ export default function InventoryPage() {
                 {filteredInventory.map((item) => {
                   const hasChanges = editedCards.has(item.id)
                   const changes = editedCards.get(item.id)
-                  const displayNormalStock = changes?.normalStock !== undefined ? changes.normalStock : item.normalStock
-                  const displayFoilStock = changes?.foilStock !== undefined ? changes.foilStock : item.foilStock
+                  const isProduct = item.productType && item.productType !== "card"
+                  
+                  // Para productos, usar 'stock', para cartas usar 'normalStock'
+                  const displayNormalStock = isProduct
+                    ? (changes?.stock !== undefined ? changes.stock : item.normalStock)
+                    : (changes?.normalStock !== undefined ? changes.normalStock : item.normalStock)
+                  const displayFoilStock = changes?.foilStock !== undefined ? changes.foilStock : (item.foilStock || 0)
                   const displayPrice = changes?.price !== undefined ? changes.price : item.price
                   const displayFoilPrice = changes?.foilPrice !== undefined ? changes.foilPrice : item.foilPrice
                   const totalStock = displayNormalStock + displayFoilStock
