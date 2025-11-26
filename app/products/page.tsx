@@ -46,24 +46,36 @@ function ProductsContent() {
         
         if (result.success) {
           // Normalizar productos para que sean compatibles con el formato de cartas
-          const normalizedProducts = (result.data || []).map((product: any) => ({
-            id: product.id,
-            name: product.name,
-            image: product.image,
-            price: product.price,
-            foilPrice: null,
-            normalStock: product.stock || 0,
-            foilStock: 0,
-            stock: product.stock || 0,
-            set: product.metadata?.set || null,
-            type: null,
-            rarity: null,
-            number: 0,
-            cardNumber: null,
-            productType: product.producttype || product.productType || "booster",
-            description: product.description,
-            metadata: product.metadata,
-          }))
+          const normalizedProducts = (result.data || [])
+            .filter((product: any) => product && product.name && product.name.trim() !== "") // Filtrar productos sin nombre válido
+            .map((product: any) => {
+              // Asegurar que el nombre siempre sea un string válido
+              const productName = String(product.name || "").trim()
+              if (!productName) {
+                console.warn(`⚠️ Producto sin nombre válido:`, product)
+                return null
+              }
+              
+              return {
+                id: product.id,
+                name: productName,
+                image: product.image || "",
+                price: Number(product.price) || 0,
+                foilPrice: null,
+                normalStock: Number(product.stock) || 0,
+                foilStock: 0,
+                stock: Number(product.stock) || 0,
+                set: product.metadata?.set || null,
+                type: null,
+                rarity: null,
+                number: 0,
+                cardNumber: null,
+                productType: product.producttype || product.productType || "booster",
+                description: product.description || "",
+                metadata: product.metadata || {},
+              }
+            })
+            .filter((product: any) => product !== null) // Filtrar productos nulos
           setProducts(normalizedProducts)
           console.log(`✅ Productos cargados: ${normalizedProducts.length}`)
           if (normalizedProducts.length > 0) {
@@ -129,8 +141,9 @@ function ProductsContent() {
       // Search filter
       if (filters.search) {
         const searchLower = filters.search.toLowerCase()
-        if (!product.name.toLowerCase().includes(searchLower) && 
-            !product.id.toLowerCase().includes(searchLower)) {
+        const productName = (product.name || "").toLowerCase()
+        const productId = (product.id || "").toLowerCase()
+        if (!productName.includes(searchLower) && !productId.includes(searchLower)) {
           return false
         }
       }
@@ -138,22 +151,27 @@ function ProductsContent() {
       return true
     })
 
-    // Sort
+    // Sort - Asegurar que todos los productos tengan nombre válido
     filtered.sort((a, b) => {
+      const nameA = String(a.name || "")
+      const nameB = String(b.name || "")
+      const priceA = Number(a.price) || 0
+      const priceB = Number(b.price) || 0
+      
       switch (sortBy) {
         case "nameAZ":
-          return (a.name || "").localeCompare(b.name || "")
+          return nameA.localeCompare(nameB)
         case "nameZA":
-          return (b.name || "").localeCompare(a.name || "")
+          return nameB.localeCompare(nameA)
         case "priceLowHigh":
-          return (a.price || 0) - (b.price || 0)
+          return priceA - priceB
         case "priceHighLow":
-          return (b.price || 0) - (a.price || 0)
+          return priceB - priceA
         default:
           return 0
       }
     })
-
+    
     return filtered
   }, [products, filters, sortBy])
 
