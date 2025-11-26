@@ -97,8 +97,17 @@ export default function InventoryPage() {
       const data = await response.json()
       
       if (data.success) {
-        setInventory(data.inventory)
+        console.log(`✅ Inventory loaded: ${data.inventory?.length || 0} items`)
+        // Buscar la carta "prueba" para debugging
+        const pruebaCard = data.inventory?.find((item: any) => item.name?.toLowerCase().includes("prueba"))
+        if (pruebaCard) {
+          console.log(`🔍 Found "prueba" card:`, pruebaCard)
+        } else {
+          console.log(`⚠️ "prueba" card not found in inventory`)
+        }
+        setInventory(data.inventory || [])
       } else {
+        console.error("❌ Failed to load inventory:", data.error)
         toast({
           variant: "destructive",
           title: "Error",

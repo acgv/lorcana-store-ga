@@ -139,8 +139,18 @@ export async function POST(request: NextRequest) {
     
     if (supabase) {
       try {
+      // Generar ID consistente para cartas (formato: set-number, ej: firstChapter-205)
+      let cardId = product.id
+      if (!cardId && productType === "card") {
+        const setCode = product.set || "firstChapter"
+        const cardNum = product.number || product.cardNumber?.split("/")[0] || Date.now()
+        cardId = `${setCode}-${cardNum}`.toLowerCase()
+      } else if (!cardId) {
+        cardId = `${productType}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      }
+      
       const row: any = {
-        id: product.id || `${productType}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        id: cardId,
         name: product.name,
         image: product.image ?? null,
         price: product.price ?? null,
@@ -159,6 +169,8 @@ export async function POST(request: NextRequest) {
         normalStock: product.normalStock ?? product.stock ?? 0,
         foilStock: product.foilStock ?? 0,
       }
+
+      console.log(`📝 POST /api/cards - Creating card with ID: ${cardId}`, { name: product.name, set: product.set, number: product.number })
 
       const { data, error } = await supabase.from("cards").insert(row).select("*").single()
       if (!error && data) {

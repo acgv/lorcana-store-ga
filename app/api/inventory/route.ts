@@ -25,6 +25,7 @@ export async function GET() {
           const { data, error, count } = await supabase
             .from("cards")
             .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType", { count: "exact" })
+            .eq("status", "approved")
             .range(from, to)
           
           if (error) {
@@ -76,6 +77,8 @@ export async function GET() {
         } else if (productsError) {
           console.log(`⚠ GET /api/inventory - Supabase error (products): ${productsError.message}`)
         }
+
+        console.log(`📦 GET /api/inventory - Loaded ${allInventory.length} items (${allInventory.filter(i => (i.productType || "card") === "card").length} cards, ${allInventory.filter(i => (i.productType || "card") !== "card").length} products)`)
 
         if (allInventory.length > 0) {
           dataSource = "supabase"
