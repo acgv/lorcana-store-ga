@@ -431,14 +431,27 @@ export default function InventoryPage() {
 
   // Create new card manually
   const handleCreateCard = async () => {
-    if (!newCard.name || !newCard.type || !newCard.rarity) {
+    if (!newCard.name || !newCard.type || !newCard.rarity || !newCard.set) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Nombre, tipo y rareza son requeridos",
+        description: "Nombre, set, tipo y rareza son requeridos",
       })
       return
     }
+
+    // Validar que el número de carta sea válido
+    if (!newCard.number || newCard.number <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "El número de carta debe ser mayor a 0",
+      })
+      return
+    }
+
+    // Generar cardNumber si no se proporcionó
+    const cardNumber = newCard.cardNumber || `${newCard.number}/205`
 
     setImporting(true)
     
@@ -449,8 +462,8 @@ export default function InventoryPage() {
         set: newCard.set,
         type: newCard.type,
         rarity: newCard.rarity,
-        number: Number(newCard.number) || 0,
-        cardNumber: newCard.cardNumber || null,
+        number: Number(newCard.number),
+        cardNumber: cardNumber,
         price: Number(newCard.price) || 0,
         foilPrice: Number(newCard.foilPrice) || 0,
         normalStock: Number(newCard.normalStock) || 0,
@@ -459,6 +472,8 @@ export default function InventoryPage() {
         description: newCard.description || "",
         status: "approved",
       }
+
+      console.log("📝 Creating card with data:", cardData)
 
       const response = await fetch('/api/cards', {
         method: 'POST',
@@ -469,6 +484,8 @@ export default function InventoryPage() {
       })
 
       const data = await response.json()
+
+      console.log("📝 Card creation response:", data)
 
       if (data.success) {
         toast({
@@ -495,17 +512,16 @@ export default function InventoryPage() {
         // Cerrar diálogo
         setShowAddCard(false)
         
-        // Refrescar inventario
-        await fetchInventory()
-        setShowAddCard(false)
-        
-        // Refresh inventory
-        await fetchInventory()
+        // Esperar un momento antes de refrescar para asegurar que la BD se actualizó
+        setTimeout(async () => {
+          await fetchInventory()
+        }, 500)
       } else {
+        console.error("❌ Error creating card:", data)
         toast({
           variant: "destructive",
           title: "Error",
-          description: data.error || "Failed to create card",
+          description: data.error || data.details || "Failed to create card",
         })
       }
     } catch (error) {

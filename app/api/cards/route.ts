@@ -149,6 +149,19 @@ export async function POST(request: NextRequest) {
         cardId = `${productType}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
       }
       
+      // Validar campos requeridos para cartas
+      if (productType === "card") {
+        if (!product.set || !product.rarity || !product.type) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Missing required fields for card: set, rarity, type are required",
+            } as ApiResponse,
+            { status: 400 }
+          )
+        }
+      }
+
       const row: any = {
         id: cardId,
         name: product.name,
@@ -156,11 +169,10 @@ export async function POST(request: NextRequest) {
         price: product.price ?? null,
         description: product.description ?? null,
         status: product.status ?? "approved",
-        productType: productType,
-        // Campos específicos de cartas (requeridos por schema, pero pueden ser null para otros productos)
-        set: product.set ?? (productType === "card" ? "firstChapter" : (productType === "booster" ? product.set : null)),
-        rarity: product.rarity ?? (productType === "card" ? "common" : null), // Requerido por schema, usar default para no-cartas
-        type: product.type ?? (productType === "card" ? "character" : null), // Requerido por schema, usar default para no-cartas
+        // Campos específicos de cartas (requeridos por schema NOT NULL)
+        set: product.set ?? (productType === "card" ? "firstChapter" : null),
+        rarity: product.rarity ?? (productType === "card" ? "common" : null),
+        type: product.type ?? (productType === "card" ? "character" : null),
         number: product.number ?? 0,
         cardNumber: product.cardNumber ?? null,
         foilPrice: product.foilPrice ?? null,
@@ -170,24 +182,57 @@ export async function POST(request: NextRequest) {
         foilStock: product.foilStock ?? 0,
       }
 
-      console.log(`📝 POST /api/cards - Creating card with ID: ${cardId}`, { name: product.name, set: product.set, number: product.number })
+      // Agregar productType solo si la columna existe (puede no existir en schemas antiguos)
+      // Intentaremos agregarlo, pero si falla, continuaremos sin él
+      if (productType) {
+        row.productType = productType
+      }
+
+      console.log(`📝 POST /api/cards - Creating card with ID: ${cardId}`, { 
+        name: product.name, 
+        set: product.set, 
+        number: product.number,
+        status: product.status || "approved",
+        productType: productType
+      })
+      console.log(`📝 POST /api/cards - Row data:`, JSON.stringify(row, null, 2))
 
       const { data, error } = await supabase.from("cards").insert(row).select("*").single()
       if (!error && data) {
         newProduct = data as unknown as Card
         dataSource = "supabase"
-        console.log(`✓ POST /api/cards - Created in SUPABASE: ${newProduct.id} (${productType})`)
+        console.log(`✅ POST /api/cards - Created in SUPABASE: ${newProduct.id} (${productType})`)
         // Crear log
-        await supabase.from("logs").insert({
-          id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          userId: "system",
-          action: `${productType}_created`,
-          entityType: "card",
-          entityId: row.id,
-          details: { source: "api", productType },
-        })
+        try {
+          await supabase.from("logs").insert({
+            id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            userId: "system",
+            action: `${productType}_created`,
+            entityType: "card",
+            entityId: row.id,
+            details: { source: "api", productType },
+          })
+        } catch (logError) {
+          console.warn("⚠️ Failed to create log entry:", logError)
+        }
       } else {
-        console.log(`⚠ POST /api/cards - Supabase error: ${error?.message || "unknown"}, using MOCK`)
+        console.error(`❌ POST /api/cards - Supabase error:`, error)
+        console.error(`❌ Error details:`, {
+          message: error?.message,
+          details: error?.details,
+          hint: error?.hint,
+          code: error?.code
+        })
+        // No usar MOCK, retornar el error para que el frontend lo maneje
+        return NextResponse.json(
+          {
+            success: false,
+            error: error?.message || "Failed to create card in database",
+            details: error?.details,
+            hint: error?.hint,
+          } as ApiResponse,
+          { status: 500 }
+        )
       }
       } catch (err) {
         console.log(`⚠ POST /api/cards - Supabase connection error: ${err instanceof Error ? err.message : "unknown"}, using MOCK`)
