@@ -34,9 +34,10 @@ export async function GET(request: NextRequest) {
           const from = page * pageSize
           const to = from + pageSize - 1
           
+          // Solo seleccionar campos necesarios para mejorar rendimiento
           let query = supabase
             .from("cards")
-            .select("*", { count: "exact" })
+            .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description", { count: "exact" })
             .eq("status", filters.status)
             .range(from, to)
 

@@ -18,7 +18,9 @@ function CatalogContent() {
   const router = useRouter()
   
   const [cards, setCards] = useState<any[]>([])
+  const [allCards, setAllCards] = useState<any[]>([]) // Todas las cartas para filtrado
   const [loading, setLoading] = useState(true)
+  const [initialLoad, setInitialLoad] = useState(true)
   
   // Inicializar filtros desde URL
   const versionParam = searchParams.get("version") || "all"
@@ -38,35 +40,83 @@ function CatalogContent() {
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "cardNumberLowHigh")
   const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
 
-  // Cargar solo cartas desde API (no productos)
+  // Cargar cartas con caché y carga progresiva
   useEffect(() => {
     const loadCards = async () => {
-      setLoading(true)
+      // Verificar caché primero
+      const cacheKey = "lorcana_cards_cache"
+      const cacheTimestamp = "lorcana_cards_cache_timestamp"
+      const CACHE_DURATION = 5 * 60 * 1000 // 5 minutos
+      
       try {
-        // Cargar todas las cartas aprobadas (solo cartas, no productos)
+        const cached = localStorage.getItem(cacheKey)
+        const cachedTime = localStorage.getItem(cacheTimestamp)
+        
+        // Si hay caché válido (menos de 5 minutos), usarlo
+        if (cached && cachedTime) {
+          const age = Date.now() - parseInt(cachedTime)
+          if (age < CACHE_DURATION) {
+            const cachedCards = JSON.parse(cached)
+            setAllCards(cachedCards)
+            setCards(cachedCards.slice(0, 100)) // Mostrar primeras 100
+            setLoading(false)
+            setInitialLoad(false)
+            console.log(`✅ Cartas cargadas desde caché: ${cachedCards.length} cartas`)
+            
+            // Cargar el resto en background
+            setTimeout(() => {
+              setCards(cachedCards)
+            }, 100)
+            return
+          }
+        }
+        
+        setLoading(true)
+        
+        // Cargar desde API
         const response = await fetch(`/api/cards`)
         const result = await response.json()
         
         if (result.success) {
           // Filtrar solo cartas (productType = "card" o null)
-          const cards = (result.data || []).filter((card: any) => {
+          const allCardsData = (result.data || []).filter((card: any) => {
             const productType = card.productType || "card"
             return productType === "card"
           }).map((card: any) => ({
             ...card,
             productType: "card",
           }))
-          setCards(cards)
-          console.log(`✅ Cartas cargadas: ${cards.length} desde ${result.meta?.source || "mock"}`)
+          
+          setAllCards(allCardsData)
+          
+          // Mostrar primeras 100 cartas inmediatamente
+          setCards(allCardsData.slice(0, 100))
+          setLoading(false)
+          setInitialLoad(false)
+          
+          // Guardar en caché
+          localStorage.setItem(cacheKey, JSON.stringify(allCardsData))
+          localStorage.setItem(cacheTimestamp, Date.now().toString())
+          
+          console.log(`✅ Cartas cargadas: ${allCardsData.length} desde ${result.meta?.source || "mock"}`)
+          
+          // Cargar el resto en background después de un breve delay
+          setTimeout(() => {
+            setCards(allCardsData)
+          }, 500)
         } else {
           // Fallback a mock si API falla
-          setCards(mockCards)
+          setAllCards(mockCards)
+          setCards(mockCards.slice(0, 100))
+          setLoading(false)
+          setInitialLoad(false)
         }
       } catch (error) {
         console.error("Error loading cards:", error)
-        setCards(mockCards)
-      } finally {
+        setAllCards(mockCards)
+        setCards(mockCards.slice(0, 100))
         setLoading(false)
+        setInitialLoad(false)
       }
     }
     

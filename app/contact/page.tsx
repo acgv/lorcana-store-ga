@@ -3,7 +3,7 @@
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useLanguage } from "@/components/language-provider"
-import { Mail, Phone, Instagram, Music2 } from "lucide-react"
+import { Mail, Phone } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
@@ -24,21 +24,22 @@ export default function ContactPage() {
       value: "+56 9 5183 0357",
       href: "tel:+56951830357",
       description: "Llámanos o envíanos un WhatsApp"
-    },
-    {
-      icon: Instagram,
-      label: "Instagram",
-      value: "@arte.grafico.sublimable",
-      href: "https://instagram.com/arte.grafico.sublimable",
-      description: "Síguenos en Instagram"
-    },
-    {
-      icon: Music2,
-      label: "TikTok",
-      value: "@arte.grafico.sublimable",
-      href: "https://tiktok.com/@arte.grafico.sublimable",
-      description: "Mira nuestro contenido en TikTok"
     }
+    // Instagram y TikTok ocultos - no relacionados con Lorcana
+    // {
+    //   icon: Instagram,
+    //   label: "Instagram",
+    //   value: "@arte.grafico.sublimable",
+    //   href: "https://instagram.com/arte.grafico.sublimable",
+    //   description: "Síguenos en Instagram"
+    // },
+    // {
+    //   icon: Music2,
+    //   label: "TikTok",
+    //   value: "@arte.grafico.sublimable",
+    //   href: "https://tiktok.com/@arte.grafico.sublimable",
+    //   description: "Mira nuestro contenido en TikTok"
+    // }
   ]
 
   return (
