@@ -48,25 +48,27 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
         />
       </div>
 
-      {/* Product Type */}
-      <div className="space-y-3">
-        <Label className="text-sm font-semibold text-foreground/90">Tipo de Producto</Label>
-        <Select value={filters.productType || "all"} onValueChange={(value) => setFilters({ ...filters, productType: value })}>
-          <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors">
-            <SelectValue placeholder="Tipo de Producto" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="card">Cartas</SelectItem>
-            <SelectItem value="booster">Boosters</SelectItem>
-            <SelectItem value="playmat">Play Mats</SelectItem>
-            <SelectItem value="sleeves">Fundas</SelectItem>
-            <SelectItem value="deckbox">Deck Boxes</SelectItem>
-            <SelectItem value="dice">Dados</SelectItem>
-            <SelectItem value="accessory">Accesorios</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Product Type - Solo mostrar si no está forzado a "card" */}
+      {filters.productType !== "card" && (
+        <div className="space-y-3">
+          <Label className="text-sm font-semibold text-foreground/90">Tipo de Producto</Label>
+          <Select value={filters.productType || "all"} onValueChange={(value) => setFilters({ ...filters, productType: value })}>
+            <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors">
+              <SelectValue placeholder="Tipo de Producto" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="card">Cartas</SelectItem>
+              <SelectItem value="booster">Boosters</SelectItem>
+              <SelectItem value="playmat">Play Mats</SelectItem>
+              <SelectItem value="sleeves">Fundas</SelectItem>
+              <SelectItem value="deckbox">Deck Boxes</SelectItem>
+              <SelectItem value="dice">Dados</SelectItem>
+              <SelectItem value="accessory">Accesorios</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Type (solo para cartas) */}
       {(!filters.productType || filters.productType === "all" || filters.productType === "card") && (

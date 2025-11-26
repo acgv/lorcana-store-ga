@@ -63,6 +63,12 @@ export function Header() {
               {t("catalog")}
             </Link>
             <Link
+              href="/products"
+              className="text-sm font-sans font-medium text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-105"
+            >
+              Productos
+            </Link>
+            <Link
               href="/news"
               className="text-sm font-sans font-medium text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-105"
             >
@@ -117,6 +123,13 @@ export function Header() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {t("catalog")}
+                </Link>
+                <Link
+                  href="/products"
+                  className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Productos
                 </Link>
                 <Link
                   href="/news"

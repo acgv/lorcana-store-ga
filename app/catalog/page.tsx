@@ -33,62 +33,31 @@ function CatalogContent() {
     maxPrice: Number(searchParams.get("maxPrice")) || 100000, // Aumentado a $100,000 para incluir legendarias
     version: validVersion,
     search: searchParams.get("search") || "",
-    productType: searchParams.get("productType") || "all",
+    productType: "card", // El catálogo solo muestra cartas
   })
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "cardNumberLowHigh")
   const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
 
-  // Cargar cartas y productos desde API
+  // Cargar solo cartas desde API (no productos)
   useEffect(() => {
     const loadCards = async () => {
       setLoading(true)
       try {
-        // Cargar todas las cartas aprobadas
-        const cardsResponse = await fetch(`/api/cards`)
-        const cardsResult = await cardsResponse.json()
+        // Cargar todas las cartas aprobadas (solo cartas, no productos)
+        const response = await fetch(`/api/cards`)
+        const result = await response.json()
         
-        // Cargar todos los productos (boosters, playmats, etc.)
-        const productsResponse = await fetch(`/api/products`)
-        const productsResult = await productsResponse.json()
-        
-        let allItems: any[] = []
-        
-        if (cardsResult.success) {
-          const cards = (cardsResult.data || []).map((card: any) => ({
+        if (result.success) {
+          // Filtrar solo cartas (productType = "card" o null)
+          const cards = (result.data || []).filter((card: any) => {
+            const productType = card.productType || "card"
+            return productType === "card"
+          }).map((card: any) => ({
             ...card,
-            productType: card.productType || "card",
+            productType: "card",
           }))
-          allItems = [...allItems, ...cards]
-          console.log(`✅ Cartas cargadas: ${cards.length}`)
-        }
-        
-        if (productsResult.success) {
-          // Normalizar productos para que sean compatibles con el formato de cartas
-          const products = (productsResult.data || []).map((product: any) => ({
-            id: product.id,
-            name: product.name,
-            image: product.image,
-            price: product.price,
-            foilPrice: null,
-            normalStock: product.stock || 0,
-            foilStock: 0,
-            stock: product.stock || 0,
-            set: product.metadata?.set || null,
-            type: null,
-            rarity: null,
-            number: 0,
-            cardNumber: null,
-            productType: product.producttype || product.productType || "booster",
-            description: product.description,
-            metadata: product.metadata,
-          }))
-          allItems = [...allItems, ...products]
-          console.log(`✅ Productos cargados: ${products.length}`)
-        }
-        
-        if (allItems.length > 0) {
-          setCards(allItems)
-          console.log(`✅ Total items cargados: ${allItems.length}`)
+          setCards(cards)
+          console.log(`✅ Cartas cargadas: ${cards.length} desde ${result.meta?.source || "mock"}`)
         } else {
           // Fallback a mock si API falla
           setCards(mockCards)
@@ -115,7 +84,7 @@ function CatalogContent() {
     if (filters.maxPrice !== 100000) params.set("maxPrice", filters.maxPrice.toString())
     if (filters.version !== "all") params.set("version", filters.version)
     if (filters.search) params.set("search", filters.search)
-    if (filters.productType && filters.productType !== "all") params.set("productType", filters.productType)
+    // productType no se incluye en URL porque el catálogo solo muestra cartas
     if (sortBy !== "cardNumberLowHigh") params.set("sortBy", sortBy)
     if (viewMode !== "grid") params.set("viewMode", viewMode)
     
@@ -169,10 +138,23 @@ function CatalogContent() {
       }
       
       // Set filter (skip if "all" or empty)
-      if (filters.set && filters.set !== "all" && card.set !== filters.set) return false
+      if (filters.set && filters.set !== "all") {
+        const productType = (card as any).productType || "card"
+        // Para productos, verificar en metadata.set
+        if (productType !== "card") {
+          const productSet = (card as any).metadata?.set || card.set
+          if (productSet !== filters.set) return false
+        } else {
+          if (card.set !== filters.set) return false
+        }
+      }
       
-      // Rarity filter (skip if "all" or empty)
-      if (filters.rarity && filters.rarity !== "all" && card.rarity !== filters.rarity) return false
+      // Rarity filter (skip if "all" or empty, solo para cartas)
+      if (filters.rarity && filters.rarity !== "all") {
+        const productType = (card as any).productType || "card"
+        // Los productos no tienen rarity, así que si es un producto, no aplicar este filtro
+        if (productType === "card" && card.rarity !== filters.rarity) return false
+      }
       
       // Price range filter (manejar null/undefined)
       const cardPrice = Number(card.price) || 0
@@ -289,16 +271,16 @@ function CatalogContent() {
           </div>
         </section>
         
-        {/* Sección Accesorios */}
-        <section className="mb-8">
-          <h2 className="font-display text-2xl md:text-3xl font-bold mb-4">Accesorios Disponibles</h2>
-        </section>
+        {/* Sección Accesorios - Removida, ahora está en /products */}
 
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
           {/* Filtros Desktop (ocultos en mobile) */}
           <aside className="hidden lg:block lg:w-64 flex-shrink-0">
             <CardFilters
-              filters={filters}
+              filters={{
+                ...filters,
+                productType: "card", // Forzar a "card" ya que el catálogo solo muestra cartas
+              }}
               setFilters={setFilters}
               sortBy={sortBy}
               setSortBy={setSortBy}
@@ -329,7 +311,10 @@ function CatalogContent() {
                   </SheetHeader>
                   <div className="mt-6">
                     <CardFilters
-                      filters={filters}
+                      filters={{
+                        ...filters,
+                        productType: "card", // Forzar a "card" ya que el catálogo solo muestra cartas
+                      }}
                       setFilters={setFilters}
                       sortBy={sortBy}
                       setSortBy={setSortBy}

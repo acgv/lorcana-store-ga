@@ -19,12 +19,15 @@ export function CardGrid({ cards, viewMode }: CardGridProps) {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground mb-6">{t("noCardsFound")}</p>
+        {/* TODO: Re-habilitar funcionalidad de envío de cartas */}
+        {/*
         <Link href="/submit-card">
           <Button variant="outline" className="gap-2">
             <Send className="h-4 w-4" />
             {t("submitCardInstead")}
           </Button>
         </Link>
+        */}
       </div>
     )
   }
