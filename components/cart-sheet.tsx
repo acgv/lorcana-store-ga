@@ -212,6 +212,24 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                 </div>
               </div>
               
+              {/* Mercado Pago Trust Badge */}
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center gap-3">
+                <div className="flex-shrink-0">
+                  <Image
+                    src="/mercadopago-certified-badge.webp"
+                    alt="Certificado Mercado Pago"
+                    width={80}
+                    height={30}
+                    className="h-auto w-auto"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-foreground">Pago seguro con Mercado Pago</p>
+                  <p className="text-xs text-muted-foreground">Tarjetas, transferencia y más</p>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Button 
                   className="w-full" 

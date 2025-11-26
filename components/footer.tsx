@@ -87,7 +87,7 @@ export function Footer() {
                   alt="Certificado Mercado Pago"
                   width={140}
                   height={101}
-                  className="opacity-90 h-auto w-auto max-w-[80px] max-h-[27px]"
+                  className="opacity-90 h-auto w-auto max-w-[100px] max-h-[35px] hover:opacity-100 transition-opacity"
                   loading="lazy"
                   priority={false}
                 />

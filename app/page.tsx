@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/components/language-provider"
 import Link from "next/link"
 import { Sparkles, Send } from "lucide-react"
+import Image from "next/image"
 
 export default function HomePage() {
   const { t } = useLanguage()
@@ -121,9 +122,39 @@ export default function HomePage() {
         <section className="container mx-auto px-4 py-20">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-8 text-center">Por Qué Comprar con Nosotros</h2>
           <div className="max-w-4xl mx-auto text-center">
-            <p className="text-muted-foreground text-lg leading-relaxed">
+            <p className="text-muted-foreground text-lg leading-relaxed mb-8">
               Stock actualizado, precios competitivos y envíos a todo Chile. Tu tienda de confianza para cartas Disney Lorcana.
             </p>
+            
+            {/* Métodos de Pago Seguros */}
+            <div className="mt-12 p-8 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/10 to-primary/10 border border-primary/20">
+              <h3 className="font-display text-2xl font-bold mb-4">Pago 100% Seguro</h3>
+              <p className="text-muted-foreground mb-6">
+                Aceptamos todos los métodos de pago a través de Mercado Pago
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                <div className="flex items-center gap-3 bg-background/80 rounded-lg px-4 py-3 border border-border">
+                  <Image
+                    src="/mercadopago-certified-badge.webp"
+                    alt="Certificado Mercado Pago"
+                    width={120}
+                    height={40}
+                    className="h-auto w-auto"
+                    loading="lazy"
+                  />
+                  <div className="text-left">
+                    <p className="text-sm font-semibold">Desarrollador Certificado</p>
+                    <p className="text-xs text-muted-foreground">Mercado Pago Checkout Pro</p>
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p className="font-medium text-foreground">Métodos de pago aceptados:</p>
+                  <p>💳 Tarjetas de crédito y débito</p>
+                  <p>🏦 Transferencia bancaria</p>
+                  <p>📱 Saldo de Mercado Pago</p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
