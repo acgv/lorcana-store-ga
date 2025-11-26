@@ -177,6 +177,9 @@ export async function POST(request: Request) {
             )
           }
 
+          // NO incluir updatedAt manualmente - dejar que el trigger lo maneje
+          // Esto evita conflictos con el nombre de la columna (updatedAt vs updated_at)
+
           const { data, error } = await supabaseAdmin
             .from("products")
             .update(updates)
