@@ -609,6 +609,229 @@ export default function InventoryPage() {
             {t("showingCards")} {filteredInventory.length} {t("ofCards")} {inventory.length} {t("cards")}
           </p>
           <div className="flex gap-3">
+            <Dialog open={showAddProduct} onOpenChange={setShowAddProduct}>
+              <DialogTrigger asChild>
+                <Button variant="default" className="whitespace-nowrap">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar Producto
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Agregar Nuevo Producto</DialogTitle>
+                  <DialogDescription>
+                    Completa los campos para agregar un nuevo producto al inventario
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label>Nombre del Producto *</Label>
+                    <Input
+                      value={newProduct.name}
+                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                      placeholder="Ej: Booster Pack Set 1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Tipo de Producto *</Label>
+                    <Select
+                      value={newProduct.productType}
+                      onValueChange={(value: any) => setNewProduct({ ...newProduct, productType: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="booster">Booster</SelectItem>
+                        <SelectItem value="playmat">Play Mat</SelectItem>
+                        <SelectItem value="sleeves">Fundas (Sleeves)</SelectItem>
+                        <SelectItem value="deckbox">Deck Box</SelectItem>
+                        <SelectItem value="dice">Dados</SelectItem>
+                        <SelectItem value="accessory">Accesorio</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Precio *</Label>
+                      <Input
+                        type="number"
+                        value={newProduct.price}
+                        onChange={(e) => setNewProduct({ ...newProduct, price: Number(e.target.value) })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label>Stock *</Label>
+                      <Input
+                        type="number"
+                        value={newProduct.stock}
+                        onChange={(e) => setNewProduct({ ...newProduct, stock: Number(e.target.value) })}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>URL de Imagen</Label>
+                    <Input
+                      value={newProduct.image}
+                      onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Descripción</Label>
+                    <Textarea
+                      value={newProduct.description}
+                      onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                      placeholder="Descripción del producto..."
+                      rows={3}
+                    />
+                  </div>
+                  {newProduct.productType === "booster" && (
+                    <>
+                      <div>
+                        <Label>Set</Label>
+                        <Select value={newProduct.set} onValueChange={(value) => setNewProduct({ ...newProduct, set: value })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar Set" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="firstChapter">First Chapter</SelectItem>
+                            <SelectItem value="riseOfFloodborn">Rise of Floodborn</SelectItem>
+                            <SelectItem value="intoInklands">Into the Inklands</SelectItem>
+                            <SelectItem value="ursulaReturn">Ursula's Return</SelectItem>
+                            <SelectItem value="shimmering">Shimmering Skies</SelectItem>
+                            <SelectItem value="azurite">Azurite</SelectItem>
+                            <SelectItem value="archazia">Set 7 - Archazia's Island</SelectItem>
+                            <SelectItem value="reignOfJafar">Set 8 - Reign of Jafar</SelectItem>
+                            <SelectItem value="fabled">Set 9 - Fabled</SelectItem>
+                            <SelectItem value="whi">Whispers in the Well</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Cartas por Booster</Label>
+                        <Input
+                          type="number"
+                          value={newProduct.cardsPerPack}
+                          onChange={(e) => setNewProduct({ ...newProduct, cardsPerPack: Number(e.target.value) })}
+                          placeholder="12"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {newProduct.productType === "playmat" && (
+                    <>
+                      <div>
+                        <Label>Material</Label>
+                        <Input
+                          value={newProduct.material}
+                          onChange={(e) => setNewProduct({ ...newProduct, material: e.target.value })}
+                          placeholder="Ej: Neopreno"
+                        />
+                      </div>
+                      <div>
+                        <Label>Tamaño</Label>
+                        <Input
+                          value={newProduct.size}
+                          onChange={(e) => setNewProduct({ ...newProduct, size: e.target.value })}
+                          placeholder="Ej: 24x14 inches"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {newProduct.productType === "sleeves" && (
+                    <>
+                      <div>
+                        <Label>Cantidad de Fundas</Label>
+                        <Input
+                          type="number"
+                          value={newProduct.count}
+                          onChange={(e) => setNewProduct({ ...newProduct, count: Number(e.target.value) })}
+                          placeholder="50"
+                        />
+                      </div>
+                      <div>
+                        <Label>Tamaño</Label>
+                        <Input
+                          value={newProduct.size}
+                          onChange={(e) => setNewProduct({ ...newProduct, size: e.target.value })}
+                          placeholder="Ej: Standard, Japanese"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {newProduct.productType === "deckbox" && (
+                    <>
+                      <div>
+                        <Label>Capacidad (cartas)</Label>
+                        <Input
+                          type="number"
+                          value={newProduct.capacity}
+                          onChange={(e) => setNewProduct({ ...newProduct, capacity: Number(e.target.value) })}
+                          placeholder="60"
+                        />
+                      </div>
+                      <div>
+                        <Label>Material</Label>
+                        <Input
+                          value={newProduct.material}
+                          onChange={(e) => setNewProduct({ ...newProduct, material: e.target.value })}
+                          placeholder="Ej: Plástico, Cuero"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {newProduct.productType === "dice" && (
+                    <>
+                      <div>
+                        <Label>Cantidad de Dados</Label>
+                        <Input
+                          type="number"
+                          value={newProduct.count}
+                          onChange={(e) => setNewProduct({ ...newProduct, count: Number(e.target.value) })}
+                          placeholder="1"
+                        />
+                      </div>
+                      <div>
+                        <Label>Color</Label>
+                        <Input
+                          value={newProduct.color}
+                          onChange={(e) => setNewProduct({ ...newProduct, color: e.target.value })}
+                          placeholder="Ej: Rojo, Azul"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {newProduct.productType === "accessory" && (
+                    <div>
+                      <Label>Categoría</Label>
+                      <Input
+                        value={newProduct.category}
+                        onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                        placeholder="Ej: Organizador, Token"
+                      />
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowAddProduct(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleCreateProduct} disabled={importing}>
+                    {importing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creando...
+                      </>
+                    ) : (
+                      "Crear Producto"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <Button 
               onClick={handleImportCards} 
               disabled={importing}
