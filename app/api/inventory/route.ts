@@ -3,7 +3,7 @@ import { mockCards } from "@/lib/mock-data"
 import { supabase, supabaseAdmin } from "@/lib/db"
 import { rateLimitApi, RateLimitPresets } from "@/lib/rate-limit"
 
-// GET: Obtener todas las cartas con su stock
+// GET: Obtener todas las cartas y productos con su stock
 export async function GET() {
   try {
     let dataSource = "mock"
@@ -12,40 +12,74 @@ export async function GET() {
     if (supabase) {
       try {
         let allInventory: any[] = []
+        
+        // 1. Obtener todas las cartas (productType = 'card' o null)
         let page = 0
         const pageSize = 1000
         let hasMore = true
 
-        // Obtener todas las cartas usando paginación
         while (hasMore) {
           const from = page * pageSize
           const to = from + pageSize - 1
           
           const { data, error, count } = await supabase
             .from("cards")
-            .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image", { count: "exact" })
+            .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType", { count: "exact" })
             .range(from, to)
           
           if (error) {
-            console.log(`⚠ GET /api/inventory - Supabase error: ${error.message}, using MOCK`)
+            console.log(`⚠ GET /api/inventory - Supabase error (cards): ${error.message}`)
             break
           }
           
           if (data && data.length > 0) {
-            allInventory = [...allInventory, ...data]
+            // Normalizar cartas para el inventario
+            const cards = data.map((card: any) => ({
+              ...card,
+              productType: card.productType || "card",
+            }))
+            allInventory = [...allInventory, ...cards]
           }
           
-          // Verificar si hay más páginas
           hasMore = data && data.length === pageSize && (count === null || allInventory.length < count)
           page++
           
-          // Safety limit: no más de 10 páginas (10,000 cartas máximo)
           if (page >= 10) break
+        }
+
+        // 2. Obtener todos los productos (boosters, playmats, etc.)
+        const { data: products, error: productsError } = await supabase
+          .from("products")
+          .select("*")
+          .eq("status", "approved")
+
+        if (!productsError && products) {
+          // Normalizar productos para el inventario (convertir a formato compatible)
+          const normalizedProducts = products.map((product: any) => ({
+            id: product.id,
+            name: product.name,
+            set: product.metadata?.set || null,
+            type: null,
+            rarity: null,
+            number: 0,
+            cardNumber: null,
+            price: product.price,
+            foilPrice: null,
+            normalStock: product.stock || 0,
+            foilStock: 0,
+            image: product.image,
+            productType: product.productType,
+            description: product.description,
+            metadata: product.metadata,
+          }))
+          allInventory = [...allInventory, ...normalizedProducts]
+        } else if (productsError) {
+          console.log(`⚠ GET /api/inventory - Supabase error (products): ${productsError.message}`)
         }
 
         if (allInventory.length > 0) {
           dataSource = "supabase"
-          console.log(`✓ GET /api/inventory - Using SUPABASE (${allInventory.length} items from ${page} pages)`)
+          console.log(`✓ GET /api/inventory - Using SUPABASE (${allInventory.length} items: ${allInventory.filter(i => (i.productType || "card") === "card").length} cards, ${allInventory.filter(i => (i.productType || "card") !== "card").length} products)`)
           return NextResponse.json({ 
             success: true, 
             inventory: allInventory,

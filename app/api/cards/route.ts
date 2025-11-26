@@ -146,10 +146,10 @@ export async function POST(request: NextRequest) {
         description: product.description ?? null,
         status: product.status ?? "approved",
         productType: productType,
-        // Campos específicos de cartas
-        set: product.set ?? (productType === "card" ? "firstChapter" : null),
-        rarity: product.rarity ?? null,
-        type: product.type ?? null,
+        // Campos específicos de cartas (requeridos por schema, pero pueden ser null para otros productos)
+        set: product.set ?? (productType === "card" ? "firstChapter" : (productType === "booster" ? product.set : null)),
+        rarity: product.rarity ?? (productType === "card" ? "common" : null), // Requerido por schema, usar default para no-cartas
+        type: product.type ?? (productType === "card" ? "character" : null), // Requerido por schema, usar default para no-cartas
         number: product.number ?? 0,
         cardNumber: product.cardNumber ?? null,
         foilPrice: product.foilPrice ?? null,

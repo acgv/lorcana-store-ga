@@ -346,7 +346,10 @@ export default function InventoryPage() {
         productData.category = newProduct.category || ""
       }
 
-      const response = await fetch('/api/cards', {
+      // Usar /api/products para productos que no son cartas
+      const apiEndpoint = newProduct.productType === "card" ? '/api/cards' : '/api/products'
+      
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
