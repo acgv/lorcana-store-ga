@@ -1261,6 +1261,10 @@ export default function InventoryPage() {
                             <SelectItem value="firstChapter">First Chapter</SelectItem>
                             <SelectItem value="riseOfFloodborn">Rise of the Floodborn</SelectItem>
                             <SelectItem value="intoInklands">Into the Inklands</SelectItem>
+                            <SelectItem value="ursulaReturn">Ursula's Return</SelectItem>
+                            <SelectItem value="shimmering">Shimmering Skies</SelectItem>
+                            <SelectItem value="azurite">Azurite</SelectItem>
+                            <SelectItem value="archazia">Set 7 - Archazia's Island</SelectItem>
                             <SelectItem value="fabled">Fabled</SelectItem>
                             <SelectItem value="whi">Whispers in the Well</SelectItem>
                           </SelectContent>
