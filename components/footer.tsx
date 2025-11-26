@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Instagram, Music2, Mail, Phone } from "lucide-react"
+import { Mail, Phone } from "lucide-react"
 import { useLanguage } from "@/components/language-provider"
 import { LanguageSelector } from "@/components/language-selector"
 
@@ -45,7 +45,8 @@ export function Footer() {
           <div>
             <h4 className="font-medium mb-4">{t("followUs")}</h4>
             <div className="flex items-center gap-4 flex-wrap mb-4">
-              <a 
+              {/* Instagram y TikTok ocultos - no relacionados con Lorcana */}
+              {/* <a 
                 href="https://instagram.com/arte.grafico.sublimable" 
                 target="_blank" 
                 rel="noopener noreferrer"
@@ -62,7 +63,7 @@ export function Footer() {
                 title="TikTok"
               >
                 <Music2 className="h-5 w-5" />
-              </a>
+              </a> */}
               <a 
                 href="mailto:ga.company.contact@gmail.com"
                 className="text-muted-foreground hover:text-primary transition-colors"
