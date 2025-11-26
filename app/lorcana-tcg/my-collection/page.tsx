@@ -95,7 +95,7 @@ function MyCollectionContent() {
     if (viewMode !== "grid") params.set("viewMode", viewMode)
     
     const queryString = params.toString()
-    const newUrl = queryString ? `/my-collection?${queryString}` : "/my-collection"
+    const newUrl = queryString ? `/lorcana-tcg/my-collection?${queryString}` : "/lorcana-tcg/my-collection"
     
     router.replace(newUrl, { scroll: false })
   }, [activeTab, filters, sortBy, viewMode, router])

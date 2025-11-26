@@ -111,7 +111,7 @@ function ProductsContent() {
     if (viewMode !== "grid") params.set("viewMode", viewMode)
     
     const queryString = params.toString()
-    const newUrl = queryString ? `/products?${queryString}` : "/products"
+    const newUrl = queryString ? `/lorcana-tcg/products?${queryString}` : "/lorcana-tcg/products"
     
     router.replace(newUrl, { scroll: false })
   }, [filters, sortBy, viewMode, router])
