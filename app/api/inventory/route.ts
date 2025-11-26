@@ -68,7 +68,7 @@ export async function GET() {
             normalStock: product.stock || 0,
             foilStock: 0,
             image: product.image,
-            productType: product.productType,
+            productType: product.producttype || product.productType, // Manejar ambos nombres
             description: product.description,
             metadata: product.metadata,
           }))

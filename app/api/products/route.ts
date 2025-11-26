@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
           .eq("status", status)
 
         if (productType && productType !== "all") {
-          query = query.eq("productType", productType)
+          query = query.eq("producttype", productType) // La columna en la BD es producttype (minúsculas)
         }
 
         const { data, error } = await query.order("createdAt", { ascending: false })
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
           price: Number(product.price),
           stock: Number(product.stock) || 0,
           description: product.description || null,
-          productType: productType,
+          producttype: productType, // La columna en la BD es producttype (minúsculas)
           status: product.status || "approved",
           metadata: metadata,
         }
@@ -184,9 +184,6 @@ export async function POST(request: NextRequest) {
       success: true,
       data: newProduct,
       message: "Product created successfully",
-      meta: {
-        source: dataSource,
-      } as any,
     }
 
     return NextResponse.json(response)
