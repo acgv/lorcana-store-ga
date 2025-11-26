@@ -66,6 +66,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
               <SelectItem value="deckbox">Deck Boxes</SelectItem>
               <SelectItem value="dice">Dados</SelectItem>
               <SelectItem value="accessory">Accesorios</SelectItem>
+              <SelectItem value="giftset">Gift Sets</SelectItem>
             </SelectContent>
           </Select>
         </div>

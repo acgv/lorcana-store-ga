@@ -185,6 +185,7 @@ export default function ProductDetailPage() {
                 {productType === "deckbox" && "Deck Box"}
                 {productType === "dice" && "Dados"}
                 {productType === "accessory" && "Accesorio"}
+                {productType === "giftset" && "Gift Set"}
               </span>
               {product.metadata?.set && (
                 <span className="px-3 py-1 rounded-full bg-muted text-muted-foreground capitalize font-sans">
@@ -220,6 +221,12 @@ export default function ProductDetailPage() {
                 )}
                 {product.metadata.category && (
                   <p>Categoría: {product.metadata.category}</p>
+                )}
+                {product.metadata.contents && (
+                  <p>Contenido: {product.metadata.contents}</p>
+                )}
+                {product.metadata.items && (
+                  <p>Items incluidos: {typeof product.metadata.items === 'string' ? product.metadata.items : JSON.stringify(product.metadata.items)}</p>
                 )}
               </div>
             )}

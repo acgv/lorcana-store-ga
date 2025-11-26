@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar que el tipo sea válido
-    const validTypes = ["booster", "playmat", "sleeves", "deckbox", "dice", "accessory"]
+    const validTypes = ["booster", "playmat", "sleeves", "deckbox", "dice", "accessory", "giftset"]
     if (!validTypes.includes(productType)) {
       return NextResponse.json(
         {
@@ -128,6 +128,10 @@ export async function POST(request: NextRequest) {
           if (product.color) metadata.color = product.color
         } else if (productType === "accessory") {
           if (product.category) metadata.category = product.category
+        } else if (productType === "giftset") {
+          if (product.set) metadata.set = product.set
+          if (product.contents) metadata.contents = product.contents
+          if (product.items) metadata.items = product.items
         }
 
         const row: any = {

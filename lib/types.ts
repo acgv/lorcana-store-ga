@@ -7,7 +7,7 @@ export type CardType = "character" | "action" | "item" | "location" | "song"
 export type CardLanguage = "en" | "fr" | "de" | "es"
 
 // Tipos de productos
-export type ProductType = "card" | "booster" | "playmat" | "sleeves" | "deckbox" | "dice" | "accessory"
+export type ProductType = "card" | "booster" | "playmat" | "sleeves" | "deckbox" | "dice" | "accessory" | "giftset"
 
 // Producto base - campos comunes a todos los productos
 export interface BaseProduct {

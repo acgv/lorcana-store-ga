@@ -42,7 +42,7 @@ export default function InventoryPage() {
     set: "all",
     type: "all",
     rarity: "all",
-    productType: "all", // all, card, booster, playmat, sleeves, deckbox, dice, accessory
+    productType: "all", // all, card, booster, playmat, sleeves, deckbox, dice, accessory, giftset
     stockStatus: "all", // all, inStock, outOfStock, lowStock
     stockType: "all", // all, hasNormal, hasFoil, hasBoth
   })
@@ -50,7 +50,7 @@ export default function InventoryPage() {
   const [showAddCard, setShowAddCard] = useState(false)
   const [newProduct, setNewProduct] = useState({
     name: "",
-    productType: "booster" as "booster" | "playmat" | "sleeves" | "deckbox" | "dice" | "accessory",
+    productType: "booster" as "booster" | "playmat" | "sleeves" | "deckbox" | "dice" | "accessory" | "giftset",
     price: 0,
     stock: 0,
     image: "",
@@ -64,6 +64,8 @@ export default function InventoryPage() {
     size: "", // para playmat y sleeves
     color: "", // para dice
     category: "", // para accessory
+    contents: "", // para giftset
+    items: "", // para giftset (JSON string)
   })
   const [newCard, setNewCard] = useState({
     name: "",
@@ -386,6 +388,10 @@ export default function InventoryPage() {
         productData.color = newProduct.color || ""
       } else if (newProduct.productType === "accessory") {
         productData.category = newProduct.category || ""
+      } else if (newProduct.productType === "giftset") {
+        productData.set = newProduct.set || ""
+        productData.contents = newProduct.contents || ""
+        productData.items = newProduct.items || ""
       }
 
       // Usar /api/products para productos que no son cartas
@@ -760,6 +766,7 @@ export default function InventoryPage() {
                   <SelectItem value="deckbox">Deck Boxes</SelectItem>
                   <SelectItem value="dice">Dados</SelectItem>
                   <SelectItem value="accessory">Accesorios</SelectItem>
+                  <SelectItem value="giftset">Gift Sets</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1075,6 +1082,7 @@ export default function InventoryPage() {
                         <SelectItem value="deckbox">Deck Box</SelectItem>
                         <SelectItem value="dice">Dados</SelectItem>
                         <SelectItem value="accessory">Accesorio</SelectItem>
+                        <SelectItem value="giftset">Gift Set</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1240,6 +1248,41 @@ export default function InventoryPage() {
                         placeholder="Ej: Organizador, Token"
                       />
                     </div>
+                  )}
+                  {newProduct.productType === "giftset" && (
+                    <>
+                      <div>
+                        <Label>Set</Label>
+                        <Select value={newProduct.set} onValueChange={(value) => setNewProduct({ ...newProduct, set: value })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar Set" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="firstChapter">First Chapter</SelectItem>
+                            <SelectItem value="riseOfFloodborn">Rise of the Floodborn</SelectItem>
+                            <SelectItem value="intoInklands">Into the Inklands</SelectItem>
+                            <SelectItem value="fabled">Fabled</SelectItem>
+                            <SelectItem value="whi">Whispers in the Well</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Contenido</Label>
+                        <Textarea
+                          value={newProduct.contents}
+                          onChange={(e) => setNewProduct({ ...newProduct, contents: e.target.value })}
+                          placeholder="Ej: 1 Booster Display, 1 Playmat, 1 Deck Box"
+                        />
+                      </div>
+                      <div>
+                        <Label>Items Incluidos (JSON opcional)</Label>
+                        <Textarea
+                          value={newProduct.items}
+                          onChange={(e) => setNewProduct({ ...newProduct, items: e.target.value })}
+                          placeholder='Ej: {"boosters": 1, "playmat": 1, "deckbox": 1}'
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
                 <DialogFooter>
