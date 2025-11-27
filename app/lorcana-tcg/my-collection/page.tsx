@@ -203,8 +203,10 @@ function MyCollectionContent() {
     if (filters.rarity && filters.rarity !== "all" && card.rarity !== filters.rarity) return false
     
     // Price range filter
-    const cardPrice = card.price || 0
-    if (cardPrice < filters.minPrice || cardPrice > filters.maxPrice) return false
+    const cardPrice = Number(card.price) || 0
+    const minPrice = Number(filters.minPrice) || 0
+    const maxPrice = Number(filters.maxPrice) || 100000
+    if (cardPrice < minPrice || cardPrice > maxPrice) return false
     
     // Version filter - mostrar si tiene la versión filtrada
     if (filters.version && filters.version !== "all") {
@@ -290,8 +292,10 @@ function MyCollectionContent() {
     if (filters.rarity && filters.rarity !== "all" && card.rarity !== filters.rarity) return false
     
     // Price range filter
-    const cardPrice = card.price || 0
-    if (cardPrice < filters.minPrice || cardPrice > filters.maxPrice) return false
+    const cardPrice = Number(card.price) || 0
+    const minPrice = Number(filters.minPrice) || 0
+    const maxPrice = Number(filters.maxPrice) || 100000
+    if (cardPrice < minPrice || cardPrice > maxPrice) return false
     
     // Search filter
     if (filters.search) {
@@ -329,8 +333,10 @@ function MyCollectionContent() {
     if (filters.rarity && filters.rarity !== "all" && card.rarity !== filters.rarity) return false
     
     // Price range filter (opcional, por si quieren filtrar por precio de referencia)
-    const cardPrice = card.price || 0
-    if (cardPrice < filters.minPrice || cardPrice > filters.maxPrice) return false
+    const cardPrice = Number(card.price) || 0
+    const minPrice = Number(filters.minPrice) || 0
+    const maxPrice = Number(filters.maxPrice) || 100000
+    if (cardPrice < minPrice || cardPrice > maxPrice) return false
     
     // ❌ NO APLICAMOS filtro de version/stock - mostramos todas las cartas
     // Esto es para colección personal, no para comprar
