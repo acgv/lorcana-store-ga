@@ -345,11 +345,11 @@ function ProductsContent() {
         <div className="mb-4 md:mb-6">
           <h1 className="font-display text-4xl md:text-5xl lg:text-7xl font-black text-balance tracking-tight leading-none">
             <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              Productos Lorcana
+              {t("productsTitle")}
             </span>
           </h1>
           <p className="text-muted-foreground mt-2">
-            Boosters, Play Mats, Fundas, Deck Boxes y más
+            {t("productsSubtitle")}
           </p>
         </div>
 
@@ -405,7 +405,7 @@ function ProductsContent() {
             ) : (
               <>
                 <div className="mb-4 text-sm text-muted-foreground">
-                  {filteredProducts.length} {filteredProducts.length === 1 ? "producto encontrado" : "productos encontrados"}
+                  {filteredProducts.length} {filteredProducts.length === 1 ? t("productFound") : t("productsFound")}
                 </div>
                 <CardGrid cards={filteredProducts} viewMode={viewMode} />
               </>

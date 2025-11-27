@@ -76,10 +76,10 @@ export default function ProductDetailPage() {
         <Header />
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="text-center py-12">
-            <h2 className="text-2xl font-bold mb-4">Producto no encontrado</h2>
-            <p className="text-muted-foreground mb-6">El producto que buscas no existe.</p>
+            <h2 className="text-2xl font-bold mb-4">{t("productNotFoundTitle")}</h2>
+            <p className="text-muted-foreground mb-6">{t("productNotFound")}</p>
             <Button onClick={() => router.push('/lorcana-tcg/products')}>
-              Ver Productos
+              {t("viewProducts")}
             </Button>
           </div>
         </main>
@@ -291,8 +291,8 @@ export default function ProductDetailPage() {
                   <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center gap-3">
                     <Shield className="h-5 w-5 text-primary flex-shrink-0" />
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-foreground">Pago 100% seguro con Mercado Pago</p>
-                      <p className="text-xs text-muted-foreground">Tarjetas de crédito, débito y transferencia</p>
+                      <p className="text-xs font-medium text-foreground">{t("securePaymentWithMP")}</p>
+                      <p className="text-xs text-muted-foreground">{t("paymentMethodsShort")}</p>
                     </div>
                     <Image
                       src="/mercadopago-certified-badge.webp"
@@ -341,13 +341,13 @@ export default function ProductDetailPage() {
               <div className="p-6 rounded-lg bg-card border border-border text-center">
                 <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                 <h3 className="text-xl font-semibold mb-2">{t("outOfStockBadge")}</h3>
-                <p className="text-muted-foreground mb-4">Este producto no está disponible actualmente.</p>
+                <p className="text-muted-foreground mb-4">{t("productUnavailable")}</p>
                 <Button 
                   variant="outline"
                   onClick={() => router.push('/lorcana-tcg/products')}
                   className="font-sans"
                 >
-                  Ver Productos
+                  {t("viewProducts")}
                 </Button>
               </div>
             )}

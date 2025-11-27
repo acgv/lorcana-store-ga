@@ -70,14 +70,14 @@ export default function HomePage() {
             {/* LCP Element - Hero Title - Optimizado para carga rápida */}
             <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black mb-8 text-balance leading-[0.9]">
               <span className="text-magical bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent inline-block">
-                Cartas y Productos Lorcana en Chile
+                {t("heroTitleWithProducts")}
               </span>
             </h1>
             <p className="font-sans text-xl md:text-3xl text-muted-foreground/90 mb-6 max-w-3xl mx-auto text-pretty leading-relaxed font-light">
               {t("heroSubtitle")}
             </p>
             <p className="font-sans text-lg md:text-xl text-muted-foreground/80 mb-10 max-w-3xl mx-auto text-pretty leading-relaxed">
-              Cartas individuales y productos sellados nuevos. Todo 100% original y sellado de fábrica.
+              {t("heroSubtitleWithProducts")}
             </p>
             <Link href="/lorcana-tcg/catalog">
               <Button size="lg" className="glow-border font-sans text-lg px-10 py-7 h-auto font-semibold tracking-wide shadow-2xl">
@@ -89,33 +89,33 @@ export default function HomePage() {
 
         {/* Featured Section */}
         <section className="container mx-auto px-4 py-20">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-8 text-center">Categorías Disponibles</h2>
+          <h2 className="font-display text-3xl md:text-4xl font-bold mb-8 text-center">{t("categoriesAvailable")}</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Link href="/lorcana-tcg/catalog" className="p-6 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Cartas Individuales</h3>
+              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">{t("individualCards")}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-sans">
-                Cartas sueltas de todas las rarezas. Versiones normal y foil disponibles. Stock actualizado en tiempo real.
+                {t("individualCardsDesc")}
               </p>
             </Link>
             <Link href="/lorcana-tcg/products" className="p-6 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-6 w-6 text-accent" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Productos Sellados Nuevos</h3>
+              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">{t("sealedProducts")}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-sans">
-                Boosters, playmats, fundas, deck boxes y más. Todos nuestros productos son 100% originales y sellados de fábrica.
+                {t("sealedProductsDesc")}
               </p>
             </Link>
             <Link href="/lorcana-tcg/products" className="p-6 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Accesorios TCG</h3>
+              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">{t("tcgAccessories")}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-sans">
-                Todo lo que necesitas para jugar y proteger tus cartas. Fundas, deck boxes, dados y más accesorios premium.
+                {t("tcgAccessoriesDesc")}
               </p>
             </Link>
           </div>
@@ -123,10 +123,10 @@ export default function HomePage() {
 
         {/* Por Qué Comprar con Nosotros */}
         <section className="container mx-auto px-4 py-20">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-8 text-center">Por Qué Comprar con Nosotros</h2>
+          <h2 className="font-display text-3xl md:text-4xl font-bold mb-8 text-center">{t("whyBuyFromUs")}</h2>
           <div className="max-w-4xl mx-auto text-center">
             <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-              Stock actualizado, precios competitivos y envíos a todo Chile. Tu tienda de confianza para cartas y productos Disney Lorcana.
+              {t("whyBuyFromUsDesc")}
             </p>
             
             {/* Destacado de Productos Sellados */}
@@ -135,40 +135,39 @@ export default function HomePage() {
                 <div className="h-10 w-10 rounded-full bg-accent/20 flex items-center justify-center">
                   <Sparkles className="h-5 w-5 text-accent" />
                 </div>
-                <h3 className="font-display text-xl font-bold">Productos 100% Sellados y Nuevos</h3>
+                <h3 className="font-display text-xl font-bold">{t("sealedProductsHighlight")}</h3>
               </div>
               <p className="text-muted-foreground text-base leading-relaxed">
-                Todos nuestros productos sellados (boosters, playmats, fundas, etc.) son completamente nuevos y vienen sellados de fábrica. 
-                Garantizamos autenticidad y calidad en cada compra.
+                {t("sealedProductsHighlightDesc")}
               </p>
             </div>
             
             {/* Métodos de Pago Seguros */}
             <div className="mt-12 p-8 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/10 to-primary/10 border border-primary/20">
-              <h3 className="font-display text-2xl font-bold mb-4">Pago 100% Seguro</h3>
+              <h3 className="font-display text-2xl font-bold mb-4">{t("securePayment")}</h3>
               <p className="text-muted-foreground mb-6">
-                Aceptamos todos los métodos de pago a través de Mercado Pago
+                {t("securePaymentDesc")}
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
                 <div className="flex items-center gap-3 bg-background/80 rounded-lg px-4 py-3 border border-border">
                   <Image
                     src="/mercadopago-certified-badge.webp"
-                    alt="Certificado Mercado Pago"
+                    alt={t("certifiedDeveloper")}
                     width={120}
                     height={40}
                     className="h-auto w-auto"
                     loading="lazy"
                   />
                   <div className="text-left">
-                    <p className="text-sm font-semibold">Desarrollador Certificado</p>
-                    <p className="text-xs text-muted-foreground">Mercado Pago Checkout Pro</p>
+                    <p className="text-sm font-semibold">{t("certifiedDeveloper")}</p>
+                    <p className="text-xs text-muted-foreground">{t("mercadoPagoCheckoutPro")}</p>
                   </div>
                 </div>
                 <div className="text-sm text-muted-foreground space-y-1">
-                  <p className="font-medium text-foreground">Métodos de pago aceptados:</p>
-                  <p>💳 Tarjetas de crédito y débito</p>
-                  <p>🏦 Transferencia bancaria</p>
-                  <p>📱 Saldo de Mercado Pago</p>
+                  <p className="font-medium text-foreground">{t("acceptedPaymentMethods")}</p>
+                  <p>{t("creditDebitCards")}</p>
+                  <p>{t("bankTransfer")}</p>
+                  <p>{t("mercadoPagoBalance")}</p>
                 </div>
               </div>
             </div>

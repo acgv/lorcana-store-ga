@@ -413,30 +413,30 @@ function CatalogContent() {
         
         {/* Sección Tipos de Cartas */}
         <section className="mb-8">
-          <h2 className="font-display text-2xl md:text-3xl font-bold mb-4">Tipos de Cartas</h2>
+          <h2 className="font-display text-2xl md:text-3xl font-bold mb-4">{t("cardTypes")}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="p-4 bg-card border rounded-lg">
-              <h3 className="font-semibold mb-2">Comunes</h3>
+              <h3 className="font-semibold mb-2">{t("common")}</h3>
               <p className="text-sm text-muted-foreground">
-                {rarityCounts.common} {rarityCounts.common === 1 ? "unidad disponible" : "unidades disponibles"}
+                {rarityCounts.common} {rarityCounts.common === 1 ? t("unitAvailable") : t("unitsAvailable")}
               </p>
             </div>
             <div className="p-4 bg-card border rounded-lg">
-              <h3 className="font-semibold mb-2">Raras</h3>
+              <h3 className="font-semibold mb-2">{t("rare")}</h3>
               <p className="text-sm text-muted-foreground">
-                {rarityCounts.rare} {rarityCounts.rare === 1 ? "unidad disponible" : "unidades disponibles"}
+                {rarityCounts.rare} {rarityCounts.rare === 1 ? t("unitAvailable") : t("unitsAvailable")}
               </p>
             </div>
             <div className="p-4 bg-card border rounded-lg">
-              <h3 className="font-semibold mb-2">Super Raras</h3>
+              <h3 className="font-semibold mb-2">{t("superRare")}</h3>
               <p className="text-sm text-muted-foreground">
-                {rarityCounts.superRare} {rarityCounts.superRare === 1 ? "unidad disponible" : "unidades disponibles"}
+                {rarityCounts.superRare} {rarityCounts.superRare === 1 ? t("unitAvailable") : t("unitsAvailable")}
               </p>
             </div>
             <div className="p-4 bg-card border rounded-lg">
-              <h3 className="font-semibold mb-2">Luminares / Legendarias</h3>
+              <h3 className="font-semibold mb-2">{t("legendary")}</h3>
               <p className="text-sm text-muted-foreground">
-                {rarityCounts.legendary} {rarityCounts.legendary === 1 ? "unidad disponible" : "unidades disponibles"}
+                {rarityCounts.legendary} {rarityCounts.legendary === 1 ? t("unitAvailable") : t("unitsAvailable")}
               </p>
             </div>
           </div>

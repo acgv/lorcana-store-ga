@@ -13,17 +13,17 @@ export default function ContactPage() {
   const contactInfo = [
     {
       icon: Mail,
-      label: "Email",
+      label: t("email"),
       value: "ga.multiverse.store@gmail.com",
       href: "mailto:ga.multiverse.store@gmail.com",
-      description: "Escríbenos para cualquier consulta"
+      description: t("emailDescription")
     },
     {
       icon: Phone,
-      label: "Teléfono",
+      label: t("phone"),
       value: "+56 9 5183 0357",
       href: "tel:+56951830357",
-      description: "Llámanos o envíanos un WhatsApp"
+      description: t("phoneDescription")
     }
     // Instagram y TikTok ocultos - no relacionados con Lorcana
     // {
@@ -47,13 +47,13 @@ export default function ContactPage() {
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
         <div className="max-w-4xl mx-auto">
-          <h1 className="font-serif text-3xl md:text-4xl font-bold mb-4 text-center">Contacto y Horarios de Atención</h1>
+          <h1 className="font-serif text-3xl md:text-4xl font-bold mb-4 text-center">{t("contactAndHours")}</h1>
           <p className="text-muted-foreground text-center mb-8 md:mb-12">
-            ¿Tienes alguna pregunta? Estamos aquí para ayudarte
+            {t("contactSubtitle")}
           </p>
 
           <section className="mb-12">
-            <h2 className="font-serif text-xl md:text-2xl font-bold mb-6 text-center">Medios de Contacto</h2>
+            <h2 className="font-serif text-xl md:text-2xl font-bold mb-6 text-center">{t("contactMethods")}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               {contactInfo.map((contact) => {
                 const Icon = contact.icon
@@ -90,10 +90,10 @@ export default function ContactPage() {
           </section>
           
           <section className="p-6 md:p-8 bg-muted rounded-lg text-center">
-            <h2 className="font-serif text-xl md:text-2xl font-bold mb-3">Horarios</h2>
+            <h2 className="font-serif text-xl md:text-2xl font-bold mb-3">{t("businessHours")}</h2>
             <p className="text-muted-foreground">
-              Lunes a Sábado: 10:00 AM - 8:00 PM<br />
-              Domingo: Cerrado
+              {t("hoursWeekday")}<br />
+              {t("hoursWeekend")}
             </p>
           </section>
         </div>
