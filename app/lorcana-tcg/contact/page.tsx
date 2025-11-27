@@ -71,14 +71,13 @@ export default function ContactPage() {
                     <CardContent>
                       <Button
                         variant="outline"
-                        className="w-full justify-start border-border group"
+                        className="w-full justify-start border border-border hover:border-orange-500 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:border-orange-500"
                         asChild
                       >
                         <a 
                           href={contact.href} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="hover:!border-orange-500 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:border-orange-500"
                         >
                           <span className="truncate">{contact.value}</span>
                         </a>

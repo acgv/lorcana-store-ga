@@ -104,7 +104,7 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="gap-2 border-border hover:!border-orange-500 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:border-orange-500"
+                  className="gap-2 border border-border hover:border-orange-500 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:border-orange-500"
                 >
                   <User className="h-4 w-4" />
                   <span className="hidden sm:inline" suppressHydrationWarning>
