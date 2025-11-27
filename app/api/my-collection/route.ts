@@ -74,11 +74,6 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    if (error) {
-      console.error("Error fetching collection:", error)
-      throw error
-    }
-
     return NextResponse.json({
       success: true,
       data: data || [],
