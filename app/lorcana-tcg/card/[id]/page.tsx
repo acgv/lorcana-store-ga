@@ -203,8 +203,8 @@ export default function CardDetailPage() {
         </Button>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          <div className="relative aspect-[3/4] rounded-lg overflow-hidden foil-effect glow-border">
-            <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" priority />
+          <div className={`relative aspect-[3/4] rounded-lg overflow-hidden ${isProduct ? "" : "foil-effect"} glow-border bg-muted`}>
+            <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className={isProduct ? "object-contain" : "object-cover"} priority />
           </div>
 
           <div className="space-y-6">

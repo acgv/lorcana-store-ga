@@ -163,8 +163,8 @@ export default function ProductDetailPage() {
         </Button>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          <div className="relative aspect-[3/4] rounded-lg overflow-hidden glow-border">
-            <Image src={product.image || "/placeholder.svg"} alt={product.name} fill className="object-cover" priority />
+          <div className="relative aspect-[3/4] rounded-lg overflow-hidden glow-border bg-muted">
+            <Image src={product.image || "/placeholder.svg"} alt={product.name} fill className="object-contain" priority />
           </div>
 
           <div className="space-y-6">
