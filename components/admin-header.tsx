@@ -101,7 +101,7 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
             {/* Siempre mostrar el botón de logout */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 hover:border-accent/70 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:border-accent">
+                <Button variant="outline" size="sm" className="gap-2 border-border hover:border-primary/70 hover:shadow-md hover:shadow-primary/20 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:border-primary">
                   <User className="h-4 w-4" />
                   <span className="hidden sm:inline" suppressHydrationWarning>
                     {mounted ? displayName : "Admin"}

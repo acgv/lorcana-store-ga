@@ -71,7 +71,7 @@ export default function ContactPage() {
                     <CardContent>
                       <Button
                         variant="outline"
-                        className="w-full justify-start hover:border-accent/70 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:border-accent"
+                        className="w-full justify-start border-border hover:border-primary/70 hover:shadow-md hover:shadow-primary/20 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:border-primary"
                         asChild
                       >
                         <a href={contact.href} target="_blank" rel="noopener noreferrer">
