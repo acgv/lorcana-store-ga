@@ -18,6 +18,7 @@ function ProductsContent() {
   
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [initialLoad, setInitialLoad] = useState(true)
   
   const [filters, setFilters] = useState({
     productType: searchParams.get("productType") || "all",
@@ -34,12 +35,77 @@ function ProductsContent() {
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "nameAZ")
   const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
 
-  // Cargar productos desde API
+  // Polyfill para requestIdleCallback (para compatibilidad con móviles)
+  const requestIdleCallbackPolyfill = (callback: () => void, options?: { timeout?: number }) => {
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      return (window as any).requestIdleCallback(callback, options)
+    } else {
+      // Fallback: ejecutar inmediatamente pero de forma asíncrona
+      const timeout = options?.timeout || 0
+      return setTimeout(callback, Math.max(timeout, 0))
+    }
+  }
+
+  // Cargar productos con caché y carga progresiva (no bloqueante)
   useEffect(() => {
+    let isMounted = true
+    let abortController: AbortController | null = null
+    
     const loadProducts = async () => {
-      setLoading(true)
+      // Verificar caché primero
+      const cacheKey = "lorcana_products_cache"
+      const cacheTimestamp = "lorcana_products_cache_timestamp"
+      const CACHE_DURATION = 5 * 60 * 1000 // 5 minutos
+      
       try {
-        const response = await fetch(`/api/products?status=approved`)
+        const cached = localStorage.getItem(cacheKey)
+        const cachedTime = localStorage.getItem(cacheTimestamp)
+        
+        // Si hay caché válido (menos de 5 minutos), usarlo inmediatamente
+        if (cached && cachedTime) {
+          const age = Date.now() - parseInt(cachedTime)
+          if (age < CACHE_DURATION) {
+            const cachedProducts = JSON.parse(cached)
+            if (isMounted) {
+              setProducts(cachedProducts)
+              setLoading(false)
+              setInitialLoad(false)
+              console.log(`✅ Productos cargados desde caché: ${cachedProducts.length} productos`)
+            }
+            return
+          }
+        }
+        
+        // Mostrar contenido inmediatamente si hay caché antiguo
+        if (cached) {
+          try {
+            const cachedProducts = JSON.parse(cached)
+            if (isMounted) {
+              setProducts(cachedProducts)
+              setLoading(false)
+              setInitialLoad(false)
+            }
+          } catch (e) {
+            // Si el caché está corrupto, continuar con la carga
+          }
+        } else {
+          // Solo mostrar loading si no hay caché
+          if (isMounted) {
+            setLoading(true)
+          }
+        }
+        
+        // Crear AbortController para cancelar la petición si el componente se desmonta
+        abortController = new AbortController()
+        
+        // Cargar desde API de forma asíncrona (no bloquea navegación)
+        const response = await fetch(`/api/products?status=approved`, {
+          signal: abortController.signal,
+          cache: 'no-store',
+        })
+        
+        if (!isMounted) return // Si el componente se desmontó, no actualizar estado
+        
         const result = await response.json()
         
         console.log("🔍 API Response:", { success: result.success, dataLength: result.data?.length, error: result.error })
@@ -76,27 +142,58 @@ function ProductsContent() {
               }
             })
             .filter((product: any) => product !== null) // Filtrar productos nulos
-          setProducts(normalizedProducts)
-          console.log(`✅ Productos cargados: ${normalizedProducts.length}`)
-          if (normalizedProducts.length > 0) {
-            console.log("📦 Productos:", normalizedProducts.map(p => `${p.name} - $${p.price}`))
-          } else {
-            console.warn("⚠️ No se cargaron productos. Verifica que haya productos con status='approved' en la BD")
+          
+          if (isMounted) {
+            setProducts(normalizedProducts)
+            setLoading(false)
+            setInitialLoad(false)
+            
+            // Guardar en caché
+            localStorage.setItem(cacheKey, JSON.stringify(normalizedProducts))
+            localStorage.setItem(cacheTimestamp, Date.now().toString())
+            
+            console.log(`✅ Productos cargados: ${normalizedProducts.length}`)
+            if (normalizedProducts.length > 0) {
+              console.log("📦 Productos:", normalizedProducts.map(p => `${p.name} - $${p.price}`))
+            } else {
+              console.warn("⚠️ No se cargaron productos. Verifica que haya productos con status='approved' en la BD")
+            }
           }
         } else {
           console.error("❌ Error en API products:", result.error)
-          setProducts([])
+          if (isMounted) {
+            setProducts([])
+            setLoading(false)
+            setInitialLoad(false)
+          }
         }
-      } catch (error) {
+      } catch (error: any) {
+        // Ignorar errores de abort (navegación cancelada)
+        if (error.name === 'AbortError') {
+          console.log('🔄 Carga cancelada por navegación')
+          return
+        }
+        
         console.error("Error loading products:", error)
-        setProducts([])
-      } finally {
-        setLoading(false)
+        if (isMounted) {
+          setProducts([])
+          setLoading(false)
+          setInitialLoad(false)
+        }
       }
     }
     
-    loadProducts()
-  }, [])
+    // Usar polyfill para cargar sin bloquear la UI
+    requestIdleCallbackPolyfill(loadProducts, { timeout: 100 })
+    
+    // Cleanup: cancelar petición si el componente se desmonta
+    return () => {
+      isMounted = false
+      if (abortController) {
+        abortController.abort()
+      }
+    }
+  }, []) // Solo cargar una vez al montar
 
   // Actualizar URL cuando cambien los filtros
   useEffect(() => {
