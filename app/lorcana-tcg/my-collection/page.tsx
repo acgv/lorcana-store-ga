@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState, useRef, Suspense } from "react"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Header } from "@/components/header"
@@ -38,6 +38,10 @@ function MyCollectionContent() {
   const { t } = useLanguage()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+  
+  // Flag para indicar si el usuario está navegando activamente
+  const isNavigatingRef = useRef(false)
   const { user, loading: userLoading } = useUser()
   const { collection, isInCollection, addToCollection, removeFromCollection, refresh, loading } = useCollection()
   const { addToCart } = useCart()
@@ -69,16 +73,31 @@ function MyCollectionContent() {
     }
   }, [user, userLoading, router])
 
+  // Detectar cuando el usuario navega a otra página
+  useEffect(() => {
+    // Si el pathname cambia y no es my-collection, marcar que estamos navegando
+    if (pathname && !pathname.includes('/lorcana-tcg/my-collection')) {
+      isNavigatingRef.current = true
+    } else if (pathname && pathname.includes('/lorcana-tcg/my-collection')) {
+      // Si volvemos a my-collection, resetear el flag
+      isNavigatingRef.current = false
+    }
+  }, [pathname])
+  
   // Actualizar URL cuando cambien los filtros, tab, sortBy o viewMode
   useEffect(() => {
+    // Si el usuario está navegando, no actualizar la URL
+    if (isNavigatingRef.current) return
+    
     // Verificar que estamos en la página correcta
     if (typeof window === 'undefined') return
-    if (!window.location.pathname.includes('/lorcana-tcg/my-collection')) return
+    if (!pathname || !pathname.includes('/lorcana-tcg/my-collection')) return
     
     // Usar timeout para no bloquear la navegación
     const timeoutId = setTimeout(() => {
-      // Verificar nuevamente que seguimos en la página (por si el usuario navegó)
-      if (!window.location.pathname.includes('/lorcana-tcg/my-collection')) return
+      // Verificar nuevamente que seguimos en la página y no estamos navegando
+      if (isNavigatingRef.current) return
+      if (!pathname || !pathname.includes('/lorcana-tcg/my-collection')) return
       
       const params = new URLSearchParams()
       
@@ -106,15 +125,34 @@ function MyCollectionContent() {
       const queryString = params.toString()
       const newUrl = queryString ? `/lorcana-tcg/my-collection?${queryString}` : "/lorcana-tcg/my-collection"
       
-      // Solo actualizar si la URL es diferente
-      const currentUrl = window.location.pathname + window.location.search
-      if (currentUrl !== newUrl) {
+      // Solo actualizar si la URL es diferente y no estamos navegando
+      const currentUrl = pathname + (window.location.search || '')
+      if (currentUrl !== newUrl && pathname.includes('/lorcana-tcg/my-collection') && !isNavigatingRef.current) {
         router.replace(newUrl, { scroll: false })
       }
-    }, 100) // Pequeño delay para no bloquear navegación
+    }, 300) // Debounce para no bloquear navegación
     
     return () => clearTimeout(timeoutId)
-  }, [activeTab, filters, sortBy, viewMode, router])
+  }, [activeTab, filters, sortBy, viewMode, router, pathname])
+  
+  // Cancelar actualizaciones de URL cuando el usuario hace clic en un link de navegación
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      const link = target.closest('a[href]')
+      if (link) {
+        const href = link.getAttribute('href')
+        // Si el link es a otra página (no my-collection), cancelar actualizaciones
+        if (href && href.startsWith('/lorcana-tcg/') && !href.includes('/lorcana-tcg/my-collection')) {
+          isNavigatingRef.current = true
+        }
+      }
+    }
+    
+    // Usar capture phase para detectar clicks antes de que se propaguen
+    document.addEventListener('click', handleClick, true)
+    return () => document.removeEventListener('click', handleClick, true)
+  }, [])
 
   // Load all cards
   useEffect(() => {

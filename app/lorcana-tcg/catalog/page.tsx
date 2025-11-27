@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState, useMemo, useEffect, Suspense } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import React, { useState, useMemo, useEffect, useRef, Suspense } from "react"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { CardGrid } from "@/components/card-grid"
@@ -16,11 +16,15 @@ function CatalogContent() {
   const { t } = useLanguage()
   const searchParams = useSearchParams()
   const router = useRouter()
+  const pathname = usePathname()
   
   const [cards, setCards] = useState<any[]>([])
   const [allCards, setAllCards] = useState<any[]>([]) // Todas las cartas para filtrado
   const [loading, setLoading] = useState(true)
   const [initialLoad, setInitialLoad] = useState(true)
+  
+  // Flag para indicar si el usuario está navegando activamente
+  const isNavigatingRef = useRef(false)
   
   // Inicializar filtros desde URL
   const versionParam = searchParams.get("version") || "all"
@@ -192,9 +196,28 @@ function CatalogContent() {
     }
   }, [searchParams, filters.search])
   
+  // Detectar cuando el usuario navega a otra página
+  useEffect(() => {
+    // Si el pathname cambia y no es el catálogo, marcar que estamos navegando
+    if (pathname && !pathname.includes('/lorcana-tcg/catalog')) {
+      isNavigatingRef.current = true
+      // Cancelar cualquier actualización pendiente de URL
+      if (urlUpdateTimeoutRef.current) {
+        clearTimeout(urlUpdateTimeoutRef.current)
+        urlUpdateTimeoutRef.current = null
+      }
+    } else if (pathname && pathname.includes('/lorcana-tcg/catalog')) {
+      // Si volvemos al catálogo, resetear el flag
+      isNavigatingRef.current = false
+    }
+  }, [pathname])
+  
   // Actualizar URL cuando cambien los filtros (solo si estamos en la página del catálogo)
   // Usar debounce largo para no interferir con la navegación
   useEffect(() => {
+    // Si el usuario está navegando, no actualizar la URL
+    if (isNavigatingRef.current) return
+    
     // Cancelar cualquier actualización pendiente
     if (urlUpdateTimeoutRef.current) {
       clearTimeout(urlUpdateTimeoutRef.current)
@@ -203,15 +226,15 @@ function CatalogContent() {
     
     // Verificar que estamos en la página correcta antes de actualizar la URL
     if (typeof window === 'undefined') return
-    const currentPath = window.location.pathname
-    if (!currentPath.includes('/lorcana-tcg/catalog')) return
+    if (!pathname || !pathname.includes('/lorcana-tcg/catalog')) return
     
-    // Usar debounce largo (800ms) para dar tiempo a la navegación
+    // Usar debounce largo (1000ms) para dar tiempo a la navegación
     urlUpdateTimeoutRef.current = setTimeout(() => {
       urlUpdateTimeoutRef.current = null
       
-      // Verificar nuevamente que seguimos en la página (por si el usuario navegó)
-      if (!window.location.pathname.includes('/lorcana-tcg/catalog')) return
+      // Verificar nuevamente que seguimos en la página y no estamos navegando
+      if (isNavigatingRef.current) return
+      if (!pathname || !pathname.includes('/lorcana-tcg/catalog')) return
       
       const params = new URLSearchParams()
       
@@ -230,11 +253,11 @@ function CatalogContent() {
       const newUrl = queryString ? `/lorcana-tcg/catalog?${queryString}` : "/lorcana-tcg/catalog"
       
       // Solo actualizar si la URL es diferente y seguimos en la página
-      const currentUrl = window.location.pathname + window.location.search
-      if (currentUrl !== newUrl && window.location.pathname.includes('/lorcana-tcg/catalog')) {
+      const currentUrl = pathname + (window.location.search || '')
+      if (currentUrl !== newUrl && pathname.includes('/lorcana-tcg/catalog') && !isNavigatingRef.current) {
         router.replace(newUrl, { scroll: false })
       }
-    }, 800) // Debounce largo para no bloquear navegación
+    }, 1000) // Debounce largo para no bloquear navegación
     
     return () => {
       if (urlUpdateTimeoutRef.current) {
@@ -242,23 +265,28 @@ function CatalogContent() {
         urlUpdateTimeoutRef.current = null
       }
     }
-  }, [filters, sortBy, viewMode, router])
+  }, [filters, sortBy, viewMode, router, pathname])
   
-  // Cancelar actualizaciones de URL cuando el usuario navega
+  // Cancelar actualizaciones de URL cuando el usuario hace clic en un link de navegación
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement
       const link = target.closest('a[href]')
-      if (link && link.getAttribute('href')?.startsWith('/lorcana-tcg/') && 
-          !link.getAttribute('href')?.includes('/lorcana-tcg/catalog')) {
-        // El usuario está navegando a otra página, cancelar actualizaciones de URL
-        if (urlUpdateTimeoutRef.current) {
-          clearTimeout(urlUpdateTimeoutRef.current)
-          urlUpdateTimeoutRef.current = null
+      if (link) {
+        const href = link.getAttribute('href')
+        // Si el link es a otra página (no catálogo), cancelar actualizaciones
+        if (href && href.startsWith('/lorcana-tcg/') && !href.includes('/lorcana-tcg/catalog')) {
+          isNavigatingRef.current = true
+          // Cancelar cualquier actualización pendiente de URL
+          if (urlUpdateTimeoutRef.current) {
+            clearTimeout(urlUpdateTimeoutRef.current)
+            urlUpdateTimeoutRef.current = null
+          }
         }
       }
     }
     
+    // Usar capture phase para detectar clicks antes de que se propaguen
     document.addEventListener('click', handleClick, true)
     return () => document.removeEventListener('click', handleClick, true)
   }, [])
