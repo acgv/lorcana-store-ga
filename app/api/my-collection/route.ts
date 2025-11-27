@@ -18,16 +18,61 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let query = supabaseAdmin
-      .from("user_collections")
-      .select("*")
-      .eq("user_id", userId)
+    // Supabase tiene un límite por defecto de 1000 registros
+    // Necesitamos usar paginación para obtener todos los registros
+    let allData: any[] = []
+    let page = 0
+    const pageSize = 1000
+    let hasMore = true
 
-    if (status) {
-      query = query.eq("status", status)
+    while (hasMore) {
+      const from = page * pageSize
+      const to = from + pageSize - 1
+
+      let query = supabaseAdmin
+        .from("user_collections")
+        .select("*", { count: "exact" })
+        .eq("user_id", userId)
+        .range(from, to)
+
+      if (status) {
+        query = query.eq("status", status)
+      }
+
+      const { data, error, count } = await query.order("added_at", { ascending: false })
+
+      if (error) {
+        console.error("Error fetching collection page:", error)
+        throw error
+      }
+
+      if (data && data.length > 0) {
+        allData = [...allData, ...data]
+      }
+
+      // Verificar si hay más páginas
+      hasMore = data && data.length === pageSize && (count === null || allData.length < count)
+      page++
+
+      // Safety limit: no más de 10 páginas (10,000 items máximo)
+      if (page >= 10) break
     }
 
-    const { data, error } = await query.order("added_at", { ascending: false })
+    const data = allData
+
+    // Log para debugging
+    if (data) {
+      const setsCount = data.reduce((acc: Record<string, number>, item: any) => {
+        // Extraer set del card_id (ej: "fab-0" -> "fab", "tfc-1" -> "tfc")
+        const setId = item.card_id?.split("-")[0] || "unknown"
+        acc[setId] = (acc[setId] || 0) + 1
+        return acc
+      }, {})
+      console.log(`📊 Collection loaded for user ${userId}:`, {
+        total: data.length,
+        bySet: setsCount
+      })
+    }
 
     if (error) {
       console.error("Error fetching collection:", error)

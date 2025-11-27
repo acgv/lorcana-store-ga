@@ -18,23 +18,38 @@ export function useCollection() {
   const loadingRef = useRef(false) // Flag para prevenir múltiples cargas
   const lastUserIdRef = useRef<string | null>(null) // Track último usuario cargado
 
-  const loadCollection = useCallback(async () => {
+  const loadCollection = useCallback(async (force = false) => {
     if (!user?.id) return
     if (loadingRef.current) return // Ya está cargando, salir
-    if (lastUserIdRef.current === user.id) return // Ya cargado para este usuario
+    if (!force && lastUserIdRef.current === user.id) return // Ya cargado para este usuario
 
     try {
       loadingRef.current = true
       setLoading(true)
       
-      console.log("🔄 Loading collection for user:", user.id)
+      console.log("🔄 Loading collection for user:", user.id, force ? "(forced)" : "")
       const response = await fetch(`/api/my-collection?userId=${user.id}`)
       const data = await response.json()
 
       if (data.success) {
-        setCollection(data.data || [])
+        const items = data.data || []
+        setCollection(items)
         lastUserIdRef.current = user.id // Marcar como cargado
-        console.log("✅ Collection loaded:", data.data?.length || 0, "items")
+        
+        // Log detallado para debugging
+        const setsCount = items.reduce((acc: Record<string, number>, item: any) => {
+          const setId = item.card_id?.split("-")[0] || "unknown"
+          acc[setId] = (acc[setId] || 0) + 1
+          return acc
+        }, {})
+        
+        console.log("✅ Collection loaded:", {
+          total: items.length,
+          bySet: setsCount,
+          sampleIds: items.slice(0, 5).map((i: any) => i.card_id)
+        })
+      } else {
+        console.error("❌ API returned error:", data.error)
       }
     } catch (error) {
       console.error("❌ Error loading collection:", error)
@@ -142,7 +157,7 @@ export function useCollection() {
   const manualRefresh = () => {
     // Invalidar cache para forzar recarga
     lastUserIdRef.current = null
-    loadCollection()
+    loadCollection(true) // Forzar recarga
   }
 
   return {

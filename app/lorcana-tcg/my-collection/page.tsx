@@ -20,7 +20,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { SlidersHorizontal } from "lucide-react"
 import { 
   Loader2, Lock, Package, Trash2, ExternalLink, 
-  TrendingUp, Plus, Minus, Check, List, Sparkles, ShoppingCart, AlertCircle
+  TrendingUp, Plus, Minus, Check, List, Sparkles, ShoppingCart, AlertCircle, RefreshCw
 } from "lucide-react"
 import type { Card as CardType } from "@/lib/types"
 
@@ -39,7 +39,7 @@ function MyCollectionContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading: userLoading } = useUser()
-  const { collection, isInCollection, addToCollection, removeFromCollection, refresh } = useCollection()
+  const { collection, isInCollection, addToCollection, removeFromCollection, refresh, loading } = useCollection()
   const { addToCart } = useCart()
   const { toast } = useToast()
   
@@ -467,7 +467,24 @@ function MyCollectionContent() {
         <div className="container mx-auto px-4 py-12">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">{t("myCollection")}</h1>
+            <div className="flex items-center justify-between mb-2">
+              <h1 className="text-4xl font-bold">{t("myCollection")}</h1>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  refresh()
+                  toast({
+                    title: "Actualizando...",
+                    description: "Recargando tu colección desde la base de datos",
+                  })
+                }}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                Actualizar
+              </Button>
+            </div>
             <p className="text-muted-foreground">{t("myCollectionDesc")}</p>
           </div>
 
