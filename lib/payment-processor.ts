@@ -5,6 +5,7 @@
  */
 
 import { supabaseAdmin } from './db'
+import { sendOrderConfirmationEmail, sendAdminNotificationEmail } from './email'
 
 export interface PaymentItem {
   id: string
@@ -24,6 +25,10 @@ export interface ProcessPaymentParams {
   mpFeeAmount?: number
   netReceivedAmount?: number
   totalPaidAmount?: number
+  // Datos de envío
+  shippingMethod?: string
+  shippingAddress?: any
+  shippingCost?: number
 }
 
 /**
@@ -38,7 +43,10 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
     status,
     mpFeeAmount,
     netReceivedAmount,
-    totalPaidAmount 
+    totalPaidAmount,
+    shippingMethod,
+    shippingAddress,
+    shippingCost
   } = params
 
   if (status !== 'approved') {
@@ -132,6 +140,48 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
       console.log(`   Total paid: $${totalAmount}`)
       console.log(`   MP Fee: $${mpFeeAmount || 0}`)
       console.log(`   Net received: $${netReceivedAmount || totalAmount}`)
+
+      // Enviar correos de confirmación
+      if (customerEmail) {
+        try {
+          // Correo al cliente
+          await sendOrderConfirmationEmail({
+            orderId: externalReference,
+            paymentId,
+            customerEmail,
+            items: items.map(item => ({
+              name: item.name,
+              quantity: item.quantity,
+              version: item.version,
+              price: item.price,
+            })),
+            totalAmount,
+            shippingMethod,
+            shippingAddress,
+            shippingCost,
+          })
+
+          // Correo al administrador
+          await sendAdminNotificationEmail({
+            orderId: externalReference,
+            paymentId,
+            customerEmail,
+            items: items.map(item => ({
+              name: item.name,
+              quantity: item.quantity,
+              version: item.version,
+              price: item.price,
+            })),
+            totalAmount,
+            shippingMethod,
+            shippingAddress,
+            shippingCost,
+          })
+        } catch (emailError) {
+          console.error('Error sending confirmation emails:', emailError)
+          // No fallar el proceso si el correo falla
+        }
+      }
     } catch (orderError) {
       console.error('Error creating order:', orderError)
     }

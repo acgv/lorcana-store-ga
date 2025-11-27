@@ -327,7 +327,7 @@ pnpm type-check         # TypeScript check
 ## 📞 Soporte
 
 **GA Company**
-- 📧 Email: ga.company.contact@gmail.com
+- 📧 Email: ga.multiverse.store@gmail.com
 - 📱 WhatsApp: +56 9 5183 0357
 - 🌐 Web: [www.gacompany.cl](https://www.gacompany.cl)
 - 📍 Santiago, Chile

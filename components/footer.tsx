@@ -66,7 +66,7 @@ export function Footer() {
                 <Music2 className="h-5 w-5" />
               </a> */}
               <a 
-                href="mailto:ga.company.contact@gmail.com"
+                href="mailto:ga.multiverse.store@gmail.com"
                 className="text-muted-foreground hover:text-primary transition-colors"
                 title="Email"
               >

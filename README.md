@@ -724,7 +724,7 @@ Inspirado por **Disney Lorcana TCG** ✨
 
 **GA Company** - Tienda de singles de Disney Lorcana TCG
 
-- 📧 Email: [ga.company.contact@gmail.com](mailto:ga.company.contact@gmail.com)
+- 📧 Email: [ga.multiverse.store@gmail.com](mailto:ga.multiverse.store@gmail.com)
 - 📱 WhatsApp: [+56 9 5183 0357](https://wa.me/56951830357)
 - 📸 Instagram: [@arte.grafico.sublimable](https://instagram.com/arte.grafico.sublimable)
 - 🎵 TikTok: [@arte.grafico.sublimable](https://tiktok.com/@arte.grafico.sublimable)

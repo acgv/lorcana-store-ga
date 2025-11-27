@@ -334,8 +334,8 @@ export default function PrivacyPage() {
                   <p className="text-xs font-medium text-foreground mb-2">Para ejercer tus derechos:</p>
                   <p className="text-xs">
                     Contáctanos en{" "}
-                    <a href="mailto:ga.company.contact@gmail.com" className="text-primary hover:underline">
-                      ga.company.contact@gmail.com
+                    <a href="mailto:ga.multiverse.store@gmail.com" className="text-primary hover:underline">
+                      ga.multiverse.store@gmail.com
                     </a>
                     {" "}o llama al{" "}
                     <a href="tel:+56951830357" className="text-primary hover:underline">
@@ -429,8 +429,8 @@ export default function PrivacyPage() {
                       <Mail className="h-4 w-4 text-primary" />
                       Correo Electrónico
                     </h4>
-                    <a href="mailto:ga.company.contact@gmail.com" className="text-primary hover:underline">
-                      ga.company.contact@gmail.com
+                    <a href="mailto:ga.multiverse.store@gmail.com" className="text-primary hover:underline">
+                      ga.multiverse.store@gmail.com
                     </a>
                   </div>
                   <div className="p-4 bg-muted rounded-lg">

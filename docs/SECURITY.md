@@ -275,7 +275,7 @@ Si detectas un problema de seguridad:
 
 1. **NO** lo publiques en GitHub Issues
 2. **Contacta directamente:**
-   - 📧 ga.company.contact@gmail.com
+   - 📧 ga.multiverse.store@gmail.com
    - 📱 WhatsApp: +56 9 5183 0357
 3. Describe el problema en detalle
 4. Proporciona pasos para reproducir

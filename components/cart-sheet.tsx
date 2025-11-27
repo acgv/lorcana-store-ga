@@ -119,6 +119,12 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
         }),
       })
 
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ HTTP Error:', response.status, errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
+
       const data = await response.json()
 
       if (data.success && data.initPoint) {
@@ -127,14 +133,17 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
         // Redirigir a Mercado Pago
         window.location.href = data.initPoint
       } else {
-        throw new Error(data.error || 'Failed to create payment preference')
+        console.error('❌ Payment preference creation failed:', data)
+        throw new Error(data.error || data.details || 'Failed to create payment preference')
       }
     } catch (error) {
       console.error('❌ Error creating payment:', error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
       toast({
         variant: "destructive",
         title: t("error"),
-        description: t("checkoutError"),
+        description: errorMessage || t("checkoutError"),
+        duration: 5000,
       })
       setProcessingCheckout(false)
     }

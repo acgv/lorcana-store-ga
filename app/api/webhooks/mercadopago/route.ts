@@ -78,6 +78,21 @@ export async function POST(request: Request) {
             console.log(`   MP Fee: $${mpFeeAmount}`)
             console.log(`   Net received: $${netReceivedAmount}`)
 
+            // Extraer datos de envío del metadata
+            const metadata = payment.metadata || {}
+            const shippingMethod = metadata.shipping_method || 'pickup'
+            const shippingCost = metadata.shipping_cost ? Number(metadata.shipping_cost) : 0
+            let shippingAddress = null
+            if (metadata.shipping_address) {
+              try {
+                shippingAddress = typeof metadata.shipping_address === 'string' 
+                  ? JSON.parse(metadata.shipping_address)
+                  : metadata.shipping_address
+              } catch (e) {
+                console.warn('Error parsing shipping address:', e)
+              }
+            }
+
             const result = await processConfirmedPayment({
               paymentId: String(paymentId),
               externalReference: externalRef,
@@ -88,6 +103,10 @@ export async function POST(request: Request) {
               mpFeeAmount,
               netReceivedAmount,
               totalPaidAmount,
+              // ⭐ Pasar datos de envío
+              shippingMethod,
+              shippingAddress,
+              shippingCost,
             })
 
             console.log('📦 Stock update result:', result)

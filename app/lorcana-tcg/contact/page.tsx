@@ -14,8 +14,8 @@ export default function ContactPage() {
     {
       icon: Mail,
       label: "Email",
-      value: "ga.company.contact@gmail.com",
-      href: "mailto:ga.company.contact@gmail.com",
+      value: "ga.multiverse.store@gmail.com",
+      href: "mailto:ga.multiverse.store@gmail.com",
       description: "Escríbenos para cualquier consulta"
     },
     {
