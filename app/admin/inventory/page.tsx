@@ -16,6 +16,7 @@ import { Package, Search, Save, AlertCircle, Loader2, Download, Plus } from "luc
 import Image from "next/image"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import { calculateStandardFoilPrice, ensureFoilPriceGreater } from "@/lib/price-utils"
 
 interface InventoryItem {
   id: string
@@ -196,11 +197,29 @@ export default function InventoryPage() {
   const handlePriceChange = (cardId: string, type: 'normal' | 'foil', value: string) => {
     const numValue = parseFloat(value) || 0
     const current = editedCards.get(cardId) || {}
+    const item = inventory.find(i => i.id === cardId)
+    
+    // Obtener precios actuales (del estado editado o del inventario)
+    const currentNormalPrice = current.price ?? item?.price ?? 0
+    const currentFoilPrice = current.foilPrice ?? item?.foilPrice ?? 0
     
     if (type === 'normal') {
-      setEditedCards(new Map(editedCards.set(cardId, { ...current, price: numValue })))
+      // Si se cambia el precio normal, calcular el precio foil usando el estándar
+      const newNormalPrice = numValue
+      const newFoilPrice = calculateStandardFoilPrice(newNormalPrice)
+      
+      setEditedCards(new Map(editedCards.set(cardId, { 
+        ...current, 
+        price: newNormalPrice,
+        foilPrice: newFoilPrice
+      })))
     } else {
-      setEditedCards(new Map(editedCards.set(cardId, { ...current, foilPrice: numValue })))
+      // Si se cambia el precio foil manualmente, asegurar que sea mayor que el precio normal
+      const newFoilPrice = Math.max(numValue, currentNormalPrice + 1)
+      setEditedCards(new Map(editedCards.set(cardId, { 
+        ...current, 
+        foilPrice: newFoilPrice 
+      })))
     }
   }
 
@@ -566,6 +585,10 @@ export default function InventoryPage() {
     setImporting(true)
     
     try {
+      // Calcular precio foil usando el estándar
+      const basePrice = newCard.price || 0
+      const foilPrice = calculateStandardFoilPrice(basePrice)
+      
       const cardData: any = {
         name: newCard.name,
         productType: "card",
@@ -574,8 +597,8 @@ export default function InventoryPage() {
         rarity: newCard.rarity,
         number: Number(newCard.number),
         cardNumber: cardNumber,
-        price: Number(newCard.price) || 0,
-        foilPrice: Number(newCard.foilPrice) || 0,
+        price: basePrice,
+        foilPrice: foilPrice,
         normalStock: Number(newCard.normalStock) || 0,
         foilStock: Number(newCard.foilStock) || 0,
         image: newCard.image || "",

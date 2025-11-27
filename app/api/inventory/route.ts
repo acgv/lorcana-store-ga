@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { mockCards } from "@/lib/mock-data"
 import { supabase, supabaseAdmin } from "@/lib/db"
 import { rateLimitApi, RateLimitPresets } from "@/lib/rate-limit"
+import { calculateStandardFoilPrice, ensureFoilPriceGreater } from "@/lib/price-utils"
 
 // GET: Obtener todas las cartas y productos con su stock
 export async function GET() {
@@ -221,11 +222,37 @@ export async function POST(request: Request) {
           // Es una carta, actualizar en tabla cards
           console.log(`📝 POST /api/inventory - Updating CARD in Supabase:`, cardId)
           
+          // Obtener precios actuales de la base de datos para validación
+          const { data: currentCard } = await supabaseAdmin
+            .from("cards")
+            .select("price, foilPrice")
+            .eq("id", cardId)
+            .single()
+          
+          const currentPrice = currentCard?.price ?? 0
+          const currentFoilPrice = currentCard?.foilPrice ?? 0
+          
           const updates: any = {}
           if (normalStock !== undefined) updates.normalStock = Math.max(0, Number(normalStock) || 0)
           if (foilStock !== undefined) updates.foilStock = Math.max(0, Number(foilStock) || 0)
-          if (price !== undefined) updates.price = Math.max(0, Number(price) || 0)
-          if (foilPrice !== undefined) updates.foilPrice = Math.max(0, Number(foilPrice) || 0)
+          
+          // Manejar precios: usar estándar para calcular foilPrice
+          if (price !== undefined) {
+            const newPrice = Math.max(0, Number(price) || 0)
+            updates.price = newPrice
+            
+            // Si se actualiza el precio normal, calcular foilPrice usando el estándar
+            if (foilPrice === undefined) {
+              updates.foilPrice = calculateStandardFoilPrice(newPrice)
+            }
+          }
+          
+          if (foilPrice !== undefined) {
+            const newFoilPrice = Math.max(0, Number(foilPrice) || 0)
+            const finalPrice = price !== undefined ? Number(price) || 0 : currentPrice
+            // Asegurar que foilPrice sea siempre mayor que price usando el estándar
+            updates.foilPrice = ensureFoilPriceGreater(finalPrice, newFoilPrice)
+          }
 
           const { data, error } = await supabaseAdmin
             .from("cards")
@@ -378,12 +405,38 @@ export async function PATCH(request: Request) {
             }
           } else {
             // Es una carta
+            // Obtener precios actuales de la base de datos para validación
+            const { data: currentCard } = await supabaseAdmin
+              .from("cards")
+              .select("price, foilPrice")
+              .eq("id", cardId)
+              .single()
+            
+            const currentPrice = currentCard?.price ?? 0
+            const currentFoilPrice = currentCard?.foilPrice ?? 0
+            
             const changes: any = {}
             // NO incluir updatedAt manualmente - dejar que el trigger lo maneje
             if (update.normalStock !== undefined) changes.normalStock = Math.max(0, Number(update.normalStock) || 0)
             if (update.foilStock !== undefined) changes.foilStock = Math.max(0, Number(update.foilStock) || 0)
-            if (update.price !== undefined) changes.price = Math.max(0, Number(update.price) || 0)
-            if (update.foilPrice !== undefined) changes.foilPrice = Math.max(0, Number(update.foilPrice) || 0)
+            
+            // Manejar precios: usar estándar para calcular foilPrice
+            if (update.price !== undefined) {
+              const newPrice = Math.max(0, Number(update.price) || 0)
+              changes.price = newPrice
+              
+              // Si se actualiza el precio normal, calcular foilPrice usando el estándar
+              if (update.foilPrice === undefined) {
+                changes.foilPrice = calculateStandardFoilPrice(newPrice)
+              }
+            }
+            
+            if (update.foilPrice !== undefined) {
+              const newFoilPrice = Math.max(0, Number(update.foilPrice) || 0)
+              const finalPrice = update.price !== undefined ? Number(update.price) || 0 : currentPrice
+              // Asegurar que foilPrice sea siempre mayor que price usando el estándar
+              changes.foilPrice = ensureFoilPriceGreater(finalPrice, newFoilPrice)
+            }
             
             if (Object.keys(changes).length === 0) {
               results.push({ cardId, success: false, error: "No valid fields to update" })

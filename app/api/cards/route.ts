@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Database, supabase } from "@/lib/db"
 import { mockCards } from "@/lib/mock-data"
+import { calculateStandardFoilPrice } from "@/lib/price-utils"
 import type { ApiResponse, Card } from "@/lib/types"
 
 // Initialize database with mock data
@@ -162,11 +163,23 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Calcular precio foil usando el estándar
+      const basePrice = product.price ?? 0
+      let foilPrice = product.foilPrice ?? null
+      
+      // Si no se proporciona foilPrice, calcularlo usando el estándar
+      if (foilPrice === null || foilPrice === undefined) {
+        foilPrice = calculateStandardFoilPrice(basePrice)
+      } else {
+        // Si se proporciona, asegurar que sea mayor que price usando el estándar
+        foilPrice = Math.max(Number(foilPrice), calculateStandardFoilPrice(basePrice))
+      }
+
       const row: any = {
         id: cardId,
         name: product.name,
         image: product.image ?? null,
-        price: product.price ?? null,
+        price: basePrice,
         description: product.description ?? null,
         status: product.status ?? "approved",
         // Campos específicos de cartas (requeridos por schema NOT NULL)
@@ -175,7 +188,7 @@ export async function POST(request: NextRequest) {
         type: product.type ?? (productType === "card" ? "character" : null),
         number: product.number ?? 0,
         cardNumber: product.cardNumber ?? null,
-        foilPrice: product.foilPrice ?? null,
+        foilPrice: foilPrice,
         version: product.version ?? "normal",
         language: product.language ?? "en",
         normalStock: product.normalStock ?? product.stock ?? 0,
