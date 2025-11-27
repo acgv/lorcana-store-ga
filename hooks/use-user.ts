@@ -57,6 +57,14 @@ export function useUser() {
 
   const checkAdminStatus = async (userId: string) => {
     try {
+      // Verificar que Supabase esté configurado
+      if (!supabase) {
+        console.warn("⚠️ Supabase not configured, skipping admin check")
+        setIsAdmin(false)
+        setLoading(false)
+        return
+      }
+
       // Check if user has admin role in user_roles table
       const { data, error } = await supabase
         .from("user_roles")
@@ -66,13 +74,22 @@ export function useUser() {
         .maybeSingle()
 
       if (error) {
-        console.error("Error checking admin status:", error)
+        // Solo loggear errores que no sean de red/configuración
+        if (error.message && !error.message.includes("Failed to fetch")) {
+          console.error("Error checking admin status:", error)
+        }
         setIsAdmin(false)
       } else {
         setIsAdmin(!!data)
       }
-    } catch (error) {
-      console.error("Exception checking admin status:", error)
+    } catch (error: any) {
+      // Ignorar errores de red silenciosamente (puede ser que Supabase no esté disponible)
+      if (error?.message && error.message.includes("Failed to fetch")) {
+        // Error de red, probablemente Supabase no está disponible
+        console.warn("⚠️ Supabase connection failed, admin check skipped")
+      } else {
+        console.error("Exception checking admin status:", error)
+      }
       setIsAdmin(false)
     } finally {
       setLoading(false)
