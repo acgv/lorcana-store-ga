@@ -31,7 +31,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
   const { t } = useLanguage()
 
   return (
-    <div className="space-y-6 p-6 rounded-lg bg-card/50 backdrop-blur-sm border border-primary/20 shadow-lg shadow-primary/5">
+    <div className="space-y-6 p-6 rounded-lg bg-card/50 backdrop-blur-sm border border-primary/20 shadow-lg shadow-primary/5 overflow-hidden">
       <div>
         <h3 className="font-sans text-2xl font-bold mb-6 tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
           {t("filters")}
@@ -54,7 +54,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
         <div className="space-y-3">
           <Label className="text-sm font-semibold text-foreground/90">Tipo de Producto</Label>
           <Select value={filters.productType || "all"} onValueChange={(value) => setFilters({ ...filters, productType: value })}>
-            <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors">
+            <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
               <SelectValue placeholder="Tipo de Producto" />
             </SelectTrigger>
             <SelectContent>
@@ -77,7 +77,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
         <div className="space-y-3">
           <Label className="text-sm font-semibold text-foreground/90">{t("type")}</Label>
           <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
-            <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors">
+            <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
               <SelectValue placeholder={t("type")} />
             </SelectTrigger>
             <SelectContent>
@@ -95,7 +95,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
       <div className="space-y-3">
         <Label className="text-sm font-semibold text-foreground/90">{t("set")}</Label>
         <Select value={filters.set} onValueChange={(value) => setFilters({ ...filters, set: value })}>
-          <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors">
+          <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
             <SelectValue placeholder={t("set")} />
           </SelectTrigger>
           <SelectContent>
@@ -118,7 +118,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
       <div className="space-y-3">
         <Label className="text-sm font-semibold text-foreground/90">{t("rarity")}</Label>
         <Select value={filters.rarity} onValueChange={(value) => setFilters({ ...filters, rarity: value })}>
-          <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors">
+          <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
             <SelectValue placeholder={t("rarity")} />
           </SelectTrigger>
           <SelectContent>
@@ -137,7 +137,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
       <div className="space-y-3">
         <Label className="text-sm font-semibold text-foreground/90">{t("versionAvailability")}</Label>
         <Select value={filters.version} onValueChange={(value) => setFilters({ ...filters, version: value })}>
-          <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors">
+          <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
             <SelectValue placeholder={t("allVersions")} />
           </SelectTrigger>
           <SelectContent>
@@ -173,7 +173,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
       <div className="space-y-3">
         <Label className="text-sm font-semibold text-foreground/90">{t("sortBy")}</Label>
         <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors">
+          <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

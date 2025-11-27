@@ -390,7 +390,7 @@ function CatalogContent() {
 
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
           {/* Filtros Desktop (ocultos en mobile) */}
-          <aside className="hidden lg:block lg:w-64 flex-shrink-0">
+          <aside className="hidden lg:block lg:w-64 flex-shrink-0 overflow-hidden">
             <CardFilters
               filters={{
                 ...filters,
