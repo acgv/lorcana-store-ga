@@ -40,6 +40,17 @@ function CatalogContent() {
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "cardNumberLowHigh")
   const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
 
+  // Polyfill para requestIdleCallback (para compatibilidad con móviles)
+  const requestIdleCallbackPolyfill = (callback: () => void, options?: { timeout?: number }) => {
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      return (window as any).requestIdleCallback(callback, options)
+    } else {
+      // Fallback: ejecutar inmediatamente pero de forma asíncrona
+      const timeout = options?.timeout || 0
+      return setTimeout(callback, Math.max(timeout, 0))
+    }
+  }
+
   // Cargar cartas con caché y carga progresiva (no bloqueante)
   useEffect(() => {
     let isMounted = true
@@ -62,17 +73,11 @@ function CatalogContent() {
             const cachedCards = JSON.parse(cached)
             if (isMounted) {
               setAllCards(cachedCards)
-              setCards(cachedCards.slice(0, 100)) // Mostrar primeras 100
+              // Mostrar todas las cartas inmediatamente desde caché (ya están en memoria)
+              setCards(cachedCards)
               setLoading(false)
               setInitialLoad(false)
               console.log(`✅ Cartas cargadas desde caché: ${cachedCards.length} cartas`)
-              
-              // Cargar el resto en background sin bloquear
-              requestIdleCallback(() => {
-                if (isMounted) {
-                  setCards(cachedCards)
-                }
-              }, { timeout: 1000 })
             }
             return
           }
@@ -84,7 +89,7 @@ function CatalogContent() {
             const cachedCards = JSON.parse(cached)
             if (isMounted) {
               setAllCards(cachedCards)
-              setCards(cachedCards.slice(0, 100))
+              setCards(cachedCards) // Mostrar todas las cartas del caché
               setLoading(false)
               setInitialLoad(false)
             }
@@ -123,8 +128,8 @@ function CatalogContent() {
           if (isMounted) {
             setAllCards(allCardsData)
             
-            // Mostrar primeras 100 cartas inmediatamente
-            setCards(allCardsData.slice(0, 100))
+            // Mostrar todas las cartas inmediatamente (ya están cargadas)
+            setCards(allCardsData)
             setLoading(false)
             setInitialLoad(false)
             
@@ -133,13 +138,6 @@ function CatalogContent() {
             localStorage.setItem(cacheTimestamp, Date.now().toString())
             
             console.log(`✅ Cartas cargadas: ${allCardsData.length} desde ${result.meta?.source || "mock"}`)
-            
-            // Cargar el resto en background sin bloquear
-            requestIdleCallback(() => {
-              if (isMounted) {
-                setCards(allCardsData)
-              }
-            }, { timeout: 1000 })
           }
         } else {
           // Fallback a mock si API falla
@@ -160,24 +158,15 @@ function CatalogContent() {
         console.error("Error loading cards:", error)
         if (isMounted) {
           setAllCards(mockCards)
-          setCards(mockCards.slice(0, 100))
+          setCards(mockCards) // Mostrar todas las cartas mock
           setLoading(false)
           setInitialLoad(false)
         }
       }
     }
     
-    // Usar requestIdleCallback para no bloquear la UI, con polyfill
-    const scheduleLoad = () => {
-      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(loadCards, { timeout: 100 })
-      } else {
-        // Fallback: usar setTimeout con delay mínimo para no bloquear
-        setTimeout(loadCards, 0)
-      }
-    }
-    
-    scheduleLoad()
+    // Usar polyfill para cargar sin bloquear la UI
+    requestIdleCallbackPolyfill(loadCards, { timeout: 100 })
     
     // Cleanup: cancelar petición si el componente se desmonta
     return () => {
