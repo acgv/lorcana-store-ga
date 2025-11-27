@@ -371,9 +371,6 @@ Si recibes este correo, significa que la configuración de email está funcionan
         <div class="info-item">
           <p><strong>Fecha y Hora:</strong> ${testDate}</p>
         </div>
-        <div class="info-item">
-          <p><strong>Servidor SMTP:</strong> ${process.env.SMTP_HOST || 'Configurado'}</p>
-        </div>
         
         ${message ? `
         <h3 style="margin-top: 20px;">Mensaje Personalizado:</h3>
@@ -397,7 +394,7 @@ ${defaultMessage}
       <p>Si tienes alguna pregunta sobre la configuración, no dudes en contactarnos.</p>
     </div>
     <div class="footer">
-      <p>G&A Company SpA - Multiverse Store</p>
+      <p>G&A Company SpA</p>
       <p>Email: ga.multiverse.store@gmail.com</p>
     </div>
   </div>
@@ -415,7 +412,6 @@ Este es un correo de prueba desde el panel de administración de Multiverse Stor
 Información de Prueba:
 - Estado del Sistema: ✅ Funcionando Correctamente
 - Fecha y Hora: ${testDate}
-- Servidor SMTP: ${process.env.SMTP_HOST || 'Configurado'}
 
 ${message || defaultMessage}
 
@@ -426,7 +422,7 @@ Si recibes este correo, significa que:
 
 Si tienes alguna pregunta sobre la configuración, no dudes en contactarnos.
 
-G&A Company SpA - Multiverse Store
+G&A Company SpA
 Email: ga.multiverse.store@gmail.com
   `
 
