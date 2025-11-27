@@ -237,23 +237,26 @@ export default function InventoryPage() {
         return
       }
 
-      // Éxito - actualizar estado local
+      // Éxito - actualizar estado local con los datos del servidor
+      const updatedCard = data.card
+      const itemName = updatedCard?.name || inventory.find(i => i.id === cardId)?.name || cardId
+      
       setInventory(prev => prev.map(item => {
         if (item.id === cardId) {
           const isProduct = item.productType && item.productType !== "card"
           if (isProduct) {
             return {
               ...item,
-              normalStock: changes.stock ?? item.normalStock,
-              price: changes.price ?? item.price
+              normalStock: updatedCard.stock ?? updatedCard.normalStock ?? changes.stock ?? item.normalStock,
+              price: updatedCard.price ?? changes.price ?? item.price
             }
           } else {
             return {
               ...item,
-              normalStock: changes.normalStock ?? item.normalStock,
-              foilStock: changes.foilStock ?? item.foilStock,
-              price: changes.price ?? item.price,
-              foilPrice: changes.foilPrice ?? item.foilPrice
+              normalStock: updatedCard.normalStock ?? changes.normalStock ?? item.normalStock,
+              foilStock: updatedCard.foilStock ?? changes.foilStock ?? item.foilStock,
+              price: updatedCard.price ?? changes.price ?? item.price,
+              foilPrice: updatedCard.foilPrice ?? changes.foilPrice ?? item.foilPrice
             }
           }
         }
@@ -266,10 +269,18 @@ export default function InventoryPage() {
       setEditedCards(newEdited)
 
       const source = data.meta?.source || "unknown"
+      const type = data.meta?.type || "item"
+      console.log(`✅ Stock guardado exitosamente:`, { cardId, type, source, updatedCard })
+      
       toast({
         title: "✅ Guardado",
-        description: `Stock actualizado para ${data.card.name} (${source})`,
+        description: `Stock actualizado para ${itemName} (${type}, ${source})`,
       })
+      
+      // Recargar inventario después de un breve delay para asegurar sincronización
+      setTimeout(() => {
+        fetchInventory(false) // Recargar sin mostrar loading
+      }, 500)
     } catch (error) {
       console.error("❌ Error updating stock:", error)
       toast({

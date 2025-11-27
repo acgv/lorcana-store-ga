@@ -154,12 +154,17 @@ export async function POST(request: Request) {
     if (supabaseAdmin) {
       try {
         // Primero verificar si es un producto (en tabla products) o una carta (en tabla cards)
-        // Intentar buscar en products primero
+        // Intentar buscar en products primero usando select * para evitar problemas con nombres de columnas
         const { data: productData, error: productError } = await supabaseAdmin
           .from("products")
-          .select("id, producttype")
+          .select("*")
           .eq("id", cardId)
           .maybeSingle()
+
+        console.log(`🔍 POST /api/inventory - Product lookup for ${cardId}:`, { 
+          found: !!productData, 
+          error: productError?.message 
+        })
 
         if (productData && !productError) {
           // Es un producto, actualizar en tabla products
