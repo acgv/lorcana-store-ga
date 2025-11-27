@@ -40,8 +40,11 @@ function CatalogContent() {
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "cardNumberLowHigh")
   const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
 
-  // Cargar cartas con caché y carga progresiva
+  // Cargar cartas con caché y carga progresiva (no bloqueante)
   useEffect(() => {
+    let isMounted = true
+    let abortController: AbortController | null = null
+    
     const loadCards = async () => {
       // Verificar caché primero
       const cacheKey = "lorcana_cards_cache"
@@ -52,29 +55,59 @@ function CatalogContent() {
         const cached = localStorage.getItem(cacheKey)
         const cachedTime = localStorage.getItem(cacheTimestamp)
         
-        // Si hay caché válido (menos de 5 minutos), usarlo
+        // Si hay caché válido (menos de 5 minutos), usarlo inmediatamente
         if (cached && cachedTime) {
           const age = Date.now() - parseInt(cachedTime)
           if (age < CACHE_DURATION) {
             const cachedCards = JSON.parse(cached)
-            setAllCards(cachedCards)
-            setCards(cachedCards.slice(0, 100)) // Mostrar primeras 100
-            setLoading(false)
-            setInitialLoad(false)
-            console.log(`✅ Cartas cargadas desde caché: ${cachedCards.length} cartas`)
-            
-            // Cargar el resto en background
-            setTimeout(() => {
-              setCards(cachedCards)
-            }, 100)
+            if (isMounted) {
+              setAllCards(cachedCards)
+              setCards(cachedCards.slice(0, 100)) // Mostrar primeras 100
+              setLoading(false)
+              setInitialLoad(false)
+              console.log(`✅ Cartas cargadas desde caché: ${cachedCards.length} cartas`)
+              
+              // Cargar el resto en background sin bloquear
+              requestIdleCallback(() => {
+                if (isMounted) {
+                  setCards(cachedCards)
+                }
+              }, { timeout: 1000 })
+            }
             return
           }
         }
         
-        setLoading(true)
+        // Mostrar contenido inmediatamente si hay caché antiguo
+        if (cached) {
+          try {
+            const cachedCards = JSON.parse(cached)
+            if (isMounted) {
+              setAllCards(cachedCards)
+              setCards(cachedCards.slice(0, 100))
+              setLoading(false)
+              setInitialLoad(false)
+            }
+          } catch (e) {
+            // Si el caché está corrupto, continuar con la carga
+          }
+        } else {
+          // Solo mostrar loading si no hay caché
+          if (isMounted) {
+            setLoading(true)
+          }
+        }
         
-        // Cargar desde API
-        const response = await fetch(`/api/cards`)
+        // Crear AbortController para cancelar la petición si el componente se desmonta
+        abortController = new AbortController()
+        
+        // Cargar desde API de forma asíncrona (no bloquea navegación)
+        const response = await fetch(`/api/cards`, {
+          signal: abortController.signal,
+        })
+        
+        if (!isMounted) return // Si el componente se desmontó, no actualizar estado
+        
         const result = await response.json()
         
         if (result.success) {
@@ -87,40 +120,72 @@ function CatalogContent() {
             productType: "card",
           }))
           
-          setAllCards(allCardsData)
-          
-          // Mostrar primeras 100 cartas inmediatamente
-          setCards(allCardsData.slice(0, 100))
-          setLoading(false)
-          setInitialLoad(false)
-          
-          // Guardar en caché
-          localStorage.setItem(cacheKey, JSON.stringify(allCardsData))
-          localStorage.setItem(cacheTimestamp, Date.now().toString())
-          
-          console.log(`✅ Cartas cargadas: ${allCardsData.length} desde ${result.meta?.source || "mock"}`)
-          
-          // Cargar el resto en background después de un breve delay
-          setTimeout(() => {
-            setCards(allCardsData)
-          }, 500)
+          if (isMounted) {
+            setAllCards(allCardsData)
+            
+            // Mostrar primeras 100 cartas inmediatamente
+            setCards(allCardsData.slice(0, 100))
+            setLoading(false)
+            setInitialLoad(false)
+            
+            // Guardar en caché
+            localStorage.setItem(cacheKey, JSON.stringify(allCardsData))
+            localStorage.setItem(cacheTimestamp, Date.now().toString())
+            
+            console.log(`✅ Cartas cargadas: ${allCardsData.length} desde ${result.meta?.source || "mock"}`)
+            
+            // Cargar el resto en background sin bloquear
+            requestIdleCallback(() => {
+              if (isMounted) {
+                setCards(allCardsData)
+              }
+            }, { timeout: 1000 })
+          }
         } else {
           // Fallback a mock si API falla
+          if (isMounted) {
+            setAllCards(mockCards)
+            setCards(mockCards.slice(0, 100))
+            setLoading(false)
+            setInitialLoad(false)
+          }
+        }
+      } catch (error: any) {
+        // Ignorar errores de abort (navegación cancelada)
+        if (error.name === 'AbortError') {
+          console.log('🔄 Carga cancelada por navegación')
+          return
+        }
+        
+        console.error("Error loading cards:", error)
+        if (isMounted) {
           setAllCards(mockCards)
           setCards(mockCards.slice(0, 100))
           setLoading(false)
           setInitialLoad(false)
         }
-      } catch (error) {
-        console.error("Error loading cards:", error)
-        setAllCards(mockCards)
-        setCards(mockCards.slice(0, 100))
-        setLoading(false)
-        setInitialLoad(false)
       }
     }
     
-    loadCards()
+    // Usar requestIdleCallback para no bloquear la UI, con polyfill
+    const scheduleLoad = () => {
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(loadCards, { timeout: 100 })
+      } else {
+        // Fallback: usar setTimeout con delay mínimo para no bloquear
+        setTimeout(loadCards, 0)
+      }
+    }
+    
+    scheduleLoad()
+    
+    // Cleanup: cancelar petición si el componente se desmonta
+    return () => {
+      isMounted = false
+      if (abortController) {
+        abortController.abort()
+      }
+    }
   }, []) // Solo cargar una vez al montar
   
   // Actualizar URL cuando cambien los filtros

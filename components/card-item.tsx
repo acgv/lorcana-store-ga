@@ -4,10 +4,11 @@ import { useState } from "react"
 import type { Card } from "@/lib/mock-data"
 import { useLanguage } from "@/components/language-provider"
 import { useCart } from "@/components/cart-provider"
+import { useCollection } from "@/hooks/use-collection"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import Image from "next/image"
-import { Sparkles, Star, AlertCircle, Package, ShoppingCart, Eye } from "lucide-react"
+import { Sparkles, Star, AlertCircle, Package, ShoppingCart, Eye, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
@@ -21,10 +22,15 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
   const { t } = useLanguage()
   const { addToCart, items } = useCart()
   const { toast } = useToast()
+  const { isInCollection } = useCollection()
   const [adding, setAdding] = useState<string | null>(null)
 
   // Detectar si es un producto (no carta)
   const isProduct = (card as any).productType && (card as any).productType !== "card"
+  
+  // Verificar si la carta está en la colección (solo para cartas, no productos)
+  const hasNormalOwned = !isProduct && isInCollection(card.id, "owned", "normal")
+  const hasFoilOwned = !isProduct && isInCollection(card.id, "owned", "foil")
   
   // Determinar la ruta correcta según el tipo
   const detailUrl = isProduct 
@@ -114,6 +120,24 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
                 {t(card.rarity)}
               </span>
               
+              {/* Owned Badges */}
+              {!isProduct && (
+                <>
+                  {hasNormalOwned && (
+                    <Badge className="bg-green-500/90 text-white border-green-400 text-xs">
+                      <Check className="h-3 w-3 mr-1" />
+                      {t("normal")}
+                    </Badge>
+                  )}
+                  {hasFoilOwned && (
+                    <Badge className="bg-green-500/90 text-white border-green-400 text-xs">
+                      <Check className="h-3 w-3 mr-1" />
+                      {t("foil")}
+                    </Badge>
+                  )}
+                </>
+              )}
+              
               {/* Stock Status */}
               {isOutOfStock && (
                 <Badge variant="destructive" className="text-xs font-sans">
@@ -180,6 +204,23 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
           <div className="absolute top-2 left-2 bg-background/90 backdrop-blur-sm px-2 py-1 rounded-md border border-primary/30">
             <span className="text-xs font-bold text-primary font-mono">#{card.number}</span>
           </div>
+          {/* Owned Badges */}
+          {!isProduct && (
+            <div className="absolute top-2 right-2 flex flex-col gap-1">
+              {hasNormalOwned && (
+                <Badge className="bg-green-500/90 text-white border-green-400 h-5 px-1.5">
+                  <Check className="h-2.5 w-2.5 mr-0.5" />
+                  <span className="text-[10px]">{t("normal")}</span>
+                </Badge>
+              )}
+              {hasFoilOwned && (
+                <Badge className="bg-green-500/90 text-white border-green-400 h-5 px-1.5">
+                  <Check className="h-2.5 w-2.5 mr-0.5" />
+                  <span className="text-[10px]">{t("foil")}</span>
+                </Badge>
+              )}
+            </div>
+          )}
           {card.rarity === "legendary" && (
             <div className="absolute top-2 right-2">
               <Sparkles className="h-5 w-5 text-accent" />
@@ -196,6 +237,24 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
         <div className="flex flex-wrap gap-2 mb-2">
           <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary capitalize font-sans">{t(card.type)}</span>
           <span className="text-xs px-2 py-1 rounded-full bg-accent/10 text-accent capitalize font-sans">{t(card.rarity)}</span>
+          
+          {/* Owned Badges */}
+          {!isProduct && (
+            <>
+              {hasNormalOwned && (
+                <Badge className="bg-green-500/90 text-white border-green-400 text-xs">
+                  <Check className="h-2.5 w-2.5 mr-1" />
+                  {t("normal")}
+                </Badge>
+              )}
+              {hasFoilOwned && (
+                <Badge className="bg-green-500/90 text-white border-green-400 text-xs">
+                  <Check className="h-2.5 w-2.5 mr-1" />
+                  {t("foil")}
+                </Badge>
+              )}
+            </>
+          )}
         </div>
         
         {/* Stock indicators */}
