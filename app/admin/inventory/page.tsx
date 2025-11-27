@@ -320,29 +320,58 @@ export default function InventoryPage() {
 
       if (data.success) {
         // Update local state
+        const successCount = data.results.filter((r: any) => r.success).length
+        const failedCount = data.results.length - successCount
+        
         data.results.forEach((result: any) => {
           if (result.success) {
-            setInventory(prev => prev.map(item => 
-              item.id === result.cardId 
-                ? { 
-                    ...item, 
-                    normalStock: result.normalStock, 
-                    foilStock: result.foilStock,
+            setInventory(prev => prev.map(item => {
+              if (item.id === result.cardId) {
+                const isProduct = item.productType && item.productType !== "card"
+                if (isProduct) {
+                  return {
+                    ...item,
+                    normalStock: result.stock ?? result.normalStock ?? item.normalStock,
+                    price: result.price ?? item.price
+                  }
+                } else {
+                  return {
+                    ...item,
+                    normalStock: result.normalStock ?? item.normalStock,
+                    foilStock: result.foilStock ?? item.foilStock,
                     price: result.price ?? item.price,
                     foilPrice: result.foilPrice ?? item.foilPrice
                   }
-                : item
-            ))
+                }
+              }
+              return item
+            }))
+          } else {
+            console.error(`❌ Failed to update ${result.cardId}:`, result.error)
           }
         })
 
         setEditedCards(new Map())
 
-        toast({
-          title: "Success",
-          description: `Updated ${data.results.filter((r: any) => r.success).length} cards`,
-        })
+        // Recargar inventario después de guardar
+        setTimeout(() => {
+          fetchInventory(false)
+        }, 500)
+
+        if (failedCount > 0) {
+          toast({
+            variant: "destructive",
+            title: "Parcialmente guardado",
+            description: `Actualizados ${successCount} items, ${failedCount} fallaron. Revisa la consola para más detalles.`,
+          })
+        } else {
+          toast({
+            title: "✅ Guardado exitoso",
+            description: `Actualizados ${successCount} items`,
+          })
+        }
       } else {
+        console.error("❌ Error en PATCH /api/inventory:", data)
         toast({
           variant: "destructive",
           title: "Error",

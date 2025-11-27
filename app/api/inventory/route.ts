@@ -336,34 +336,94 @@ export async function PATCH(request: Request) {
       try {
         const results: any[] = []
         for (const update of updates) {
-          const changes: any = { updatedAt: new Date().toISOString() }
-          if (update.normalStock !== undefined) changes.normalStock = Math.max(0, Number(update.normalStock) || 0)
-          if (update.foilStock !== undefined) changes.foilStock = Math.max(0, Number(update.foilStock) || 0)
-          if (update.price !== undefined) changes.price = Math.max(0, Number(update.price) || 0)
-          if (update.foilPrice !== undefined) changes.foilPrice = Math.max(0, Number(update.foilPrice) || 0)
-          const { data, error } = await supabaseAdmin
-            .from("cards")
-            .update(changes)
-            .eq("id", update.cardId)
-            .select("id,normalStock,foilStock,price,foilPrice")
-            .single()
-          if (error) {
-            results.push({ cardId: update.cardId, success: false, error: error.message })
+          const cardId = update.cardId
+          
+          // Verificar si es un producto o una carta
+          const { data: productData } = await supabaseAdmin
+            .from("products")
+            .select("id")
+            .eq("id", cardId)
+            .maybeSingle()
+          
+          if (productData) {
+            // Es un producto
+            const changes: any = {}
+            // NO incluir updatedAt manualmente - dejar que el trigger lo maneje
+            if (update.stock !== undefined) changes.stock = Math.max(0, Number(update.stock) || 0)
+            if (update.price !== undefined) changes.price = Math.max(0, Number(update.price) || 0)
+            
+            if (Object.keys(changes).length === 0) {
+              results.push({ cardId, success: false, error: "No valid fields to update" })
+              continue
+            }
+            
+            const { data, error } = await supabaseAdmin
+              .from("products")
+              .update(changes)
+              .eq("id", cardId)
+              .select("id,stock,price")
+              .single()
+            
+            if (error) {
+              console.log(`⚠ PATCH /api/inventory - Product update error for ${cardId}:`, error)
+              results.push({ cardId, success: false, error: error.message })
+            } else {
+              results.push({ 
+                cardId, 
+                success: true, 
+                normalStock: data?.stock,
+                stock: data?.stock,
+                price: data?.price
+              })
+            }
           } else {
-            results.push({ 
-              cardId: update.cardId, 
-              success: true, 
-              normalStock: data?.normalStock, 
-              foilStock: data?.foilStock,
-              price: data?.price,
-              foilPrice: data?.foilPrice
-            })
+            // Es una carta
+            const changes: any = {}
+            // NO incluir updatedAt manualmente - dejar que el trigger lo maneje
+            if (update.normalStock !== undefined) changes.normalStock = Math.max(0, Number(update.normalStock) || 0)
+            if (update.foilStock !== undefined) changes.foilStock = Math.max(0, Number(update.foilStock) || 0)
+            if (update.price !== undefined) changes.price = Math.max(0, Number(update.price) || 0)
+            if (update.foilPrice !== undefined) changes.foilPrice = Math.max(0, Number(update.foilPrice) || 0)
+            
+            if (Object.keys(changes).length === 0) {
+              results.push({ cardId, success: false, error: "No valid fields to update" })
+              continue
+            }
+            
+            const { data, error } = await supabaseAdmin
+              .from("cards")
+              .update(changes)
+              .eq("id", cardId)
+              .select("id,normalStock,foilStock,price,foilPrice")
+              .single()
+            
+            if (error) {
+              console.log(`⚠ PATCH /api/inventory - Card update error for ${cardId}:`, error)
+              results.push({ cardId, success: false, error: error.message })
+            } else {
+              results.push({ 
+                cardId, 
+                success: true, 
+                normalStock: data?.normalStock, 
+                foilStock: data?.foilStock,
+                price: data?.price,
+                foilPrice: data?.foilPrice
+              })
+            }
           }
         }
-        console.log(`✓ PATCH /api/inventory - Updated ${results.filter(r => r.success).length}/${results.length} in SUPABASE`)
+        const successCount = results.filter(r => r.success).length
+        console.log(`✓ PATCH /api/inventory - Updated ${successCount}/${results.length} in SUPABASE`)
         return NextResponse.json({ success: true, results })
       } catch (err) {
-        console.log(`⚠ PATCH /api/inventory - Supabase connection error: ${err instanceof Error ? err.message : "unknown"}`)
+        console.log(`⚠ PATCH /api/inventory - Supabase connection error:`, err)
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: err instanceof Error ? err.message : "Connection error"
+          },
+          { status: 500 }
+        )
       }
     }
 
