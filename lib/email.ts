@@ -20,7 +20,7 @@ try {
 }
 
 // Crear transporter reutilizable
-let transporter: nodemailer.Transporter | null = null
+let transporter: any = null
 
 function getTransporter() {
   if (!nodemailer) {
@@ -154,7 +154,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData) {
       <p>¡Gracias por tu compra!</p>
     </div>
     <div class="footer">
-      <p>G&A Company SpA - Multiverse Store</p>
+      <p>G&A Company SpA</p>
       <p>Email: ga.multiverse.store@gmail.com</p>
     </div>
   </div>
@@ -183,7 +183,7 @@ Si tienes alguna pregunta, no dudes en contactarnos.
 
 ¡Gracias por tu compra!
 
-G&A Company SpA - Multiverse Store
+G&A Company SpA
 Email: ga.multiverse.store@gmail.com
     `
 
