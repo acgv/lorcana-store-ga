@@ -480,9 +480,9 @@ function MyCollectionContent() {
                   <Package className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-500">{totalOwned}</div>
+                  <div className="text-2xl font-bold text-green-500">{totalOwnedCards}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {ownedItems.length} {ownedItems.length === 1 ? t("cardFound") : t("cardsFound")}
+                    {totalOwnedCards} {totalOwnedCards === 1 ? t("cardFound") : t("cardsFound")}
                   </p>
                 </CardContent>
               </Card>

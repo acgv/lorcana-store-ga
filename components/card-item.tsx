@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import type { Card } from "@/lib/mock-data"
 import { useLanguage } from "@/components/language-provider"
 import { useCart } from "@/components/cart-provider"
@@ -22,15 +22,38 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
   const { t } = useLanguage()
   const { addToCart, items } = useCart()
   const { toast } = useToast()
-  const { isInCollection } = useCollection()
+  const { isInCollection, collection } = useCollection()
   const [adding, setAdding] = useState<string | null>(null)
 
   // Detectar si es un producto (no carta)
   const isProduct = (card as any).productType && (card as any).productType !== "card"
   
   // Verificar si la carta está en la colección (solo para cartas, no productos)
-  const hasNormalOwned = !isProduct && isInCollection(card.id, "owned", "normal")
-  const hasFoilOwned = !isProduct && isInCollection(card.id, "owned", "foil")
+  // Usar useMemo para recalcular cuando cambie la colección
+  const { hasNormalOwned, hasFoilOwned } = useMemo(() => {
+    if (isProduct) {
+      return { hasNormalOwned: false, hasFoilOwned: false }
+    }
+    
+    // Normalizar IDs para comparación
+    const cardIdNormalized = String(card.id).trim().toLowerCase()
+    
+    const normalOwned = collection.some(item => {
+      const itemIdNormalized = String(item.card_id || "").trim().toLowerCase()
+      return itemIdNormalized === cardIdNormalized && 
+             item.status === "owned" && 
+             item.version === "normal"
+    })
+    
+    const foilOwned = collection.some(item => {
+      const itemIdNormalized = String(item.card_id || "").trim().toLowerCase()
+      return itemIdNormalized === cardIdNormalized && 
+             item.status === "owned" && 
+             item.version === "foil"
+    })
+    
+    return { hasNormalOwned: normalOwned, hasFoilOwned: foilOwned }
+  }, [card.id, collection, isProduct])
   
   // Determinar la ruta correcta según el tipo
   const detailUrl = isProduct 

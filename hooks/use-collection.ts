@@ -62,9 +62,17 @@ export function useCollection() {
     status: "owned" | "wanted", 
     version: "normal" | "foil"
   ): boolean => {
-    return collection.some(
-      (item) => item.card_id === cardId && item.status === status && item.version === version
-    )
+    if (!cardId || !collection || collection.length === 0) return false
+    
+    // Comparar IDs de forma case-insensitive y sin espacios
+    const normalizedCardId = String(cardId).trim().toLowerCase()
+    
+    return collection.some((item) => {
+      const normalizedItemId = String(item.card_id || "").trim().toLowerCase()
+      return normalizedItemId === normalizedCardId && 
+             item.status === status && 
+             item.version === version
+    })
   }
 
   const addToCollection = async (
