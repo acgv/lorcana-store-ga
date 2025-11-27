@@ -177,8 +177,12 @@ function CatalogContent() {
     }
   }, []) // Solo cargar una vez al montar
   
-  // Actualizar URL cuando cambien los filtros
+  // Actualizar URL cuando cambien los filtros (solo si estamos en la página del catálogo)
   useEffect(() => {
+    // Verificar que estamos en la página correcta antes de actualizar la URL
+    if (typeof window === 'undefined') return
+    if (!window.location.pathname.includes('/lorcana-tcg/catalog')) return
+    
     const params = new URLSearchParams()
     
     if (filters.type !== "all") params.set("type", filters.type)
@@ -195,7 +199,11 @@ function CatalogContent() {
     const queryString = params.toString()
     const newUrl = queryString ? `/lorcana-tcg/catalog?${queryString}` : "/lorcana-tcg/catalog"
     
-    router.replace(newUrl, { scroll: false })
+    // Solo actualizar si la URL es diferente
+    const currentUrl = window.location.pathname + window.location.search
+    if (currentUrl !== newUrl) {
+      router.replace(newUrl, { scroll: false })
+    }
   }, [filters, sortBy, viewMode, router])
 
   // Contar stock disponible por rareza

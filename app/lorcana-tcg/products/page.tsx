@@ -195,8 +195,12 @@ function ProductsContent() {
     }
   }, []) // Solo cargar una vez al montar
 
-  // Actualizar URL cuando cambien los filtros
+  // Actualizar URL cuando cambien los filtros (solo si estamos en la página de productos)
   useEffect(() => {
+    // Verificar que estamos en la página correcta antes de actualizar la URL
+    if (typeof window === 'undefined') return
+    if (!window.location.pathname.includes('/lorcana-tcg/products')) return
+    
     const params = new URLSearchParams()
     
     if (filters.productType && filters.productType !== "all") params.set("productType", filters.productType)
@@ -210,7 +214,11 @@ function ProductsContent() {
     const queryString = params.toString()
     const newUrl = queryString ? `/lorcana-tcg/products?${queryString}` : "/lorcana-tcg/products"
     
-    router.replace(newUrl, { scroll: false })
+    // Solo actualizar si la URL es diferente
+    const currentUrl = window.location.pathname + window.location.search
+    if (currentUrl !== newUrl) {
+      router.replace(newUrl, { scroll: false })
+    }
   }, [filters, sortBy, viewMode, router])
 
   const filteredProducts = useMemo(() => {
