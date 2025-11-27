@@ -216,7 +216,8 @@ function MyCollectionContent() {
     if (filters.search) {
       const searchLower = filters.search.toLowerCase()
       if (!card.name.toLowerCase().includes(searchLower) && 
-          !card.id.toLowerCase().includes(searchLower)) {
+          !card.id.toLowerCase().includes(searchLower) &&
+          !card.number.toString().includes(searchLower)) {
         return false
       }
     }
@@ -296,7 +297,8 @@ function MyCollectionContent() {
     if (filters.search) {
       const searchLower = filters.search.toLowerCase()
       if (!card.name.toLowerCase().includes(searchLower) && 
-          !card.id.toLowerCase().includes(searchLower)) {
+          !card.id.toLowerCase().includes(searchLower) &&
+          !card.number.toString().includes(searchLower)) {
         return false
       }
     }
@@ -337,7 +339,8 @@ function MyCollectionContent() {
     if (filters.search) {
       const searchLower = filters.search.toLowerCase()
       if (!card.name.toLowerCase().includes(searchLower) && 
-          !card.id.toLowerCase().includes(searchLower)) {
+          !card.id.toLowerCase().includes(searchLower) &&
+          !card.number.toString().includes(searchLower)) {
         return false
       }
     }
@@ -349,24 +352,22 @@ function MyCollectionContent() {
   const sortedMissingCards = [...filteredMissingCards].sort((a, b) => {
     switch (sortBy) {
       case "nameAZ":
-        return a.name.localeCompare(b.name)
+        return a.card.name.localeCompare(b.card.name)
       case "nameZA":
-        return b.name.localeCompare(a.name)
+        return b.card.name.localeCompare(a.card.name)
       case "priceLowHigh":
-        return (a.price || 0) - (b.price || 0)
+        return (a.card.price || 0) - (b.card.price || 0)
       case "priceHighLow":
-        return (b.price || 0) - (a.price || 0)
-      case "rarityHighLow":
-        const rarityOrder = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
-        return (rarityOrder[b.rarity as keyof typeof rarityOrder] || 0) - 
-               (rarityOrder[a.rarity as keyof typeof rarityOrder] || 0)
-      case "rarityLowHigh":
-        const rarityOrder2 = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
-        return (rarityOrder2[a.rarity as keyof typeof rarityOrder2] || 0) - 
-               (rarityOrder2[b.rarity as keyof typeof rarityOrder2] || 0)
+        return (b.card.price || 0) - (a.card.price || 0)
+      case "raritySort":
+        const rarityOrder = ["common", "uncommon", "rare", "superRare", "legendary", "enchanted"]
+        return rarityOrder.indexOf(a.card.rarity) - rarityOrder.indexOf(b.card.rarity)
       case "cardNumberLowHigh":
+        return (Number(a.card.number) || 0) - (Number(b.card.number) || 0)
+      case "cardNumberHighLow":
+        return (Number(b.card.number) || 0) - (Number(a.card.number) || 0)
       default:
-        return (a.number || 0) - (b.number || 0)
+        return (Number(a.card.number) || 0) - (Number(b.card.number) || 0)
     }
   })
 
@@ -383,18 +384,15 @@ function MyCollectionContent() {
         return (a.price || 0) - (b.price || 0)
       case "priceHighLow":
         return (b.price || 0) - (a.price || 0)
-      case "rarityHighLow":
-        const rarityOrder = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
-        return (rarityOrder[b.rarity as keyof typeof rarityOrder] || 0) - 
-               (rarityOrder[a.rarity as keyof typeof rarityOrder] || 0)
-      case "rarityLowHigh":
-        const rarityOrder2 = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
-        return (rarityOrder2[a.rarity as keyof typeof rarityOrder2] || 0) - 
-               (rarityOrder2[b.rarity as keyof typeof rarityOrder2] || 0)
+      case "raritySort":
+        const rarityOrder = ["common", "uncommon", "rare", "superRare", "legendary", "enchanted"]
+        return rarityOrder.indexOf(a.rarity) - rarityOrder.indexOf(b.rarity)
       case "cardNumberLowHigh":
+        return (Number(a.number) || 0) - (Number(b.number) || 0)
+      case "cardNumberHighLow":
+        return (Number(b.number) || 0) - (Number(a.number) || 0)
       default:
-        // Usar 'number' (numérico) en lugar de 'cardNumber' (string)
-        return (a.number || 0) - (b.number || 0)
+        return (Number(a.number) || 0) - (Number(b.number) || 0)
     }
   })
 
@@ -411,17 +409,15 @@ function MyCollectionContent() {
         return (cardA.price || 0) - (cardB.price || 0)
       case "priceHighLow":
         return (cardB.price || 0) - (cardA.price || 0)
-      case "rarityHighLow":
-        const rarityOrder = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
-        return (rarityOrder[cardB.rarity as keyof typeof rarityOrder] || 0) - 
-               (rarityOrder[cardA.rarity as keyof typeof rarityOrder] || 0)
-      case "rarityLowHigh":
-        const rarityOrder2 = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
-        return (rarityOrder2[cardA.rarity as keyof typeof rarityOrder2] || 0) - 
-               (rarityOrder2[cardB.rarity as keyof typeof rarityOrder2] || 0)
+      case "raritySort":
+        const rarityOrder = ["common", "uncommon", "rare", "superRare", "legendary", "enchanted"]
+        return rarityOrder.indexOf(cardA.rarity) - rarityOrder.indexOf(cardB.rarity)
       case "cardNumberLowHigh":
+        return (Number(cardA.number) || 0) - (Number(cardB.number) || 0)
+      case "cardNumberHighLow":
+        return (Number(cardB.number) || 0) - (Number(cardA.number) || 0)
       default:
-        return (cardA.number || 0) - (cardB.number || 0)
+        return (Number(cardA.number) || 0) - (Number(cardB.number) || 0)
     }
   })
 

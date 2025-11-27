@@ -202,6 +202,7 @@ function CatalogContent() {
   const rarityCounts = useMemo(() => {
     const counts = {
       common: 0,
+      uncommon: 0,
       rare: 0,
       superRare: 0,
       legendary: 0,
@@ -214,6 +215,7 @@ function CatalogContent() {
       const totalStock = normalStock + foilStock
       
       if (card.rarity === "common") counts.common += totalStock
+      else if (card.rarity === "uncommon") counts.uncommon += totalStock
       else if (card.rarity === "rare") counts.rare += totalStock
       else if (card.rarity === "superRare") counts.superRare += totalStock
       else if (card.rarity === "legendary" || card.rarity === "enchanted") counts.legendary += totalStock
@@ -319,9 +321,9 @@ function CatalogContent() {
           const rarityOrder = ["common", "uncommon", "rare", "superRare", "legendary", "enchanted"]
           return rarityOrder.indexOf(a.rarity) - rarityOrder.indexOf(b.rarity)
         case "cardNumberLowHigh":
-          return a.number - b.number
+          return (Number(a.number) || 0) - (Number(b.number) || 0)
         case "cardNumberHighLow":
-          return b.number - a.number
+          return (Number(b.number) || 0) - (Number(a.number) || 0)
         default:
           return 0
       }
