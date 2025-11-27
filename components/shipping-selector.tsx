@@ -106,11 +106,11 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
     }
   }
 
-  // Solo actualizar costo en tiempo real (para mostrar en UI)
+  // Actualizar datos de envío cuando cambien (incluyendo dirección)
   useEffect(() => {
     onShippingChange(getShippingData())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [method, zone, shippingCost])
+  }, [method, zone, shippingCost, address])
 
   const handleMethodChange = (newMethod: "pickup" | "shipping") => {
     setMethod(newMethod)

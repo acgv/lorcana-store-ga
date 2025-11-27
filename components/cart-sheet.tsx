@@ -23,7 +23,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const { calculateProductDiscount, getFinalShippingCost } = usePromotion()
   const [processingCheckout, setProcessingCheckout] = useState(false)
   const [shippingData, setShippingData] = useState<ShippingData>({
-    method: "pickup",
+    method: "shipping", // Cambiar a "shipping" por defecto ya que "pickup" está oculto
     cost: 0,
   })
   
@@ -284,8 +284,14 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                 <Button 
                   className="w-full" 
                   size="lg"
-                  onClick={handleCheckout}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    console.log('🔘 Button clicked, calling handleCheckout...')
+                    handleCheckout()
+                  }}
                   disabled={processingCheckout || items.length === 0}
+                  type="button"
                 >
                   {processingCheckout ? (
                     <>
@@ -299,6 +305,11 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                     </>
                   )}
                 </Button>
+                {items.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    Agrega items al carrito para continuar
+                  </p>
+                )}
               </div>
             </>
           )}
