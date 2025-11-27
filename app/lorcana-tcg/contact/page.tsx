@@ -70,8 +70,8 @@ export default function ContactPage() {
                     </CardHeader>
                     <CardContent>
                       <Button
-                        variant="outline"
-                        className="w-full justify-start border border-border hover:border-orange-500 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:border-orange-500"
+                        variant="ghost"
+                        className="w-full justify-start border border-border hover:border-orange-500 hover:bg-orange-500 hover:text-white transition-all duration-200 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:border-orange-500"
                         asChild
                       >
                         <a 
