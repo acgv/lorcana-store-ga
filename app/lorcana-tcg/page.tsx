@@ -70,11 +70,14 @@ export default function HomePage() {
             {/* LCP Element - Hero Title - Optimizado para carga rápida */}
             <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black mb-8 text-balance leading-[0.9]">
               <span className="text-magical bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent inline-block">
-                Comprar Cartas Lorcana en Chile
+                Cartas y Productos Lorcana en Chile
               </span>
             </h1>
-            <p className="font-sans text-xl md:text-3xl text-muted-foreground/90 mb-10 max-w-3xl mx-auto text-pretty leading-relaxed font-light">
+            <p className="font-sans text-xl md:text-3xl text-muted-foreground/90 mb-6 max-w-3xl mx-auto text-pretty leading-relaxed font-light">
               {t("heroSubtitle")}
+            </p>
+            <p className="font-sans text-lg md:text-xl text-muted-foreground/80 mb-10 max-w-3xl mx-auto text-pretty leading-relaxed">
+              Cartas individuales y productos sellados nuevos. Todo 100% original y sellado de fábrica.
             </p>
             <Link href="/lorcana-tcg/catalog">
               <Button size="lg" className="glow-border font-sans text-lg px-10 py-7 h-auto font-semibold tracking-wide shadow-2xl">
@@ -88,33 +91,33 @@ export default function HomePage() {
         <section className="container mx-auto px-4 py-20">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-8 text-center">Categorías Disponibles</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-6 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
+            <Link href="/lorcana-tcg/catalog" className="p-6 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
               <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Cartas Individuales</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-sans">
-                {t("legendaryCardsDesc")}
+                Cartas sueltas de todas las rarezas. Versiones normal y foil disponibles. Stock actualizado en tiempo real.
               </p>
-            </div>
-            <div className="p-6 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
+            </Link>
+            <Link href="/lorcana-tcg/products" className="p-6 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-6 w-6 text-accent" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Accesorios TCG</h3>
+              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Productos Sellados Nuevos</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-sans">
-                {t("foilVariantsDesc")}
+                Boosters, playmats, fundas, deck boxes y más. Todos nuestros productos son 100% originales y sellados de fábrica.
               </p>
-            </div>
-            <div className="p-6 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
+            </Link>
+            <Link href="/lorcana-tcg/products" className="p-6 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Sellos y Productos Sellados</h3>
+              <h3 className="font-display text-2xl font-bold mb-2 tracking-wide">Accesorios TCG</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-sans">
-                {t("advancedFiltersDesc")}
+                Todo lo que necesitas para jugar y proteger tus cartas. Fundas, deck boxes, dados y más accesorios premium.
               </p>
-            </div>
+            </Link>
           </div>
         </section>
 
@@ -123,8 +126,22 @@ export default function HomePage() {
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-8 text-center">Por Qué Comprar con Nosotros</h2>
           <div className="max-w-4xl mx-auto text-center">
             <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-              Stock actualizado, precios competitivos y envíos a todo Chile. Tu tienda de confianza para cartas Disney Lorcana.
+              Stock actualizado, precios competitivos y envíos a todo Chile. Tu tienda de confianza para cartas y productos Disney Lorcana.
             </p>
+            
+            {/* Destacado de Productos Sellados */}
+            <div className="mb-8 p-6 rounded-xl bg-gradient-to-r from-accent/10 to-primary/10 border border-accent/20">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <div className="h-10 w-10 rounded-full bg-accent/20 flex items-center justify-center">
+                  <Sparkles className="h-5 w-5 text-accent" />
+                </div>
+                <h3 className="font-display text-xl font-bold">Productos 100% Sellados y Nuevos</h3>
+              </div>
+              <p className="text-muted-foreground text-base leading-relaxed">
+                Todos nuestros productos sellados (boosters, playmats, fundas, etc.) son completamente nuevos y vienen sellados de fábrica. 
+                Garantizamos autenticidad y calidad en cada compra.
+              </p>
+            </div>
             
             {/* Métodos de Pago Seguros */}
             <div className="mt-12 p-8 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/10 to-primary/10 border border-primary/20">
