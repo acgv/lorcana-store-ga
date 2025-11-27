@@ -87,44 +87,90 @@ export default function InventoryPage() {
   const [importing, setImporting] = useState(false) // Estado para importación de cartas
   const { toast } = useToast()
 
-  // Fetch inventory on mount
+  // Fetch inventory on mount - usar useCallback para evitar re-crear la función
   useEffect(() => {
-    fetchInventory()
+    let isMounted = true
+    
+    const loadInventory = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch("/api/inventory")
+        const data = await response.json()
+        
+        if (!isMounted) return // Evitar actualizar estado si el componente se desmontó
+        
+        if (data.success) {
+          console.log(`✅ Inventory loaded: ${data.inventory?.length || 0} items`)
+          setInventory(data.inventory || [])
+        } else {
+          console.error("❌ Failed to load inventory:", data.error)
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to load inventory",
+          })
+        }
+      } catch (error: any) {
+        if (!isMounted) return
+        console.error("Error fetching inventory:", error)
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load inventory",
+        })
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
+    }
+    
+    loadInventory()
+    
+    return () => {
+      isMounted = false // Cleanup: marcar como desmontado
+    }
   }, [])
 
-  const fetchInventory = async () => {
+  const fetchInventory = async (showLoading = true) => {
     try {
-      setLoading(true)
-      const response = await fetch("/api/inventory")
+      if (showLoading) {
+        setLoading(true)
+      }
+      
+      const response = await fetch("/api/inventory", {
+        // No usar AbortController aquí para evitar conflictos con navegación
+        cache: 'no-store', // Evitar cache para obtener datos frescos
+      })
+      
       const data = await response.json()
       
       if (data.success) {
         console.log(`✅ Inventory loaded: ${data.inventory?.length || 0} items`)
-        // Buscar la carta "prueba" para debugging
-        const pruebaCard = data.inventory?.find((item: any) => item.name?.toLowerCase().includes("prueba"))
-        if (pruebaCard) {
-          console.log(`🔍 Found "prueba" card:`, pruebaCard)
-        } else {
-          console.log(`⚠️ "prueba" card not found in inventory`)
-        }
         setInventory(data.inventory || [])
       } else {
         console.error("❌ Failed to load inventory:", data.error)
+        if (showLoading) {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to load inventory",
+          })
+        }
+      }
+    } catch (error: any) {
+      console.error("Error fetching inventory:", error)
+      if (showLoading) {
         toast({
           variant: "destructive",
           title: "Error",
           description: "Failed to load inventory",
         })
       }
-    } catch (error) {
-      console.error("Error fetching inventory:", error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load inventory",
-      })
     } finally {
-      setLoading(false)
+      if (showLoading) {
+        setLoading(false)
+      }
     }
   }
 
@@ -324,8 +370,8 @@ export default function InventoryPage() {
           description: `Imported ${data.stats.imported} NEW cards. ${data.stats.skipped} existing cards preserved (not modified).`,
         })
         
-        // Refresh inventory
-        await fetchInventory()
+        // Refresh inventory sin mostrar loading para no bloquear UI
+        fetchInventory(false)
       } else {
         toast({
           variant: "destructive",
@@ -432,8 +478,8 @@ export default function InventoryPage() {
         })
         setShowAddProduct(false)
         
-        // Refresh inventory
-        await fetchInventory()
+        // Refresh inventory sin mostrar loading para no bloquear UI
+        fetchInventory(false)
       } else {
         toast({
           variant: "destructive",
@@ -537,8 +583,9 @@ export default function InventoryPage() {
         setShowAddCard(false)
         
         // Esperar un momento antes de refrescar para asegurar que la BD se actualizó
-        setTimeout(async () => {
-          await fetchInventory()
+        // No mostrar loading para no bloquear la UI
+        setTimeout(() => {
+          fetchInventory(false)
         }, 500)
       } else {
         console.error("❌ Error creating card:", data)

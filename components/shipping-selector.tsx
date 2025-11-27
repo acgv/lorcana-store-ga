@@ -42,7 +42,7 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
   const { t, language } = useLanguage()
   const { getFinalShippingCost } = usePromotion()
   
-  const [method, setMethod] = useState<"pickup" | "shipping">("pickup")
+  const [method, setMethod] = useState<"pickup" | "shipping">("shipping")
   const [zone, setZone] = useState<string>("rm")
   const [address, setAddress] = useState({
     street: "",
@@ -53,10 +53,48 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
     postalCode: "",
     notes: "",
   })
+  const [shippingThresholds, setShippingThresholds] = useState({
+    free_shipping_threshold: SHIPPING_CONFIG.freeShippingThreshold,
+    zone_rm_cost: SHIPPING_ZONES.find(z => z.id === "rm")?.cost || 5000,
+    zone_other_cost: SHIPPING_ZONES.find(z => z.id === "zone2")?.cost || 8000,
+    zone_extreme_cost: SHIPPING_ZONES.find(z => z.id === "zone3")?.cost || 12000,
+  })
 
-  const baseShippingCost = calculateShippingCost(method, zone, cartTotal)
+  // Cargar umbrales dinámicos desde la API
+  useEffect(() => {
+    fetch("/api/shipping-thresholds")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data) {
+          setShippingThresholds({
+            free_shipping_threshold: data.data.free_shipping_threshold || SHIPPING_CONFIG.freeShippingThreshold,
+            zone_rm_cost: data.data.zone_rm_cost || SHIPPING_ZONES.find(z => z.id === "rm")?.cost || 5000,
+            zone_other_cost: data.data.zone_other_cost || SHIPPING_ZONES.find(z => z.id === "zone2")?.cost || 8000,
+            zone_extreme_cost: data.data.zone_extreme_cost || SHIPPING_ZONES.find(z => z.id === "zone3")?.cost || 12000,
+          })
+        }
+      })
+      .catch(err => {
+        console.error("Error loading shipping thresholds:", err)
+        // Usar valores por defecto si falla
+      })
+  }, [])
+
+  // Calcular costo de envío usando umbrales dinámicos
+  const getZoneCost = (zoneId: string): number => {
+    if (zoneId === "rm") return shippingThresholds.zone_rm_cost
+    if (zoneId === "zone2") return shippingThresholds.zone_other_cost
+    if (zoneId === "zone3") return shippingThresholds.zone_extreme_cost
+    return shippingThresholds.zone_other_cost
+  }
+
+  const baseShippingCost = method === "pickup" 
+    ? 0 
+    : (cartTotal >= shippingThresholds.free_shipping_threshold 
+        ? 0 
+        : getZoneCost(zone))
   const shippingCost = getFinalShippingCost(baseShippingCost, cartTotal)
-  const freeShipping = shippingCost === 0 || isFreeShipping(cartTotal)
+  const freeShipping = shippingCost === 0 || cartTotal >= shippingThresholds.free_shipping_threshold
 
   // Función para obtener datos actuales (llamada desde padre al checkout)
   const getShippingData = (): ShippingData => {
@@ -110,8 +148,9 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
       <CardContent className="space-y-4">
         {/* Método de Envío */}
         <RadioGroup value={method} onValueChange={handleMethodChange}>
-          {/* Retiro en Metro */}
-          <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4 hover:bg-accent/50 transition-colors">
+          {/* TODO: Re-habilitar retiro en persona si es necesario */}
+          {/* Retiro en Metro - OCULTO */}
+          {/* <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4 hover:bg-accent/50 transition-colors">
             <RadioGroupItem value="pickup" id="pickup" />
             <div className="flex-1">
               <Label htmlFor="pickup" className="font-medium cursor-pointer flex items-center gap-2">
@@ -130,7 +169,7 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
                   : SHIPPING_CONFIG.pickupLocation.scheduleEN}
               </p>
             </div>
-          </div>
+          </div> */}
 
           {/* Envío a Domicilio */}
           <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4 hover:bg-accent/50 transition-colors">
@@ -172,11 +211,18 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {SHIPPING_ZONES.map((z) => (
-                    <SelectItem key={z.id} value={z.id}>
-                      {language === "es" ? z.nameES : z.name} - ${z.cost.toLocaleString()}
-                    </SelectItem>
-                  ))}
+                  {SHIPPING_ZONES.map((z) => {
+                    const zoneCost = z.id === "rm" 
+                      ? shippingThresholds.zone_rm_cost 
+                      : z.id === "zone2"
+                      ? shippingThresholds.zone_other_cost
+                      : shippingThresholds.zone_extreme_cost
+                    return (
+                      <SelectItem key={z.id} value={z.id}>
+                        {language === "es" ? z.nameES : z.name} - ${zoneCost.toLocaleString()}
+                      </SelectItem>
+                    )
+                  })}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
@@ -292,7 +338,7 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
           </div>
           {!freeShipping && cartTotal > 0 && (
             <p className="text-xs text-muted-foreground mt-2">
-              {t("freeShippingInfo")}: ${(SHIPPING_CONFIG.freeShippingThreshold - cartTotal).toLocaleString()} CLP
+              {t("freeShippingInfo")}: ${(shippingThresholds.free_shipping_threshold - cartTotal).toLocaleString()} CLP
             </p>
           )}
         </div>

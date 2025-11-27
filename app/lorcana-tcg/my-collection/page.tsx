@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { SlidersHorizontal } from "lucide-react"
 import { 
-  Loader2, Lock, Package, Heart, Trash2, ExternalLink, 
+  Loader2, Lock, Package, Trash2, ExternalLink, 
   TrendingUp, Plus, Minus, Check, List, Sparkles, ShoppingCart, AlertCircle
 } from "lucide-react"
 import type { Card as CardType } from "@/lib/types"
@@ -146,7 +146,6 @@ function MyCollectionContent() {
   }
 
   const ownedItems = getCollectionWithCards("owned")
-  const wantedItems = getCollectionWithCards("wanted")
 
   // Agrupar owned items por card_id para mostrar una sola carta con sus versiones
   const groupedOwnedItems = ownedItems.reduce((acc, item) => {
@@ -225,37 +224,6 @@ function MyCollectionContent() {
     return true
   })
 
-  // Filter wanted items
-  const filteredWantedItems = wantedItems.filter((item) => {
-    if (!item.card) return false
-    
-    // Type filter
-    if (filters.type && filters.type !== "all" && item.card.type !== filters.type) return false
-    
-    // Set filter
-    if (filters.set && filters.set !== "all" && item.card.set !== filters.set) return false
-    
-    // Rarity filter
-    if (filters.rarity && filters.rarity !== "all" && item.card.rarity !== filters.rarity) return false
-    
-    // Price range filter
-    const cardPrice = item.card.price || 0
-    if (cardPrice < filters.minPrice || cardPrice > filters.maxPrice) return false
-    
-    // Version filter
-    if (filters.version && filters.version !== "all" && item.version !== filters.version) return false
-    
-    // Search filter
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase()
-      if (!item.card.name.toLowerCase().includes(searchLower) && 
-          !item.card.id.toLowerCase().includes(searchLower)) {
-        return false
-      }
-    }
-    
-    return true
-  })
 
   // Calcular cartas faltantes: todas las cartas con información de qué versión falta y disponibilidad
   const missingCards = allCards.map((card) => {
@@ -291,18 +259,6 @@ function MyCollectionContent() {
     }
   }).filter(item => item.isMissing) // Solo mostrar cartas que faltan
 
-  // Identificar cartas deseadas que están en stock (usando los items filtrados)
-  const wantedItemsInStock = filteredWantedItems.filter((item) => {
-    if (!item.card) return false
-    const normalStock = item.card.normalStock || item.card.stock || 0
-    const foilStock = item.card.foilStock || 0
-    
-    if (item.version === "normal") {
-      return normalStock > 0
-    } else {
-      return foilStock > 0
-    }
-  })
 
   // Calculate stats
   const totalOwned = ownedItems.reduce((sum, item) => sum + item.quantity, 0)
@@ -319,77 +275,6 @@ function MyCollectionContent() {
     return sum + (price * item.quantity)
   }, 0)
 
-  // Función para agregar carta deseada al carrito
-  const handleAddWantedToCart = (item: CollectionItem) => {
-    if (!item.card) return
-
-    const normalStock = item.card.normalStock || item.card.stock || 0
-    const foilStock = item.card.foilStock || 0
-    const currentStock = item.version === "normal" ? normalStock : foilStock
-    const hasStock = currentStock > 0
-
-    if (!hasStock) {
-      toast({
-        variant: "destructive",
-        title: t("error"),
-        description: t("outOfStock") || "Esta carta no está disponible en stock",
-      })
-      return
-    }
-
-    const result = addToCart({
-      id: item.card.id,
-      name: item.card.name,
-      price: item.version === "foil" ? (item.card.foilPrice || 0) : (item.card.price || 0),
-      image: item.card.image,
-      version: item.version,
-    }, currentStock)
-
-    if (!result.success) {
-      toast({
-        variant: "destructive",
-        title: t("error"),
-        description: result.error || `${t("maxStockReached")} (${currentStock} ${t("available")})`,
-      })
-      return
-    }
-
-    toast({
-      title: t("success"),
-      description: `${item.card.name} (${item.version === "foil" ? t("foil") : t("normal")}) ${t("addedToCart") || "agregada al carrito"}`,
-    })
-  }
-
-  // Función para agregar todas las cartas deseadas disponibles al carrito
-  const handleAddAllAvailableToCart = () => {
-    let addedCount = 0
-    wantedItemsInStock.forEach((item) => {
-      if (item.card) {
-        const normalStock = item.card.normalStock || item.card.stock || 0
-        const foilStock = item.card.foilStock || 0
-        const currentStock = item.version === "normal" ? normalStock : foilStock
-        
-        const result = addToCart({
-          id: item.card.id,
-          name: item.card.name,
-          price: item.version === "foil" ? (item.card.foilPrice || 0) : (item.card.price || 0),
-          image: item.card.image,
-          version: item.version,
-        }, currentStock)
-        
-        if (result.success) {
-          addedCount++
-        }
-      }
-    })
-
-    if (addedCount > 0) {
-      toast({
-        title: t("success"),
-        description: `${addedCount} ${addedCount === 1 ? t("cardFound") : t("cardsFound")} ${t("addedToCart") || "agregadas al carrito"}`,
-      })
-    }
-  }
 
   // Filter cards for "Missing Cards" tab
   const filteredMissingCards = missingCards.filter((item) => {
@@ -540,31 +425,6 @@ function MyCollectionContent() {
     }
   })
 
-  // Sort filtered wanted items
-  const sortedWantedItems = [...filteredWantedItems].sort((a, b) => {
-    if (!a.card || !b.card) return 0
-    switch (sortBy) {
-      case "nameAZ":
-        return a.card.name.localeCompare(b.card.name)
-      case "nameZA":
-        return b.card.name.localeCompare(a.card.name)
-      case "priceLowHigh":
-        return (a.card.price || 0) - (b.card.price || 0)
-      case "priceHighLow":
-        return (b.card.price || 0) - (a.card.price || 0)
-      case "rarityHighLow":
-        const rarityOrder = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
-        return (rarityOrder[b.card.rarity as keyof typeof rarityOrder] || 0) - 
-               (rarityOrder[a.card.rarity as keyof typeof rarityOrder] || 0)
-      case "rarityLowHigh":
-        const rarityOrder2 = { "Legendary": 5, "Super Rare": 4, "Rare": 3, "Uncommon": 2, "Common": 1 }
-        return (rarityOrder2[a.card.rarity as keyof typeof rarityOrder2] || 0) - 
-               (rarityOrder2[b.card.rarity as keyof typeof rarityOrder2] || 0)
-      case "cardNumberLowHigh":
-      default:
-        return (a.card.number || 0) - (b.card.number || 0)
-    }
-  })
 
   if (userLoading || !user) {
     return (
@@ -1090,13 +950,9 @@ function AllCardsCard({
   // Usar props si están disponibles (pestaña "Tengo" agrupada), sino calcular desde collection
   const hasNormalOwned = ownedNormal !== undefined ? ownedNormal : isInCollection(card.id, "owned", "normal")
   const hasFoilOwned = ownedFoil !== undefined ? ownedFoil : isInCollection(card.id, "owned", "foil")
-  const hasNormalWanted = isInCollection(card.id, "wanted", "normal")
-  const hasFoilWanted = isInCollection(card.id, "wanted", "foil")
   
   const qtyNormalOwned = ownedNormalQuantity !== undefined ? ownedNormalQuantity : getQuantity("owned", "normal")
   const qtyFoilOwned = ownedFoilQuantity !== undefined ? ownedFoilQuantity : getQuantity("owned", "foil")
-  const qtyNormalWanted = getQuantity("wanted", "normal")
-  const qtyFoilWanted = getQuantity("wanted", "foil")
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -1248,86 +1104,6 @@ function AllCardsCard({
             >
               <Plus className="h-3 w-3 mr-1" />
               {t("addFoil")}
-            </Button>
-          )}
-
-          {/* Normal Wanted */}
-          {hasNormalWanted ? (
-            <div className="flex items-center gap-1 p-2 bg-red-500/10 rounded-md border border-red-500/20">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-red-600"
-                onClick={() => handleDecrement("wanted", "normal")}
-                disabled={!!updating}
-              >
-                <Minus className="h-3 w-3" />
-              </Button>
-              <div className="flex-1 text-center">
-                <span className="text-xs font-semibold text-red-600">
-                  ❤️ {qtyNormalWanted}× {t("normal")}
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-red-600"
-                onClick={() => handleIncrement("wanted", "normal")}
-                disabled={!!updating}
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full hover:bg-destructive hover:text-destructive-foreground"
-              onClick={() => handleAdd("wanted", "normal")}
-              disabled={!!updating}
-            >
-              <Heart className="h-3 w-3 mr-1" />
-              {t("normal")}
-            </Button>
-          )}
-
-          {/* Foil Wanted */}
-          {hasFoilWanted ? (
-            <div className="flex items-center gap-1 p-2 bg-red-500/10 rounded-md border border-red-500/20">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-red-600"
-                onClick={() => handleDecrement("wanted", "foil")}
-                disabled={!!updating}
-              >
-                <Minus className="h-3 w-3" />
-              </Button>
-              <div className="flex-1 text-center">
-                <span className="text-xs font-semibold text-red-600">
-                  ❤️ {qtyFoilWanted}× {t("foil")}
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-red-600"
-                onClick={() => handleIncrement("wanted", "foil")}
-                disabled={!!updating}
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full hover:bg-destructive hover:text-destructive-foreground"
-              onClick={() => handleAdd("wanted", "foil")}
-              disabled={!!updating}
-            >
-              <Heart className="h-3 w-3 mr-1" />
-              {t("foil")}
             </Button>
           )}
 
@@ -1530,15 +1306,6 @@ function CollectionCard({
           </Button>
         )}
 
-        {/* Mensaje si no está disponible */}
-        {!hasStock && item.status === "wanted" && (
-          <div className="mb-2 p-2 bg-muted rounded-md text-center">
-            <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-              <AlertCircle className="h-3 w-3" />
-              Sin stock disponible
-            </p>
-          </div>
-        )}
 
         <div className="flex gap-2">
           <Button

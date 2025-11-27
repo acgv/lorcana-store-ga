@@ -1248,6 +1248,7 @@ const translations: Record<Language, Record<string, string>> = {
     loggingIn: "Iniciando sesión...",
     loginNote: "Si no tienes cuenta de admin, contacta al administrador del sistema.",
     promotions: "Promociones",
+    shipping: "Envíos",
     // Admin Submissions
     enterRejectionReason: "Ingresa la razón del rechazo...",
     // Admin Inventory
