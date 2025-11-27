@@ -166,13 +166,17 @@ function CatalogContent() {
     }
     
     // Usar polyfill para cargar sin bloquear la UI
-    requestIdleCallbackPolyfill(loadCards, { timeout: 100 })
+    const idleCallbackId = requestIdleCallbackPolyfill(loadCards, { timeout: 100 })
     
     // Cleanup: cancelar petición si el componente se desmonta
     return () => {
       isMounted = false
       if (abortController) {
         abortController.abort()
+      }
+      // Cancelar el idle callback si aún no se ejecutó
+      if (typeof idleCallbackId === 'number') {
+        clearTimeout(idleCallbackId)
       }
     }
   }, []) // Solo cargar una vez al montar
@@ -181,29 +185,38 @@ function CatalogContent() {
   useEffect(() => {
     // Verificar que estamos en la página correcta antes de actualizar la URL
     if (typeof window === 'undefined') return
-    if (!window.location.pathname.includes('/lorcana-tcg/catalog')) return
+    const currentPath = window.location.pathname
+    if (!currentPath.includes('/lorcana-tcg/catalog')) return
     
-    const params = new URLSearchParams()
+    // Usar timeout para no bloquear la navegación
+    const timeoutId = setTimeout(() => {
+      // Verificar nuevamente que seguimos en la página (por si el usuario navegó)
+      if (!window.location.pathname.includes('/lorcana-tcg/catalog')) return
+      
+      const params = new URLSearchParams()
+      
+      if (filters.type !== "all") params.set("type", filters.type)
+      if (filters.set !== "all") params.set("set", filters.set)
+      if (filters.rarity !== "all") params.set("rarity", filters.rarity)
+      if (filters.minPrice !== 0) params.set("minPrice", filters.minPrice.toString())
+      if (filters.maxPrice !== 100000) params.set("maxPrice", filters.maxPrice.toString())
+      if (filters.version !== "all") params.set("version", filters.version)
+      if (filters.search) params.set("search", filters.search)
+      // productType no se incluye en URL porque el catálogo solo muestra cartas
+      if (sortBy !== "cardNumberLowHigh") params.set("sortBy", sortBy)
+      if (viewMode !== "grid") params.set("viewMode", viewMode)
+      
+      const queryString = params.toString()
+      const newUrl = queryString ? `/lorcana-tcg/catalog?${queryString}` : "/lorcana-tcg/catalog"
+      
+      // Solo actualizar si la URL es diferente
+      const currentUrl = window.location.pathname + window.location.search
+      if (currentUrl !== newUrl) {
+        router.replace(newUrl, { scroll: false })
+      }
+    }, 100) // Pequeño delay para no bloquear navegación
     
-    if (filters.type !== "all") params.set("type", filters.type)
-    if (filters.set !== "all") params.set("set", filters.set)
-    if (filters.rarity !== "all") params.set("rarity", filters.rarity)
-    if (filters.minPrice !== 0) params.set("minPrice", filters.minPrice.toString())
-    if (filters.maxPrice !== 100000) params.set("maxPrice", filters.maxPrice.toString())
-    if (filters.version !== "all") params.set("version", filters.version)
-    if (filters.search) params.set("search", filters.search)
-    // productType no se incluye en URL porque el catálogo solo muestra cartas
-    if (sortBy !== "cardNumberLowHigh") params.set("sortBy", sortBy)
-    if (viewMode !== "grid") params.set("viewMode", viewMode)
-    
-    const queryString = params.toString()
-    const newUrl = queryString ? `/lorcana-tcg/catalog?${queryString}` : "/lorcana-tcg/catalog"
-    
-    // Solo actualizar si la URL es diferente
-    const currentUrl = window.location.pathname + window.location.search
-    if (currentUrl !== newUrl) {
-      router.replace(newUrl, { scroll: false })
-    }
+    return () => clearTimeout(timeoutId)
   }, [filters, sortBy, viewMode, router])
 
   // Contar stock disponible por rareza

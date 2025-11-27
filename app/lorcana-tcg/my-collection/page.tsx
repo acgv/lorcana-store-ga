@@ -71,33 +71,49 @@ function MyCollectionContent() {
 
   // Actualizar URL cuando cambien los filtros, tab, sortBy o viewMode
   useEffect(() => {
-    const params = new URLSearchParams()
+    // Verificar que estamos en la página correcta
+    if (typeof window === 'undefined') return
+    if (!window.location.pathname.includes('/lorcana-tcg/my-collection')) return
     
-    // Agregar tab a la URL
-    if (activeTab !== "all") params.set("tab", activeTab)
+    // Usar timeout para no bloquear la navegación
+    const timeoutId = setTimeout(() => {
+      // Verificar nuevamente que seguimos en la página (por si el usuario navegó)
+      if (!window.location.pathname.includes('/lorcana-tcg/my-collection')) return
+      
+      const params = new URLSearchParams()
+      
+      // Agregar tab a la URL
+      if (activeTab !== "all") params.set("tab", activeTab)
+      
+      // Si el tab es "wanted", redirigir a "missing"
+      if (activeTab === "wanted") {
+        setActiveTab("missing")
+        return
+      }
+      
+      // Agregar filtros a la URL
+      if (filters.type !== "all") params.set("type", filters.type)
+      if (filters.set !== "all") params.set("set", filters.set)
+      if (filters.rarity !== "all") params.set("rarity", filters.rarity)
+      if (filters.minPrice !== 0) params.set("minPrice", filters.minPrice.toString())
+      if (filters.maxPrice !== 100000) params.set("maxPrice", filters.maxPrice.toString())
+      if (filters.version !== "all") params.set("version", filters.version)
+      if (filters.search) params.set("search", filters.search)
+      if (filters.productType && filters.productType !== "all") params.set("productType", filters.productType)
+      if (sortBy !== "cardNumberLowHigh") params.set("sortBy", sortBy)
+      if (viewMode !== "grid") params.set("viewMode", viewMode)
+      
+      const queryString = params.toString()
+      const newUrl = queryString ? `/lorcana-tcg/my-collection?${queryString}` : "/lorcana-tcg/my-collection"
+      
+      // Solo actualizar si la URL es diferente
+      const currentUrl = window.location.pathname + window.location.search
+      if (currentUrl !== newUrl) {
+        router.replace(newUrl, { scroll: false })
+      }
+    }, 100) // Pequeño delay para no bloquear navegación
     
-    // Si el tab es "wanted", redirigir a "missing"
-    if (activeTab === "wanted") {
-      setActiveTab("missing")
-      return
-    }
-    
-    // Agregar filtros a la URL
-    if (filters.type !== "all") params.set("type", filters.type)
-    if (filters.set !== "all") params.set("set", filters.set)
-    if (filters.rarity !== "all") params.set("rarity", filters.rarity)
-    if (filters.minPrice !== 0) params.set("minPrice", filters.minPrice.toString())
-    if (filters.maxPrice !== 100000) params.set("maxPrice", filters.maxPrice.toString())
-    if (filters.version !== "all") params.set("version", filters.version)
-    if (filters.search) params.set("search", filters.search)
-    if (filters.productType && filters.productType !== "all") params.set("productType", filters.productType)
-    if (sortBy !== "cardNumberLowHigh") params.set("sortBy", sortBy)
-    if (viewMode !== "grid") params.set("viewMode", viewMode)
-    
-    const queryString = params.toString()
-    const newUrl = queryString ? `/lorcana-tcg/my-collection?${queryString}` : "/lorcana-tcg/my-collection"
-    
-    router.replace(newUrl, { scroll: false })
+    return () => clearTimeout(timeoutId)
   }, [activeTab, filters, sortBy, viewMode, router])
 
   // Load all cards

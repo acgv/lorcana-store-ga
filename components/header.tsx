@@ -62,12 +62,14 @@ export function Header() {
             <Link
               href="/lorcana-tcg/catalog"
               className="text-sm font-sans font-medium text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-105"
+              prefetch={true}
             >
               {t("catalog")}
             </Link>
             <Link
               href="/lorcana-tcg/products"
               className="text-sm font-sans font-medium text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-105"
+              prefetch={true}
             >
               Productos
             </Link>
@@ -124,6 +126,7 @@ export function Header() {
                   href="/lorcana-tcg/catalog"
                   className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md"
                   onClick={() => setMobileMenuOpen(false)}
+                  prefetch={true}
                 >
                   {t("catalog")}
                 </Link>
@@ -131,6 +134,7 @@ export function Header() {
                   href="/lorcana-tcg/products"
                   className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md"
                   onClick={() => setMobileMenuOpen(false)}
+                  prefetch={true}
                 >
                   Productos
                 </Link>
