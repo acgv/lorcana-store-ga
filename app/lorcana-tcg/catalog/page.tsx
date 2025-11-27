@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, Suspense } from "react"
+import React, { useState, useMemo, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -181,15 +181,27 @@ function CatalogContent() {
     }
   }, []) // Solo cargar una vez al montar
   
+  // Ref para almacenar el timeout y poder cancelarlo
+  const urlUpdateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+  
   // Actualizar URL cuando cambien los filtros (solo si estamos en la página del catálogo)
+  // Usar debounce largo para no interferir con la navegación
   useEffect(() => {
+    // Cancelar cualquier actualización pendiente
+    if (urlUpdateTimeoutRef.current) {
+      clearTimeout(urlUpdateTimeoutRef.current)
+      urlUpdateTimeoutRef.current = null
+    }
+    
     // Verificar que estamos en la página correcta antes de actualizar la URL
     if (typeof window === 'undefined') return
     const currentPath = window.location.pathname
     if (!currentPath.includes('/lorcana-tcg/catalog')) return
     
-    // Usar timeout para no bloquear la navegación
-    const timeoutId = setTimeout(() => {
+    // Usar debounce largo (800ms) para dar tiempo a la navegación
+    urlUpdateTimeoutRef.current = setTimeout(() => {
+      urlUpdateTimeoutRef.current = null
+      
       // Verificar nuevamente que seguimos en la página (por si el usuario navegó)
       if (!window.location.pathname.includes('/lorcana-tcg/catalog')) return
       
@@ -209,15 +221,39 @@ function CatalogContent() {
       const queryString = params.toString()
       const newUrl = queryString ? `/lorcana-tcg/catalog?${queryString}` : "/lorcana-tcg/catalog"
       
-      // Solo actualizar si la URL es diferente
+      // Solo actualizar si la URL es diferente y seguimos en la página
       const currentUrl = window.location.pathname + window.location.search
-      if (currentUrl !== newUrl) {
+      if (currentUrl !== newUrl && window.location.pathname.includes('/lorcana-tcg/catalog')) {
         router.replace(newUrl, { scroll: false })
       }
-    }, 100) // Pequeño delay para no bloquear navegación
+    }, 800) // Debounce largo para no bloquear navegación
     
-    return () => clearTimeout(timeoutId)
+    return () => {
+      if (urlUpdateTimeoutRef.current) {
+        clearTimeout(urlUpdateTimeoutRef.current)
+        urlUpdateTimeoutRef.current = null
+      }
+    }
   }, [filters, sortBy, viewMode, router])
+  
+  // Cancelar actualizaciones de URL cuando el usuario navega
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      const link = target.closest('a[href]')
+      if (link && link.getAttribute('href')?.startsWith('/lorcana-tcg/') && 
+          !link.getAttribute('href')?.includes('/lorcana-tcg/catalog')) {
+        // El usuario está navegando a otra página, cancelar actualizaciones de URL
+        if (urlUpdateTimeoutRef.current) {
+          clearTimeout(urlUpdateTimeoutRef.current)
+          urlUpdateTimeoutRef.current = null
+        }
+      }
+    }
+    
+    document.addEventListener('click', handleClick, true)
+    return () => document.removeEventListener('click', handleClick, true)
+  }, [])
 
   // Contar stock disponible por rareza
   const rarityCounts = useMemo(() => {
