@@ -97,8 +97,8 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
     return (
       <Link href={detailUrl}>
         <div className="flex gap-4 p-4 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
-          <div className="relative h-32 w-24 flex-shrink-0 rounded overflow-hidden foil-effect">
-            <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" priority={priority} />
+          <div className="relative h-32 w-24 flex-shrink-0 rounded overflow-hidden foil-effect bg-muted">
+            <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className={isProduct ? "object-contain" : "object-cover"} priority={priority} />
             {/* Card Number Badge */}
             <div className="absolute top-2 left-2 bg-background/90 backdrop-blur-sm px-2 py-1 rounded-md border border-primary/30">
               <span className="text-xs font-bold text-primary font-mono">#{card.number}</span>
@@ -168,12 +168,12 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
     <div className="group rounded-lg bg-card border border-border overflow-hidden hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
       {/* Image - clickeable para ver detalle */}
       <Link href={detailUrl} className="block">
-        <div className="relative aspect-[3/4] overflow-hidden foil-effect">
+        <div className={`relative aspect-[3/4] overflow-hidden ${isProduct ? "" : "foil-effect"} bg-muted`}>
           <Image
             src={card.image || "/placeholder.svg"}
             alt={card.name}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className={`${isProduct ? "object-contain" : "object-cover"} group-hover:scale-105 transition-transform duration-300`}
             priority={priority}
           />
           {/* Card Number Badge */}
