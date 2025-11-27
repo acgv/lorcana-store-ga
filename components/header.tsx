@@ -21,7 +21,7 @@ import {
 import { useUser } from "@/hooks/use-user"
 import { useAuth } from "@/hooks/use-auth"
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { PromotionBanner } from "@/components/promotion-banner"
 
 export function Header() {
@@ -31,7 +31,9 @@ export function Header() {
   const { isAdmin: isAdminAuth, logout: adminLogout } = useAuth()
   const [cartOpen, setCartOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
   const router = useRouter()
+  const pathname = usePathname()
 
   // User is admin if they're admin via Google OAuth OR traditional admin login
   const isAdmin = isUserAdmin || isAdminAuth
@@ -44,6 +46,32 @@ export function Header() {
     await adminLogout()
     router.push("/lorcana-tcg")
   }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!searchQuery.trim()) return
+    
+    // Si estamos en catálogo o productos, actualizar la URL con el parámetro de búsqueda
+    if (pathname?.includes('/lorcana-tcg/catalog') || pathname?.includes('/lorcana-tcg/products')) {
+      const params = new URLSearchParams(window.location.search)
+      params.set('search', searchQuery.trim())
+      router.push(`${pathname}?${params.toString()}`)
+    } else {
+      // Si estamos en otra página, redirigir al catálogo con la búsqueda
+      router.push(`/lorcana-tcg/catalog?search=${encodeURIComponent(searchQuery.trim())}`)
+    }
+  }
+
+  // Sincronizar el valor de búsqueda con la URL si estamos en catálogo o productos
+  useEffect(() => {
+    if (pathname?.includes('/lorcana-tcg/catalog') || pathname?.includes('/lorcana-tcg/products')) {
+      const params = new URLSearchParams(window.location.search)
+      const searchParam = params.get('search') || ''
+      setSearchQuery(searchParam)
+    } else {
+      setSearchQuery("")
+    }
+  }, [pathname])
 
   return (
     <>
@@ -229,12 +257,18 @@ export function Header() {
             </SheetContent>
           </Sheet>
 
-          <div className="hidden lg:block w-64">
+          <form onSubmit={handleSearch} className="hidden lg:block w-64">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input type="search" placeholder={t("search")} className="pl-9 bg-muted/50 border-border/50" />
+              <Input 
+                type="search" 
+                placeholder={t("search")} 
+                className="pl-9 bg-muted/50 border-border/50" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-          </div>
+          </form>
           <ThemeToggle />
           <LanguageSelector />
           

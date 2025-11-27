@@ -202,6 +202,14 @@ function ProductsContent() {
   // Ref para almacenar el timeout y poder cancelarlo
   const urlUpdateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
   
+  // Sincronizar filtros con la URL cuando cambie (por ejemplo, cuando se busca desde el header)
+  useEffect(() => {
+    const searchParam = searchParams.get("search") || ""
+    if (searchParam !== filters.search) {
+      setFilters(prev => ({ ...prev, search: searchParam }))
+    }
+  }, [searchParams, filters.search])
+  
   // Actualizar URL cuando cambien los filtros (solo si estamos en la página de productos)
   // Usar debounce largo para no interferir con la navegación
   useEffect(() => {
