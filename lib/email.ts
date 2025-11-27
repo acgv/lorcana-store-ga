@@ -311,3 +311,144 @@ export async function sendAdminNotificationEmail(data: OrderEmailData) {
   }
 }
 
+/**
+ * Enviar correo de prueba a cualquier dirección
+ */
+export async function sendTestEmail(to: string, subject?: string, message?: string) {
+  const emailTransporter = getTransporter()
+  
+  if (!emailTransporter) {
+    console.warn('⚠️ Email transporter not available, skipping test email')
+    return { success: false, error: 'Email not configured' }
+  }
+
+  const defaultSubject = 'Correo de Prueba - Multiverse Store'
+  const defaultMessage = `Este es un correo de prueba desde el panel de administración de Multiverse Store.
+
+Si recibes este correo, significa que la configuración de email está funcionando correctamente y los correos de compra se enviarán sin problemas.`
+
+  const testDate = new Date().toLocaleString('es-CL', { 
+    timeZone: 'America/Santiago',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+    .test-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+    .message-box { background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0; white-space: pre-wrap; border-left: 4px solid #667eea; }
+    .info-item { padding: 8px 0; border-bottom: 1px solid #eee; }
+    .info-item:last-child { border-bottom: none; }
+    .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📧 Correo de Prueba</h1>
+    </div>
+    <div class="content">
+      <p>Hola,</p>
+      <p>Este es un correo de prueba desde el panel de administración de Multiverse Store.</p>
+      
+      <div class="test-details">
+        <h2>Información de Prueba</h2>
+        
+        <div class="info-item">
+          <p><strong>Estado del Sistema:</strong> ✅ Funcionando Correctamente</p>
+        </div>
+        <div class="info-item">
+          <p><strong>Fecha y Hora:</strong> ${testDate}</p>
+        </div>
+        <div class="info-item">
+          <p><strong>Servidor SMTP:</strong> ${process.env.SMTP_HOST || 'Configurado'}</p>
+        </div>
+        
+        ${message ? `
+        <h3 style="margin-top: 20px;">Mensaje Personalizado:</h3>
+        <div class="message-box">
+${message}
+        </div>
+        ` : `
+        <div class="message-box" style="margin-top: 15px;">
+${defaultMessage}
+        </div>
+        `}
+      </div>
+      
+      <p>Si recibes este correo, significa que:</p>
+      <ul style="margin-left: 20px;">
+        <li>La configuración de email está funcionando correctamente</li>
+        <li>Los correos de confirmación de compra se enviarán sin problemas</li>
+        <li>Las notificaciones al administrador funcionarán correctamente</li>
+      </ul>
+      
+      <p>Si tienes alguna pregunta sobre la configuración, no dudes en contactarnos.</p>
+    </div>
+    <div class="footer">
+      <p>G&A Company SpA - Multiverse Store</p>
+      <p>Email: ga.multiverse.store@gmail.com</p>
+    </div>
+  </div>
+</body>
+</html>
+  `
+
+  const textContent = `
+Correo de Prueba - Multiverse Store
+
+Hola,
+
+Este es un correo de prueba desde el panel de administración de Multiverse Store.
+
+Información de Prueba:
+- Estado del Sistema: ✅ Funcionando Correctamente
+- Fecha y Hora: ${testDate}
+- Servidor SMTP: ${process.env.SMTP_HOST || 'Configurado'}
+
+${message || defaultMessage}
+
+Si recibes este correo, significa que:
+- La configuración de email está funcionando correctamente
+- Los correos de confirmación de compra se enviarán sin problemas
+- Las notificaciones al administrador funcionarán correctamente
+
+Si tienes alguna pregunta sobre la configuración, no dudes en contactarnos.
+
+G&A Company SpA - Multiverse Store
+Email: ga.multiverse.store@gmail.com
+  `
+
+  try {
+    const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || 'ga.multiverse.store@gmail.com'
+
+    await emailTransporter.sendMail({
+      from: `"Multiverse Store - Admin" <${fromEmail}>`,
+      to: to,
+      subject: subject || defaultSubject,
+      text: textContent,
+      html: htmlContent,
+    })
+
+    console.log(`✅ Test email sent to ${to}`)
+    return { success: true }
+  } catch (error) {
+    console.error('❌ Error sending test email:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+

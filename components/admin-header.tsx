@@ -154,7 +154,7 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                variant={pathname.includes('/admin/process-payment') || pathname.includes('/admin/inspect-payment') || pathname.includes('/admin/update-fees') ? "default" : "ghost"}
+                variant={pathname.includes('/admin/process-payment') || pathname.includes('/admin/inspect-payment') || pathname.includes('/admin/update-fees') || pathname.includes('/admin/email-test') ? "default" : "ghost"}
                 size="sm"
                 className="gap-2 whitespace-nowrap"
               >
@@ -179,6 +179,12 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
               <DropdownMenuItem asChild>
                 <Link href="/admin/inspect-payment" className="cursor-pointer">
                   {t("inspectPayment")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/admin/email-test" className="cursor-pointer">
+                  Enviar Correo de Prueba
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
