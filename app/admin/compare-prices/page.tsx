@@ -267,8 +267,33 @@ export default function ComparePricesPage() {
     return true
   }) || []
 
-  // Obtener sets únicos
-  const uniqueSets = Array.from(new Set(data?.comparisons.map((c) => c.set) || [])).sort()
+  // Mapeo de sets normalizados a nombres legibles
+  const setDisplayNames: Record<string, string> = {
+    'firstChapter': 'The First Chapter',
+    'riseOfFloodborn': 'Rise of the Floodborn',
+    'intoInklands': 'Into the Inklands',
+    'ursulaReturn': "Ursula's Return",
+    'shimmering': 'Shimmering Skies',
+    'azurite': 'Azurite Sea',
+    'archazia': "Archazia's Island",
+    'reignOfJafar': 'Reign of Jafar',
+    'fabled': 'Fabled',
+    'whi': 'Whispers in the Well',
+    'whisper': 'Whispers in the Well',
+  }
+
+  // Obtener sets únicos de todas las fuentes (comparisons, cardsOnlyInAPI, cardsOnlyInDB)
+  const allSets = [
+    ...(data?.comparisons.map((c) => c.set) || []),
+    ...(data?.cardsOnlyInAPI.map((c) => c.set) || []),
+    ...(data?.cardsOnlyInDB.map((c) => c.set) || []),
+  ]
+  const uniqueSets = Array.from(new Set(allSets)).sort()
+  
+  // Función para obtener nombre de display del set
+  const getSetDisplayName = (set: string) => {
+    return setDisplayNames[set] || set
+  }
 
   if (loading) {
     return (
@@ -433,7 +458,7 @@ export default function ComparePricesPage() {
                       <SelectItem value="all">Todos los sets</SelectItem>
                       {uniqueSets.map((set) => (
                         <SelectItem key={set} value={set}>
-                          {set}
+                          {getSetDisplayName(set)}
                         </SelectItem>
                       ))}
                     </SelectContent>
