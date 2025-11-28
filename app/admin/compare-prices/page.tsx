@@ -127,19 +127,44 @@ export default function ComparePricesPage() {
       }
 
       const pagination = firstPageResult.data.pagination
-      const allComparisons: ComparisonResult[] = [...firstPageResult.data.comparisons]
-      const allCardsOnlyInAPI: Array<{ name: string; set: string; number: number; rarity: string }> = [
+      let allComparisons: ComparisonResult[] = [...firstPageResult.data.comparisons]
+      let allCardsOnlyInAPI: Array<{ name: string; set: string; number: number; rarity: string }> = [
         ...firstPageResult.data.cardsOnlyInAPI,
       ]
       let allCardsOnlyInDB: Array<{ id: string; name: string; set: string }> = 
         firstPageResult.data.cardsOnlyInDB || []
 
-      // Si hay más páginas, cargarlas todas
+      // Mostrar primera página inmediatamente
+      const updateStats = () => ({
+        totalInDatabase: pagination.totalInDatabase || firstPageResult.data.stats.totalInDatabase,
+        totalInAPI: pagination.totalInAPI || firstPageResult.data.stats.totalInAPI,
+        totalCompared: allComparisons.length,
+        withStock: allComparisons.filter((c) => c.hasStock).length,
+        withoutStock: allComparisons.filter((c) => !c.hasStock).length,
+        needsPriceUpdate: allComparisons.filter((c) => c.needsPriceUpdate).length,
+        onlyInAPI: allCardsOnlyInAPI.length,
+        onlyInDB: allCardsOnlyInDB.length,
+        averagePriceDifference:
+          allComparisons.length > 0
+            ? Math.round(
+                (allComparisons.reduce((sum, c) => sum + c.priceDifferencePercent, 0) /
+                  allComparisons.length) *
+                  100
+              ) / 100
+            : 0,
+      })
+
+      setData({
+        comparisons: allComparisons,
+        cardsOnlyInAPI: allCardsOnlyInAPI,
+        cardsOnlyInDB: allCardsOnlyInDB,
+        stats: updateStats(),
+      })
+
+      setLoading(false) // Ya podemos mostrar los datos
+
+      // Si hay más páginas, cargarlas en segundo plano y actualizar progresivamente
       if (pagination.hasMore && pagination.totalPages > 1) {
-        toast({
-          title: "Cargando datos...",
-          description: `Procesando ${pagination.totalPages} páginas de cartas...`,
-        })
 
         // Cargar páginas restantes en paralelo (con límite para no sobrecargar)
         const pagesToLoad = Array.from({ length: pagination.totalPages - 1 }, (_, i) => i + 2)
@@ -175,52 +200,48 @@ export default function ComparePricesPage() {
             }
           })
 
-          // Actualizar UI con progreso
-          if (i + batchSize < pagesToLoad.length) {
-            toast({
-              title: "Cargando...",
-              description: `Página ${Math.min(i + batchSize, pagesToLoad.length)}/${pagesToLoad.length}`,
-            })
-          }
+          // Actualizar UI con datos parciales inmediatamente
+          setData({
+            comparisons: [...allComparisons],
+            cardsOnlyInAPI: [...allCardsOnlyInAPI],
+            cardsOnlyInDB: [...allCardsOnlyInDB],
+            stats: updateStats(),
+          })
+
+          // Mostrar progreso
+          const currentPage = Math.min(i + batchSize, pagesToLoad.length)
+          const totalPages = pagesToLoad.length
+          toast({
+            title: "Cargando...",
+            description: `Página ${currentPage}/${totalPages} (${allComparisons.length} cartas cargadas)`,
+            duration: 2000,
+          })
         }
 
         // Obtener cartas solo en BD de la última página
         if (lastPageData && lastPageData.cardsOnlyInDB) {
           allCardsOnlyInDB = lastPageData.cardsOnlyInDB
         }
+
+        // Actualización final con todos los datos
+        setData({
+          comparisons: allComparisons,
+          cardsOnlyInAPI: allCardsOnlyInAPI,
+          cardsOnlyInDB: allCardsOnlyInDB,
+          stats: updateStats(),
+        })
+
+        toast({
+          title: "✅ Carga completada",
+          description: `Se procesaron ${allComparisons.length} cartas de ${pagination.totalPages} páginas`,
+        })
+      } else {
+        // Si solo hay una página, ya está todo cargado
+        toast({
+          title: "✅ Datos cargados",
+          description: `Se procesaron ${allComparisons.length} cartas`,
+        })
       }
-
-      // Estadísticas finales
-      const finalStats = {
-        totalInDatabase: pagination.totalInDatabase || firstPageResult.data.stats.totalInDatabase,
-        totalInAPI: pagination.totalInAPI || firstPageResult.data.stats.totalInAPI,
-        totalCompared: allComparisons.length,
-        withStock: allComparisons.filter((c) => c.hasStock).length,
-        withoutStock: allComparisons.filter((c) => !c.hasStock).length,
-        needsPriceUpdate: allComparisons.filter((c) => c.needsPriceUpdate).length,
-        onlyInAPI: allCardsOnlyInAPI.length,
-        onlyInDB: allCardsOnlyInDB.length,
-        averagePriceDifference:
-          allComparisons.length > 0
-            ? Math.round(
-                (allComparisons.reduce((sum, c) => sum + c.priceDifferencePercent, 0) /
-                  allComparisons.length) *
-                  100
-              ) / 100
-            : 0,
-      }
-
-      setData({
-        comparisons: allComparisons,
-        cardsOnlyInAPI: allCardsOnlyInAPI,
-        cardsOnlyInDB: allCardsOnlyInDB,
-        stats: finalStats,
-      })
-
-      toast({
-        title: "✅ Datos cargados",
-        description: `Se procesaron ${allComparisons.length} cartas`,
-      })
     } catch (error) {
       console.error("Error loading comparison data:", error)
       toast({
@@ -282,12 +303,26 @@ export default function ComparePricesPage() {
     'whisper': 'Whispers in the Well',
   }
 
-  // Obtener sets únicos de todas las fuentes (comparisons, cardsOnlyInAPI, cardsOnlyInDB)
-  const allSets = [
-    ...(data?.comparisons.map((c) => c.set) || []),
-    ...(data?.cardsOnlyInAPI.map((c) => c.set) || []),
-    ...(data?.cardsOnlyInDB.map((c) => c.set) || []),
-  ]
+  // Mapeo inverso: normalizar diferentes variaciones al mismo nombre
+  const normalizeSetName = (set: string): string => {
+    const normalized = set.toLowerCase().trim()
+    // Mapear variaciones comunes
+    if (normalized.includes('whisper') || normalized === 'whi') return 'whi'
+    if (normalized.includes('first chapter') || normalized === 'firstchapter') return 'firstChapter'
+    if (normalized.includes('rise of') || normalized === 'riseoffloodborn') return 'riseOfFloodborn'
+    if (normalized.includes('inklands') || normalized === 'intotheinklands') return 'intoInklands'
+    if (normalized.includes('ursula') || normalized === 'ursulareturn') return 'ursulaReturn'
+    if (normalized.includes('shimmering') || normalized === 'shimmering') return 'shimmering'
+    if (normalized.includes('azurite') || normalized === 'azurite') return 'azurite'
+    if (normalized.includes('archazia') || normalized === 'archazia') return 'archazia'
+    if (normalized.includes('jafar') || normalized === 'reignofjafar') return 'reignOfJafar'
+    if (normalized.includes('fabled') || normalized === 'fabled') return 'fabled'
+    return normalized
+  }
+
+  // Obtener sets únicos solo de comparisons (la fuente principal que se muestra en la tabla)
+  // Esto evita duplicados y mantiene consistencia
+  const allSets = data?.comparisons.map((c) => normalizeSetName(c.set)) || []
   const uniqueSets = Array.from(new Set(allSets)).sort()
   
   // Función para obtener nombre de display del set
