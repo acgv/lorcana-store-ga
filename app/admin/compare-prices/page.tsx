@@ -358,17 +358,19 @@ export default function ComparePricesPage() {
       return false
     }
 
-    // Filtro por set (comparación directa como en catálogo, con normalización para variaciones)
+    // Filtro por set (exactamente igual que en catálogo)
     if (filterSet !== "all") {
-      // Primero intentar comparación directa (como en catálogo)
-      if (comp.set === filterSet) {
-        // Coincide exactamente, continuar
-      } else {
-        // Si no coincide, normalizar y comparar (para manejar variaciones como "whi"/"whisper")
-        const compSetNormalized = normalizeSetToFilterValue(comp.set)
-        if (compSetNormalized !== filterSet) {
-          return false
-        }
+      // Debug: mostrar valores cuando se selecciona un filtro
+      if (filterSet !== "all" && data?.comparisons.length > 0 && Math.random() < 0.1) {
+        console.log('🔍 Set filter debug:', {
+          filterSet,
+          compSet: comp.set,
+          match: comp.set === filterSet,
+          allSets: [...new Set(data.comparisons.map(c => c.set))].slice(0, 5)
+        })
+      }
+      if (comp.set !== filterSet) {
+        return false
       }
     }
 
