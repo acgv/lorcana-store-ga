@@ -211,7 +211,6 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1", 10)
     const pageSize = parseInt(searchParams.get("pageSize") || "50", 10) // Procesar 50 cartas por vez
     const skip = (page - 1) * pageSize
-    }
 
     if (!supabaseAdmin) {
       return NextResponse.json(
@@ -226,7 +225,7 @@ export async function GET(request: NextRequest) {
     // Supabase por defecto limita a 1000, necesitamos obtener todas
     let dbCards: any[] = []
     let from = 0
-    const pageSize = 1000
+    const dbPageSize = 1000
     let hasMore = true
     
     while (hasMore) {
@@ -234,7 +233,7 @@ export async function GET(request: NextRequest) {
         .from("cards")
         .select("id, name, set, number, rarity, type, price, foilPrice, normalStock, foilStock, image")
         .eq("status", "approved")
-        .range(from, from + pageSize - 1)
+        .range(from, from + dbPageSize - 1)
       
       if (dbError) {
         console.error("Error fetching database cards:", dbError)
@@ -243,8 +242,8 @@ export async function GET(request: NextRequest) {
       
       if (data && data.length > 0) {
         dbCards = dbCards.concat(data)
-        from += pageSize
-        hasMore = data.length === pageSize
+        from += dbPageSize
+        hasMore = data.length === dbPageSize
       } else {
         hasMore = false
       }
