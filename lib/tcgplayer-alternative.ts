@@ -28,73 +28,134 @@ async function getPriceFromCardMarket(cardName: string): Promise<CardPrice | nul
 
   try {
     // Buscar carta de Lorcana en CardMarket API TCG
-    // Endpoint para buscar productos de Lorcana
-    const searchUrl = `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?search=${encodeURIComponent(cardName)}`
+    // Intentar diferentes endpoints posibles para Lorcana
+    const endpoints = [
+      `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?sort=episode_newest&search=${encodeURIComponent(cardName)}`,
+      `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?search=${encodeURIComponent(cardName)}`,
+      `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?sort=episode_newest`,
+    ]
     
-    const response = await fetch(searchUrl, {
-      headers: {
-        "x-rapidapi-key": rapidApiKey,
-        "x-rapidapi-host": "cardmarket-api-tcg.p.rapidapi.com",
-      },
-    })
+    let response: Response | null = null
+    let lastError: Error | null = null
+    
+    // Intentar cada endpoint hasta que uno funcione
+    for (const url of endpoints) {
+      try {
+        response = await fetch(url, {
+          headers: {
+            "x-rapidapi-key": rapidApiKey,
+            "x-rapidapi-host": "cardmarket-api-tcg.p.rapidapi.com",
+          },
+        })
+        
+        if (response.ok) {
+          break // Si funciona, usar este endpoint
+        }
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err))
+        continue
+      }
+    }
+    
+    if (!response) {
+      console.warn(`⚠️ CardMarket API: No endpoints available for Lorcana`)
+      return null
+    }
 
     if (!response.ok) {
       console.warn(`⚠️ CardMarket API error: ${response.status} ${response.statusText}`)
+      // Si el endpoint de Lorcana no existe, intentar sin el filtro de búsqueda
+      if (response.status === 404) {
+        // Intentar endpoint genérico de productos
+        const genericUrl = `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?sort=episode_newest`
+        const genericResponse = await fetch(genericUrl, {
+          headers: {
+            "x-rapidapi-key": rapidApiKey,
+            "x-rapidapi-host": "cardmarket-api-tcg.p.rapidapi.com",
+          },
+        })
+        
+        if (genericResponse.ok) {
+          const genericData = await genericResponse.json()
+          // Buscar en los resultados
+          return searchInProducts(genericData, cardName, rapidApiKey)
+        }
+      }
       return null
     }
 
     const data = await response.json()
-    
-    // La estructura puede variar, intentar diferentes formatos
-    let products = []
-    if (Array.isArray(data)) {
-      products = data
-    } else if (data.products) {
-      products = data.products
-    } else if (data.results) {
-      products = data.results
-    } else if (data.data) {
-      products = Array.isArray(data.data) ? data.data : [data.data]
-    }
-    
-    // Buscar el primer resultado que coincida con el nombre
-    const matchingProduct = products.find((p: any) => 
-      p.name?.toLowerCase().includes(cardName.toLowerCase()) ||
-      p.productName?.toLowerCase().includes(cardName.toLowerCase()) ||
-      p.title?.toLowerCase().includes(cardName.toLowerCase())
-    ) || products[0]
+    return searchInProducts(data, cardName, rapidApiKey)
+  } catch (error) {
+    console.warn(`⚠️ Error getting price from CardMarket for ${cardName}:`, error)
+    return null
+  }
+}
 
-    if (matchingProduct) {
-      // Intentar obtener precio de diferentes campos posibles
-      const normalPrice = 
-        matchingProduct.price ||
-        matchingProduct.marketPrice ||
-        matchingProduct.avgPrice ||
-        matchingProduct.priceGuide?.avgSellPrice ||
-        matchingProduct.priceGuide?.lowPrice ||
-        matchingProduct.lowPrice ||
-        matchingProduct.midPrice ||
-        null
+/**
+ * Buscar producto en los datos de CardMarket API
+ */
+async function searchInProducts(
+  data: any,
+  cardName: string,
+  rapidApiKey: string
+): Promise<CardPrice | null> {
+  // La estructura puede variar, intentar diferentes formatos
+  let products = []
+  if (Array.isArray(data)) {
+    products = data
+  } else if (data.products) {
+    products = data.products
+  } else if (data.results) {
+    products = data.results
+  } else if (data.data) {
+    products = Array.isArray(data.data) ? data.data : [data.data]
+  }
+  
+  // Buscar el primer resultado que coincida con el nombre
+  const matchingProduct = products.find((p: any) => {
+    const name = (p.name || p.productName || p.title || "").toLowerCase()
+    const searchName = cardName.toLowerCase()
+    return name.includes(searchName) || searchName.includes(name.split(" - ")[0])
+  }) || products[0]
 
-      const foilPrice = 
-        matchingProduct.foilPrice ||
-        matchingProduct.foilMarketPrice ||
-        matchingProduct.foilPriceGuide?.avgSellPrice ||
-        matchingProduct.foilPriceGuide?.lowPrice ||
-        null
+  if (matchingProduct) {
+    // Intentar obtener precio de diferentes campos posibles
+    const normalPrice = 
+      matchingProduct.price ||
+      matchingProduct.marketPrice ||
+      matchingProduct.avgPrice ||
+      matchingProduct.priceGuide?.avgSellPrice ||
+      matchingProduct.priceGuide?.lowPrice ||
+      matchingProduct.lowPrice ||
+      matchingProduct.midPrice ||
+      matchingProduct.tcgplayerPrice ||
+      null
 
-      if (normalPrice) {
-        // Convertir a USD si viene en otra moneda (CardMarket puede dar precios en EUR)
-        // Asumimos que viene en USD, si viene en EUR habría que convertir
-        return {
-          normal: typeof normalPrice === 'number' ? normalPrice : parseFloat(normalPrice),
-          foil: foilPrice ? (typeof foilPrice === 'number' ? foilPrice : parseFloat(foilPrice)) : null,
-          source: "cardmarket-tcgplayer",
-        }
+    const foilPrice = 
+      matchingProduct.foilPrice ||
+      matchingProduct.foilMarketPrice ||
+      matchingProduct.foilPriceGuide?.avgSellPrice ||
+      matchingProduct.foilPriceGuide?.lowPrice ||
+      matchingProduct.foilFoilPrice ||
+      null
+
+    if (normalPrice) {
+      // Los precios pueden venir en diferentes formatos
+      // CardMarket puede dar precios en EUR, así que si es muy bajo, podría ser EUR
+      // Por ahora asumimos USD, pero se puede ajustar
+      const priceValue = typeof normalPrice === 'number' ? normalPrice : parseFloat(String(normalPrice))
+      const foilValue = foilPrice ? (typeof foilPrice === 'number' ? foilPrice : parseFloat(String(foilPrice))) : null
+      
+      return {
+        normal: priceValue,
+        foil: foilValue,
+        source: "cardmarket-tcgplayer",
       }
     }
+  }
 
-    return null
+  return null
   } catch (error) {
     console.warn(`⚠️ Error getting price from CardMarket for ${cardName}:`, error)
     return null

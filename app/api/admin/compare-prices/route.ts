@@ -268,8 +268,17 @@ export async function GET(request: NextRequest) {
     console.log("🔄 Starting price comparison...")
     let processed = 0
     const totalCards = lorcanaCards.length
+    
+    // Limitar el número de cartas a procesar para evitar timeouts
+    // Procesar solo las primeras 500 cartas o todas si son menos
+    const maxCardsToProcess = 500
+    const cardsToProcess = lorcanaCards.slice(0, maxCardsToProcess)
+    
+    if (lorcanaCards.length > maxCardsToProcess) {
+      console.log(`⚠️ Limiting to first ${maxCardsToProcess} cards to avoid timeout`)
+    }
 
-    for (const apiCard of lorcanaCards) {
+    for (const apiCard of cardsToProcess) {
       // Filtrar promocionales
       if (
         apiCard.Image?.includes("/promo") ||
@@ -303,12 +312,12 @@ export async function GET(request: NextRequest) {
             priceSource = "tcgplayer"
           }
         } catch (error) {
-          console.warn(`⚠️ Error getting TCGPlayer price for ${apiCard.Name}:`, error)
+          // Silenciar error, intentar siguiente método
         }
       }
       
-      // 2. Si no hay keys, intentar métodos alternativos (Card Market API, TCGAPIs, etc.)
-      if (!marketPriceUSD) {
+      // 2. Si no hay keys de TCGPlayer, intentar CardMarket API (RapidAPI)
+      if (!marketPriceUSD && process.env.RAPIDAPI_KEY) {
         try {
           const { getTCGPlayerPriceAlternative } = await import("@/lib/tcgplayer-alternative")
           const altPrice = await getTCGPlayerPriceAlternative(apiCard.Name)
@@ -316,10 +325,10 @@ export async function GET(request: NextRequest) {
           if (altPrice && altPrice.normal) {
             marketPriceUSD = altPrice.normal
             marketFoilPriceUSD = altPrice.foil
-            priceSource = "tcgplayer" // Aunque viene de una fuente alternativa, son precios de TCGPlayer
+            priceSource = "tcgplayer" // Aunque viene de CardMarket, son precios de TCGPlayer
           }
         } catch (error) {
-          console.warn(`⚠️ Error getting alternative TCGPlayer price for ${apiCard.Name}:`, error)
+          // Silenciar error, usar precio estándar
         }
       }
       
@@ -397,8 +406,8 @@ export async function GET(request: NextRequest) {
       }
 
       processed++
-      if (processed % 50 === 0) {
-        console.log(`⏳ Processed ${processed}/${totalCards} cards...`)
+      if (processed % 100 === 0) {
+        console.log(`⏳ Processed ${processed}/${cardsToProcess.length} cards...`)
       }
     }
 
