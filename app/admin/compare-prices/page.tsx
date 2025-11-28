@@ -110,22 +110,117 @@ export default function ComparePricesPage() {
         headers["Authorization"] = `Bearer ${token}`
       }
 
-      const response = await fetch("/api/admin/compare-prices", {
+      // Cargar primera página para obtener información de paginación
+      const firstPageResponse = await fetch("/api/admin/compare-prices?page=1&pageSize=50", {
         headers,
       })
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
-        throw new Error(errorData.error || `HTTP ${response.status}`)
+      if (!firstPageResponse.ok) {
+        const errorData = await firstPageResponse.json().catch(() => ({ error: "Unknown error" }))
+        throw new Error(errorData.error || `HTTP ${firstPageResponse.status}`)
       }
       
-      const result = await response.json()
+      const firstPageResult = await firstPageResponse.json()
 
-      if (result.success) {
-        setData(result.data)
-      } else {
-        throw new Error(result.error || "Failed to load comparison data")
+      if (!firstPageResult.success) {
+        throw new Error(firstPageResult.error || "Failed to load comparison data")
       }
+
+      const pagination = firstPageResult.data.pagination
+      const allComparisons: ComparisonResult[] = [...firstPageResult.data.comparisons]
+      const allCardsOnlyInAPI: Array<{ name: string; set: string; number: number; rarity: string }> = [
+        ...firstPageResult.data.cardsOnlyInAPI,
+      ]
+      let allCardsOnlyInDB: Array<{ id: string; name: string; set: string }> = 
+        firstPageResult.data.cardsOnlyInDB || []
+
+      // Si hay más páginas, cargarlas todas
+      if (pagination.hasMore && pagination.totalPages > 1) {
+        toast({
+          title: "Cargando datos...",
+          description: `Procesando ${pagination.totalPages} páginas de cartas...`,
+        })
+
+        // Cargar páginas restantes en paralelo (con límite para no sobrecargar)
+        const pagesToLoad = Array.from({ length: pagination.totalPages - 1 }, (_, i) => i + 2)
+        const batchSize = 5 // Cargar 5 páginas a la vez
+        let lastPageData: any = null
+
+        for (let i = 0; i < pagesToLoad.length; i += batchSize) {
+          const batch = pagesToLoad.slice(i, i + batchSize)
+          const batchPromises = batch.map(async (page) => {
+            const response = await fetch(`/api/admin/compare-prices?page=${page}&pageSize=50`, {
+              headers,
+            })
+            if (!response.ok) {
+              console.warn(`Failed to load page ${page}`)
+              return null
+            }
+            const result = await response.json()
+            return result.success ? result.data : null
+          })
+
+          const batchResults = await Promise.all(batchPromises)
+          
+          batchResults.forEach((pageData, index) => {
+            if (pageData) {
+              allComparisons.push(...pageData.comparisons)
+              allCardsOnlyInAPI.push(...pageData.cardsOnlyInAPI)
+              
+              // Guardar la última página para obtener cartas solo en BD
+              const pageNum = batch[index]
+              if (pageNum === pagination.totalPages) {
+                lastPageData = pageData
+              }
+            }
+          })
+
+          // Actualizar UI con progreso
+          if (i + batchSize < pagesToLoad.length) {
+            toast({
+              title: "Cargando...",
+              description: `Página ${Math.min(i + batchSize, pagesToLoad.length)}/${pagesToLoad.length}`,
+            })
+          }
+        }
+
+        // Obtener cartas solo en BD de la última página
+        if (lastPageData && lastPageData.cardsOnlyInDB) {
+          allCardsOnlyInDB = lastPageData.cardsOnlyInDB
+        }
+      }
+
+      // Estadísticas finales
+      const finalStats = {
+        totalInDatabase: pagination.totalInDatabase || firstPageResult.data.stats.totalInDatabase,
+        totalInAPI: pagination.totalInAPI || firstPageResult.data.stats.totalInAPI,
+        totalCompared: allComparisons.length,
+        withStock: allComparisons.filter((c) => c.hasStock).length,
+        withoutStock: allComparisons.filter((c) => !c.hasStock).length,
+        needsPriceUpdate: allComparisons.filter((c) => c.needsPriceUpdate).length,
+        onlyInAPI: allCardsOnlyInAPI.length,
+        onlyInDB: allCardsOnlyInDB.length,
+        averagePriceDifference:
+          allComparisons.length > 0
+            ? Math.round(
+                (allComparisons.reduce((sum, c) => sum + c.priceDifferencePercent, 0) /
+                  allComparisons.length) *
+                  100
+              ) / 100
+            : 0,
+      }
+
+      setData({
+        comparisons: allComparisons,
+        cardsOnlyInAPI: allCardsOnlyInAPI,
+        cardsOnlyInDB: allCardsOnlyInDB,
+        stats: finalStats,
+      })
+
+      toast({
+        title: "✅ Datos cargados",
+        description: `Se procesaron ${allComparisons.length} cartas`,
+      })
     } catch (error) {
       console.error("Error loading comparison data:", error)
       toast({

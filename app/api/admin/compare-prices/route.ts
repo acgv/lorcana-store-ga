@@ -206,6 +206,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Obtener parámetros de paginación
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get("page") || "1", 10)
+    const pageSize = parseInt(searchParams.get("pageSize") || "50", 10) // Procesar 50 cartas por vez
+    const skip = (page - 1) * pageSize
+    }
+
     if (!supabaseAdmin) {
       return NextResponse.json(
         { success: false, error: "Supabase not configured" },
@@ -283,54 +290,39 @@ export async function GET(request: NextRequest) {
 
     // Comparar cartas de la API con la BD
     console.log("🔄 Starting price comparison...")
-    let processed = 0
-    const totalCards = lorcanaCards.length
     
-    // Procesar todas las cartas de la API
-    // Nota: Si hay muchas cartas, esto puede tardar, pero ahora procesamos todas
-    const cardsToProcess = lorcanaCards
-    console.log(`🔄 Processing ${cardsToProcess.length} cards from API...`)
+    // Filtrar promocionales primero
+    const nonPromoCards = lorcanaCards.filter(
+      (card) =>
+        !card.Image?.includes("/promo") &&
+        !card.Image?.includes("/promo2/") &&
+        !card.Image?.includes("/promo3/")
+    )
+    
+    const totalCards = nonPromoCards.length
+    const totalPages = Math.ceil(totalCards / pageSize)
+    
+    // Procesar solo el lote actual (paginación)
+    const startIndex = skip
+    const endIndex = Math.min(skip + pageSize, totalCards)
+    const cardsToProcess = nonPromoCards.slice(startIndex, endIndex)
+    
+    console.log(`🔄 Processing page ${page}/${totalPages} (cards ${startIndex + 1}-${endIndex} of ${totalCards})...`)
 
+    let processed = 0
     for (const apiCard of cardsToProcess) {
-      // Filtrar promocionales
-      if (
-        apiCard.Image?.includes("/promo") ||
-        apiCard.Image?.includes("/promo2/") ||
-        apiCard.Image?.includes("/promo3/")
-      ) {
-        continue
-      }
-
       const cardId = generateCardId(apiCard.Set_Name, apiCard.Card_Num)
       const dbCard = dbCardsMap.get(cardId)
 
       const rarity = rarityMap[apiCard.Rarity] || "common"
       
-      // Intentar obtener precio de TCGPlayer usando métodos alternativos
+      // Obtener precio real de la API (CardMarket/RapidAPI)
       let marketPriceUSD: number | null = null
       let marketFoilPriceUSD: number | null = null
       let priceSource: "tcgplayer" | "standard" = "standard"
       
-      // 1. Intentar con API keys de TCGPlayer (si están configuradas)
-      const hasTCGPlayerKeys = process.env.TCGPLAYER_PUBLIC_KEY && process.env.TCGPLAYER_PRIVATE_KEY
-      
-      if (hasTCGPlayerKeys) {
-        try {
-          const { getTCGPlayerPrice } = await import("@/lib/tcgplayer-api")
-          const tcgPrice = await getTCGPlayerPrice(apiCard.Name)
-          
-          if (tcgPrice && tcgPrice.normal && tcgPrice.normal.market > 0) {
-            marketPriceUSD = tcgPrice.normal.market || tcgPrice.normal.mid
-            marketFoilPriceUSD = tcgPrice.foil ? (tcgPrice.foil.market || tcgPrice.foil.mid) : null
-            priceSource = "tcgplayer"
-          }
-        } catch (error) {
-          // Silenciar error, intentar siguiente método
-        }
-      }
-      
-      // 2. Si no hay keys de TCGPlayer, intentar CardMarket API (RapidAPI)
-      if (!marketPriceUSD && process.env.RAPIDAPI_KEY) {
+      // Intentar obtener precio de CardMarket API (RapidAPI)
+      if (process.env.RAPIDAPI_KEY) {
         try {
           const { getTCGPlayerPriceAlternative } = await import("@/lib/tcgplayer-alternative")
           const altPrice = await getTCGPlayerPriceAlternative(apiCard.Name)
@@ -338,17 +330,18 @@ export async function GET(request: NextRequest) {
           if (altPrice && altPrice.normal) {
             marketPriceUSD = altPrice.normal
             marketFoilPriceUSD = altPrice.foil
-            priceSource = "tcgplayer" // Aunque viene de CardMarket, son precios de TCGPlayer
+            priceSource = "tcgplayer"
           }
         } catch (error) {
-          // Silenciar error, usar precio estándar
+          // Si falla, usar precio estándar
+          console.warn(`⚠️ Error getting price for ${apiCard.Name}:`, error)
         }
       }
       
-      // 3. Si no se obtuvo precio, usar precio estándar por rareza
+      // Si no se obtuvo precio de la API, usar precio estándar por rareza
       if (!marketPriceUSD) {
         marketPriceUSD = getStandardPriceUSD(rarity)
-        marketFoilPriceUSD = marketPriceUSD * 1.6 // Foil típicamente 1.6x el precio normal
+        marketFoilPriceUSD = marketPriceUSD * 1.6
       }
 
       if (dbCard) {
@@ -424,24 +417,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`✅ Price comparison completed. Processed ${processed} cards.`)
+    console.log(`✅ Price comparison completed. Processed ${processed} cards in this batch.`)
 
-    // Cartas solo en BD (no están en la API)
-    dbCards.forEach((card) => {
-      const found = lorcanaCards.some(
-        (apiCard) => generateCardId(apiCard.Set_Name, apiCard.Card_Num) === card.id
+    // Calcular cartas solo en BD (solo en la última página para eficiencia)
+    if (page === totalPages) {
+      const allApiCardIds = new Set(
+        nonPromoCards.map((apiCard) => generateCardId(apiCard.Set_Name, apiCard.Card_Num))
       )
-      if (!found) {
-        cardsOnlyInDB.push({
-          id: card.id,
-          name: card.name,
-          set: card.set,
-        })
-      }
-    })
+      
+      dbCards.forEach((card) => {
+        if (!allApiCardIds.has(card.id)) {
+          cardsOnlyInDB.push({
+            id: card.id,
+            name: card.name,
+            set: card.set,
+          })
+        }
+      })
+    }
 
-    // Estadísticas
-    const stats = {
+    // Estadísticas parciales (solo del lote actual)
+    const batchStats = {
       totalInDatabase: dbCards.length,
       totalInAPI: lorcanaCards.length,
       totalCompared: comparisons.length,
@@ -465,7 +461,14 @@ export async function GET(request: NextRequest) {
         comparisons,
         cardsOnlyInAPI,
         cardsOnlyInDB,
-        stats,
+        stats: batchStats,
+        pagination: {
+          page,
+          pageSize,
+          totalPages,
+          totalCards,
+          hasMore: page < totalPages,
+        },
       },
     })
   } catch (error) {
