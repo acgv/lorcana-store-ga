@@ -89,106 +89,6 @@ export default function ComparePricesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterRarity, setFilterRarity] = useState<string>("all")
   const [filterSet, setFilterSet] = useState<string>("all")
-  
-  // Mapeo de sets (igual que en la API y el script de importación)
-  const setValueMap: Record<string, string> = {
-    'firstChapter': 'firstChapter',
-    'riseOfFloodborn': 'riseOfFloodborn',
-    'intoInklands': 'intoInklands',
-    'ursulaReturn': 'ursulaReturn',
-    'shimmering': 'shimmering',
-    'azurite': 'azurite',
-    'archazia': 'archazia',
-    'reignOfJafar': 'reignOfJafar',
-    'fabled': 'fabled',
-    'whi': 'whi',
-    'whisper': 'whi',
-    'whispers': 'whi',
-    'whispers in the well': 'whi',
-    'The First Chapter': 'firstChapter',
-    'Rise of the Floodborn': 'riseOfFloodborn',
-    'Into the Inklands': 'intoInklands',
-    "Ursula's Return": 'ursulaReturn',
-    'Shimmering Skies': 'shimmering',
-    'Azurite Sea': 'azurite',
-    "Archazia's Island": 'archazia',
-    'Reign of Jafar': 'reignOfJafar',
-    'Fabled': 'fabled',
-    'Whispers in the Well': 'whi',
-  }
-
-  // Normalizar nombre de set a valor del filtro
-  const normalizeSetToFilterValue = (set: string): string => {
-    if (!set) return set
-    const trimmed = set.trim()
-    
-    // 1. Coincidencia exacta (case sensitive)
-    if (setValueMap[trimmed]) {
-      return setValueMap[trimmed]
-    }
-    
-    // 2. Coincidencia exacta (case insensitive)
-    const lowerTrimmed = trimmed.toLowerCase()
-    for (const [key, value] of Object.entries(setValueMap)) {
-      if (key.toLowerCase() === lowerTrimmed) {
-        return value
-      }
-    }
-    
-    // 3. Buscar por coincidencia parcial (para casos como "whisper" -> "whi")
-    for (const [key, value] of Object.entries(setValueMap)) {
-      const lowerKey = key.toLowerCase()
-      if (lowerTrimmed.includes(lowerKey) || lowerKey.includes(lowerTrimmed)) {
-        return value
-      }
-    }
-    
-    // Si no se encuentra, devolver el original (puede que ya sea un valor del filtro)
-    return trimmed
-  }
-
-  // Debug: ver qué sets hay en los datos cuando cambia el filtro
-  useEffect(() => {
-    console.log('🔍 useEffect triggered', { 
-      hasData: !!data?.comparisons, 
-      filterSet, 
-      comparisonsCount: data?.comparisons?.length || 0 
-    })
-    
-    if (data?.comparisons && data.comparisons.length > 0) {
-      const uniqueSetsInData = [...new Set(data.comparisons.map(c => c.set))].sort()
-      const normalizedSets = uniqueSetsInData.map(s => ({ 
-        original: s, 
-        normalized: normalizeSetToFilterValue(s) 
-      }))
-      
-      const matchingCount = filterSet !== "all" 
-        ? data.comparisons.filter(c => {
-            const normalized = normalizeSetToFilterValue(c.set)
-            return normalized === filterSet
-          }).length
-        : data.comparisons.length
-      
-      console.log('🔍 Filter Set Debug:', {
-        selectedFilter: filterSet,
-        uniqueSetsInData: uniqueSetsInData.slice(0, 15),
-        normalizedSets: normalizedSets.slice(0, 15),
-        totalComparisons: data.comparisons.length,
-        matchingCount,
-        sampleComparison: data.comparisons.slice(0, 3).map(c => ({
-          name: c.cardName,
-          set: c.set,
-          normalized: normalizeSetToFilterValue(c.set)
-        }))
-      })
-    } else {
-      console.log('⚠️ No data available for filtering', { 
-        hasData: !!data, 
-        hasComparisons: !!data?.comparisons,
-        comparisonsLength: data?.comparisons?.length || 0
-      })
-    }
-  }, [filterSet, data])
   const [filterStock, setFilterStock] = useState<string>("all")
   const [filterPrice, setFilterPrice] = useState<string>("all")
   const [activeTab, setActiveTab] = useState("comparison")
@@ -254,6 +154,14 @@ export default function ComparePricesPage() {
             : 0,
       })
 
+      // Log temporal para ver qué valores de set vienen en los datos
+      const uniqueSetsInData = [...new Set(allComparisons.map(c => c.set))].sort()
+      console.log('🔍 Sets únicos en los datos cargados:', uniqueSetsInData)
+      console.log('🔍 Muestra de datos (primeros 5):', allComparisons.slice(0, 5).map(c => ({
+        name: c.cardName,
+        set: c.set
+      })))
+
       setData({
         comparisons: allComparisons,
         cardsOnlyInAPI: allCardsOnlyInAPI,
@@ -300,6 +208,10 @@ export default function ComparePricesPage() {
             }
           })
 
+          // Log temporal para ver qué valores de set vienen en los datos
+          const uniqueSetsInData = [...new Set(allComparisons.map(c => c.set))].sort()
+          console.log('🔍 Sets únicos después de cargar página:', uniqueSetsInData)
+
           // Actualizar UI con datos parciales inmediatamente
           setData({
             comparisons: [...allComparisons],
@@ -322,6 +234,11 @@ export default function ComparePricesPage() {
         if (lastPageData && lastPageData.cardsOnlyInDB) {
           allCardsOnlyInDB = lastPageData.cardsOnlyInDB
         }
+
+        // Log final para ver todos los sets únicos
+        const finalUniqueSets = [...new Set(allComparisons.map(c => c.set))].sort()
+        console.log('🔍 Sets únicos FINALES en todos los datos:', finalUniqueSets)
+        console.log('🔍 Total de comparaciones:', allComparisons.length)
 
         // Actualización final con todos los datos
         setData({
@@ -389,11 +306,11 @@ export default function ComparePricesPage() {
     'whisper': 10,
   }
 
-  // Filtrar comparaciones (usando useMemo como en catálogo)
+  // Filtrar comparaciones (exactamente igual que en catálogo y mi colección)
   const filteredComparisons = useMemo(() => {
     if (!data?.comparisons) return []
     
-    const result = data.comparisons.filter((comp) => {
+    return data.comparisons.filter((comp) => {
       // Búsqueda por nombre
       if (searchTerm && !comp.cardName.toLowerCase().includes(searchTerm.toLowerCase())) {
         return false
@@ -404,31 +321,14 @@ export default function ComparePricesPage() {
         return false
       }
 
-      // Filtro por set (normalizar ambos valores antes de comparar)
-      if (filterSet !== "all") {
-        const normalizedCompSet = normalizeSetToFilterValue(comp.set)
-        const normalizedFilterSet = normalizeSetToFilterValue(filterSet)
-        
-        // Log para debugging (solo los primeros 5)
-        if (data.comparisons.indexOf(comp) < 5) {
-          console.log('🔍 Filtering card:', {
-            name: comp.cardName,
-            originalSet: comp.set,
-            normalizedCompSet,
-            filterSet,
-            normalizedFilterSet,
-            matches: normalizedCompSet === normalizedFilterSet
-          })
-        }
-        
-        if (normalizedCompSet !== normalizedFilterSet) {
-          return false
-        }
+      // Filtro por set (comparación directa como en catálogo y mi colección)
+      if (filterSet !== "all" && comp.set !== filterSet) {
+        return false
       }
 
-    // Filtro por stock
-    if (filterStock === "with" && !comp.hasStock) return false
-    if (filterStock === "without" && comp.hasStock) return false
+      // Filtro por stock
+      if (filterStock === "with" && !comp.hasStock) return false
+      if (filterStock === "without" && comp.hasStock) return false
 
       // Filtro por precio
       if (filterPrice === "needs-update" && !comp.needsPriceUpdate) return false
@@ -437,17 +337,6 @@ export default function ComparePricesPage() {
 
       return true
     })
-    
-    console.log('✅ Filter result:', {
-      total: data.comparisons.length,
-      filtered: result.length,
-      filterSet,
-      filterRarity,
-      filterStock,
-      filterPrice
-    })
-    
-    return result
   }, [data?.comparisons, searchTerm, filterRarity, filterSet, filterStock, filterPrice])
 
 
