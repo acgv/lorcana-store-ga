@@ -8,6 +8,7 @@ import { useLanguage } from "@/components/language-provider"
 import Link from "next/link"
 import { Sparkles, Send } from "lucide-react"
 import Image from "next/image"
+import { PromotionDescription } from "@/components/promotion-description"
 
 export default function HomePage() {
   const { t } = useLanguage()
@@ -86,6 +87,9 @@ export default function HomePage() {
             </Link>
           </div>
         </section>
+
+        {/* Promoción - Descripción */}
+        <PromotionDescription />
 
         {/* Featured Section */}
         <section className="container mx-auto px-4 py-20">
