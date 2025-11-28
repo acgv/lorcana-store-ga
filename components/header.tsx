@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Search, ShoppingCart, Sparkles, Menu, User, LogOut, FileText, Shield, Heart } from "lucide-react"
+import { Search, ShoppingCart, Sparkles, Menu, User, LogOut, FileText, Shield, Heart, UserCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useLanguage } from "@/components/language-provider"
@@ -206,6 +206,14 @@ export function Header() {
                       </div>
                     </div>
                     <Link
+                      href="/lorcana-tcg/my-profile"
+                      className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md flex items-center gap-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <UserCircle className="h-4 w-4" />
+                      Mi Perfil
+                    </Link>
+                    <Link
                       href="/lorcana-tcg/my-collection"
                       className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md flex items-center gap-2"
                       onClick={() => setMobileMenuOpen(false)}
@@ -295,6 +303,10 @@ export function Header() {
                   {user.email}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push("/lorcana-tcg/my-profile")} className="cursor-pointer">
+                  <UserCircle className="mr-2 h-4 w-4" />
+                  Mi Perfil
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/lorcana-tcg/my-collection")} className="cursor-pointer">
                   <Heart className="mr-2 h-4 w-4" />
                   {t("myCollection")}
