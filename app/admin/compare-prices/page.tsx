@@ -289,22 +289,61 @@ export default function ComparePricesPage() {
     'whisper': 10,
   }
 
-  // Mapeo inverso: normalizar diferentes variaciones al mismo nombre
-  const normalizeSetName = (set: string): string => {
+  // Mapeo de nombres de sets de la API/BD a valores normalizados del filtro
+  const setValueMap: Record<string, string> = {
+    // Valores de la BD
+    'firstChapter': 'firstChapter',
+    'riseOfFloodborn': 'riseOfFloodborn',
+    'intoInklands': 'intoInklands',
+    'ursulaReturn': 'ursulaReturn',
+    'shimmering': 'shimmering',
+    'azurite': 'azurite',
+    'archazia': 'archazia',
+    'reignOfJafar': 'reignOfJafar',
+    'fabled': 'fabled',
+    'whi': 'whi',
+    'whisper': 'whi',
+    // Valores de la API (nombres completos)
+    'The First Chapter': 'firstChapter',
+    'Rise of the Floodborn': 'riseOfFloodborn',
+    'Into the Inklands': 'intoInklands',
+    "Ursula's Return": 'ursulaReturn',
+    'Shimmering Skies': 'shimmering',
+    'Azurite Sea': 'azurite',
+    "Archazia's Island": 'archazia',
+    'Reign of Jafar': 'reignOfJafar',
+    'Fabled': 'fabled',
+    'Whispers in the Well': 'whi',
+  }
+
+  // Normalizar nombre de set a valor del filtro
+  const normalizeSetToFilterValue = (set: string): string => {
     if (!set) return ''
-    const normalized = set.toLowerCase().trim()
-    // Mapear variaciones comunes
-    if (normalized.includes('whisper') || normalized === 'whi') return 'whi'
-    if (normalized.includes('first chapter') || normalized === 'firstchapter') return 'firstChapter'
-    if (normalized.includes('rise of') || normalized === 'riseoffloodborn') return 'riseOfFloodborn'
-    if (normalized.includes('inklands') || normalized === 'intotheinklands') return 'intoInklands'
-    if (normalized.includes('ursula') || normalized === 'ursulareturn') return 'ursulaReturn'
-    if (normalized.includes('shimmering') || normalized === 'shimmering') return 'shimmering'
-    if (normalized.includes('azurite') || normalized === 'azurite') return 'azurite'
-    if (normalized.includes('archazia') || normalized === 'archazia') return 'archazia'
-    if (normalized.includes('jafar') || normalized === 'reignofjafar') return 'reignOfJafar'
-    if (normalized.includes('fabled') || normalized === 'fabled') return 'fabled'
-    return normalized
+    const trimmed = set.trim()
+    
+    // Primero verificar coincidencia exacta (case sensitive)
+    if (setValueMap[trimmed]) {
+      return setValueMap[trimmed]
+    }
+    
+    // Luego verificar coincidencia exacta (case insensitive)
+    const lowerTrimmed = trimmed.toLowerCase()
+    for (const [key, value] of Object.entries(setValueMap)) {
+      if (key.toLowerCase() === lowerTrimmed) {
+        return value
+      }
+    }
+    
+    // Finalmente, buscar por coincidencia parcial
+    for (const [key, value] of Object.entries(setValueMap)) {
+      const lowerKey = key.toLowerCase()
+      if (lowerTrimmed.includes(lowerKey) || lowerKey.includes(lowerTrimmed)) {
+        return value
+      }
+    }
+    
+    // Si no se encuentra, devolver el original (puede que ya sea un valor del filtro)
+    return trimmed
   }
 
   // Filtrar comparaciones
@@ -319,9 +358,16 @@ export default function ComparePricesPage() {
       return false
     }
 
-    // Filtro por set
-    if (filterSet !== "all" && comp.set !== filterSet) {
-      return false
+    // Filtro por set (normalizar para comparar)
+    if (filterSet !== "all") {
+      const compSetNormalized = normalizeSetToFilterValue(comp.set)
+      // Debug: solo en desarrollo
+      if (process.env.NODE_ENV === 'development' && Math.random() < 0.01) {
+        console.log('Filtro set:', { filterSet, compSet: comp.set, normalized: compSetNormalized })
+      }
+      if (compSetNormalized !== filterSet) {
+        return false
+      }
     }
 
     // Filtro por stock
@@ -337,40 +383,6 @@ export default function ComparePricesPage() {
   }) || []
 
 
-  // Obtener sets únicos de todas las fuentes para tener la lista completa
-  // Normalizar los sets para evitar duplicados por variaciones de nombre
-  const allSetsRaw = [
-    ...(data?.comparisons.map((c) => c.set) || []),
-    ...(data?.cardsOnlyInAPI.map((c) => c.set) || []),
-    ...(data?.cardsOnlyInDB.map((c) => c.set) || []),
-  ]
-  
-  // Normalizar sets para agrupar variaciones (ej: "whi" y "whisper" -> "whi")
-  const normalizedSetMap = new Map<string, string>() // Map<normalized, original>
-  
-  allSetsRaw.forEach((set) => {
-    if (!set) return
-    const normalized = normalizeSetName(set)
-    // Guardar el primer set original que encontramos para cada set normalizado
-    if (!normalizedSetMap.has(normalized)) {
-      normalizedSetMap.set(normalized, set)
-    }
-  })
-  
-  // Obtener sets únicos usando los valores originales y ordenarlos por orden de lanzamiento (1-10)
-  const uniqueSets = Array.from(normalizedSetMap.values()).sort((a, b) => {
-    const normalizedA = normalizeSetName(a)
-    const normalizedB = normalizeSetName(b)
-    const orderA = setOrder[normalizedA] || 999
-    const orderB = setOrder[normalizedB] || 999
-    return orderA - orderB
-  })
-  
-  // Función para obtener nombre de display del set
-  const getSetDisplayName = (set: string) => {
-    const normalized = normalizeSetName(set)
-    return setDisplayNames[normalized] || setDisplayNames[set] || set
-  }
 
   if (loading) {
     return (
