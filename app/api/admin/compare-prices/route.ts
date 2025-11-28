@@ -466,6 +466,8 @@ export async function GET(request: NextRequest) {
           pageSize,
           totalPages,
           totalCards,
+          totalInDatabase: dbCards.length,
+          totalInAPI: lorcanaCards.length,
           hasMore: page < totalPages,
         },
       },
