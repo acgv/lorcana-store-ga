@@ -11,6 +11,11 @@ export async function POST(request: Request) {
       origin?: string
       userEmail?: string // Email del usuario autenticado (enviado desde el frontend)
     }
+    
+    // Extraer flags de guardado del shipping data
+    const saveAddress = shipping?.saveAddress || false
+    const savePhone = shipping?.savePhone || false
+    const phone = shipping?.phone || undefined
 
     // ✅ Verificar que se proporcione el email del usuario (indica que está autenticado)
     if (!userEmail) {
@@ -54,6 +59,9 @@ export async function POST(request: Request) {
       shipping, // Pasar datos de envío
       customerEmail,
       origin, // Pasar el dominio de origen
+      saveAddress, // Pasar flag de guardar dirección
+      savePhone, // Pasar flag de guardar teléfono
+      phone, // Pasar teléfono
     })
 
     console.log('✅ Preference created:', preference.preferenceId)

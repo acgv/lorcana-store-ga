@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from "react"
 import { useLanguage } from "@/components/language-provider"
+import { useUser } from "@/hooks/use-user"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Package, Truck } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { MapPin, Package, Truck, Plus, Phone } from "lucide-react"
 import { 
   SHIPPING_METHODS, 
   SHIPPING_ZONES, 
@@ -30,7 +33,11 @@ export interface ShippingData {
     postalCode?: string
     notes?: string
   }
+  phone?: string
   cost: number
+  // Flags para guardar después de la compra
+  saveAddress?: boolean
+  savePhone?: boolean
 }
 
 interface ShippingSelectorProps {
@@ -38,9 +45,30 @@ interface ShippingSelectorProps {
   onShippingChange: (data: ShippingData) => void
 }
 
+interface SavedAddress {
+  id: string
+  alias: string
+  street: string
+  number: string
+  commune: string
+  city: string
+  region: string
+  postal_code?: string
+  additional_info?: string
+  is_default: boolean
+}
+
+interface SavedPhone {
+  id: string
+  phone_number: string
+  phone_type: string
+  is_default: boolean
+}
+
 export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelectorProps) {
   const { t, language } = useLanguage()
   const { getFinalShippingCost } = usePromotion()
+  const { user, isAuthenticated } = useUser()
   
   const [method, setMethod] = useState<"pickup" | "shipping">("shipping")
   const [zone, setZone] = useState<string>("rm")
@@ -53,6 +81,13 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
     postalCode: "",
     notes: "",
   })
+  const [phone, setPhone] = useState("")
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([])
+  const [savedPhones, setSavedPhones] = useState<SavedPhone[]>([])
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
+  const [selectedPhoneId, setSelectedPhoneId] = useState<string | null>(null)
+  const [saveAddress, setSaveAddress] = useState(false)
+  const [savePhone, setSavePhone] = useState(false)
   const [shippingThresholds, setShippingThresholds] = useState({
     free_shipping_threshold: SHIPPING_CONFIG.freeShippingThreshold,
     zone_rm_cost: SHIPPING_ZONES.find(z => z.id === "rm")?.cost || 5000,
@@ -80,6 +115,42 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
       })
   }, [])
 
+  // Cargar direcciones y teléfonos guardados si el usuario está autenticado
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      // Cargar direcciones
+      fetch(`/api/user/addresses?userId=${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.data) {
+            setSavedAddresses(data.data)
+            // Si hay una dirección predeterminada, seleccionarla automáticamente
+            const defaultAddress = data.data.find((a: SavedAddress) => a.is_default)
+            if (defaultAddress) {
+              handleSelectAddress(defaultAddress)
+            }
+          }
+        })
+        .catch(err => console.error("Error loading addresses:", err))
+
+      // Cargar teléfonos
+      fetch(`/api/user/phones?userId=${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.data) {
+            setSavedPhones(data.data)
+            // Si hay un teléfono predeterminado, seleccionarlo automáticamente
+            const defaultPhone = data.data.find((p: SavedPhone) => p.is_default)
+            if (defaultPhone) {
+              setPhone(defaultPhone.phone_number)
+              setSelectedPhoneId(defaultPhone.id)
+            }
+          }
+        })
+        .catch(err => console.error("Error loading phones:", err))
+    }
+  }, [isAuthenticated, user])
+
   // Calcular costo de envío usando umbrales dinámicos
   const getZoneCost = (zoneId: string): number => {
     if (zoneId === "rm") return shippingThresholds.zone_rm_cost
@@ -102,15 +173,45 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
       method,
       zone: method === "shipping" ? zone : undefined,
       address: method === "shipping" ? address : undefined,
+      phone: phone || undefined,
       cost: shippingCost,
+      saveAddress: isAuthenticated && !selectedAddressId && saveAddress,
+      savePhone: isAuthenticated && !selectedPhoneId && savePhone && phone,
     }
   }
 
-  // Actualizar datos de envío cuando cambien (incluyendo dirección)
+  // Actualizar datos de envío cuando cambien (incluyendo dirección y teléfono)
   useEffect(() => {
     onShippingChange(getShippingData())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [method, zone, shippingCost, address])
+  }, [method, zone, shippingCost, address, phone])
+
+  // Función para seleccionar una dirección guardada
+  const handleSelectAddress = (savedAddress: SavedAddress) => {
+    setSelectedAddressId(savedAddress.id)
+    setAddress({
+      street: savedAddress.street,
+      number: savedAddress.number,
+      commune: savedAddress.commune,
+      city: savedAddress.city,
+      region: savedAddress.region,
+      postalCode: savedAddress.postal_code || "",
+      notes: savedAddress.additional_info || "",
+    })
+    // Determinar zona basada en la región
+    const regionZone = SHIPPING_ZONES.find(z => 
+      z.regions.some(r => r.toLowerCase().includes(savedAddress.region.toLowerCase()))
+    )
+    if (regionZone) {
+      setZone(regionZone.id)
+    }
+  }
+
+  // Función para seleccionar un teléfono guardado
+  const handleSelectPhone = (savedPhone: SavedPhone) => {
+    setSelectedPhoneId(savedPhone.id)
+    setPhone(savedPhone.phone_number)
+  }
 
   const handleMethodChange = (newMethod: "pickup" | "shipping") => {
     setMethod(newMethod)
@@ -202,6 +303,60 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
         {method === "shipping" && (
           <div className="space-y-4 pt-4 border-t">
             <h4 className="font-medium">{t("shippingAddress")}</h4>
+
+            {/* Selector de direcciones guardadas (solo si está autenticado) */}
+            {isAuthenticated && savedAddresses.length > 0 && (
+              <div className="space-y-2">
+                <Label>Usar dirección guardada</Label>
+                <Select
+                  value={selectedAddressId || "new"}
+                  onValueChange={(value) => {
+                    if (value === "new") {
+                      setSelectedAddressId(null)
+                      setAddress({
+                        street: "",
+                        number: "",
+                        commune: "",
+                        city: "",
+                        region: "RM",
+                        postalCode: "",
+                        notes: "",
+                      })
+                    } else {
+                      const selected = savedAddresses.find(a => a.id === value)
+                      if (selected) {
+                        handleSelectAddress(selected)
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">
+                      <div className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Nueva dirección
+                      </div>
+                    </SelectItem>
+                    {savedAddresses.map((addr) => (
+                      <SelectItem key={addr.id} value={addr.id}>
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          {addr.alias}
+                          {addr.is_default && (
+                            <Badge variant="default" className="text-xs ml-2">
+                              Predeterminada
+                            </Badge>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Zona de Envío */}
             <div>
@@ -320,6 +475,96 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
                 value={address.notes}
                 onChange={(e) => handleAddressChange("notes", e.target.value)}
               />
+            </div>
+
+            {/* Checkbox para guardar dirección (solo si está autenticado y no es una dirección guardada) */}
+            {isAuthenticated && !selectedAddressId && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="save-address"
+                  checked={saveAddress}
+                  onCheckedChange={(checked) => setSaveAddress(checked === true)}
+                />
+                <Label htmlFor="save-address" className="text-sm cursor-pointer">
+                  Guardar esta dirección para próximas compras
+                </Label>
+              </div>
+            )}
+
+            {/* Teléfono de contacto */}
+            <div className="space-y-2 pt-4 border-t">
+              <Label className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Teléfono de contacto <span className="text-red-500">*</span>
+              </Label>
+              
+              {/* Selector de teléfonos guardados (solo si está autenticado) */}
+              {isAuthenticated && savedPhones.length > 0 && (
+                <Select
+                  value={selectedPhoneId || "new"}
+                  onValueChange={(value) => {
+                    if (value === "new") {
+                      setSelectedPhoneId(null)
+                      setPhone("")
+                    } else {
+                      const selected = savedPhones.find(p => p.id === value)
+                      if (selected) {
+                        handleSelectPhone(selected)
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">
+                      <div className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Nuevo teléfono
+                      </div>
+                    </SelectItem>
+                    {savedPhones.map((ph) => (
+                      <SelectItem key={ph.id} value={ph.id}>
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4" />
+                          {ph.phone_number}
+                          {ph.is_default && (
+                            <Badge variant="default" className="text-xs ml-2">
+                              Predeterminado
+                            </Badge>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {/* Input de teléfono (si no hay teléfonos guardados o seleccionó "nuevo") */}
+              {(!isAuthenticated || !selectedPhoneId || savedPhones.length === 0) && (
+                <Input
+                  placeholder="+56 9 1234 5678"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  className={!phone ? "border-red-500/50" : ""}
+                />
+              )}
+
+              {/* Checkbox para guardar teléfono (solo si está autenticado y no es un teléfono guardado) */}
+              {isAuthenticated && !selectedPhoneId && phone && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="save-phone"
+                    checked={savePhone}
+                    onCheckedChange={(checked) => setSavePhone(checked === true)}
+                  />
+                  <Label htmlFor="save-phone" className="text-sm cursor-pointer">
+                    Guardar este teléfono para próximas compras
+                  </Label>
+                </div>
+              )}
             </div>
           </div>
         )}

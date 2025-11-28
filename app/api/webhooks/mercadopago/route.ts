@@ -92,6 +92,10 @@ export async function POST(request: Request) {
                 console.warn('Error parsing shipping address:', e)
               }
             }
+            // Extraer flags de guardado y teléfono
+            const saveAddress = metadata.save_address === 'true'
+            const savePhone = metadata.save_phone === 'true'
+            const phone = metadata.phone || undefined
 
             const result = await processConfirmedPayment({
               paymentId: String(paymentId),
@@ -107,6 +111,10 @@ export async function POST(request: Request) {
               shippingMethod,
               shippingAddress,
               shippingCost,
+              // ⭐ Pasar flags de guardado
+              saveAddress,
+              savePhone,
+              phone,
             })
 
             console.log('📦 Stock update result:', result)

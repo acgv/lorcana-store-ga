@@ -97,6 +97,9 @@ export interface CreatePreferenceParams {
   shipping?: any // Datos de envío
   customerEmail?: string
   origin?: string // Dominio desde el cual se originó la compra
+  saveAddress?: boolean // Guardar dirección después de compra
+  savePhone?: boolean // Guardar teléfono después de compra
+  phone?: string // Teléfono del cliente
 }
 
 /**
@@ -177,7 +180,7 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
       }
     }
 
-    // Agregar metadata de envío
+    // Agregar metadata de envío y datos de usuario
     preferenceBody.metadata = {}
     
     if (params.shipping) {
@@ -190,6 +193,17 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
       }
       
       console.log('📦 Shipping info added to metadata')
+    }
+    
+    // Agregar flags de guardado y teléfono
+    if (params.saveAddress !== undefined) {
+      preferenceBody.metadata.save_address = String(params.saveAddress)
+    }
+    if (params.savePhone !== undefined) {
+      preferenceBody.metadata.save_phone = String(params.savePhone)
+    }
+    if (params.phone) {
+      preferenceBody.metadata.phone = params.phone
     }
 
     // Integrator ID solo en desarrollo (para testing de certificación)

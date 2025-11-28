@@ -83,6 +83,33 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
       return
     }
 
+    // ✅ Validar que usuarios autenticados tengan al menos una dirección guardada
+    if (isAuthenticated && user?.id && shippingData.method === "shipping") {
+      try {
+        const addressesRes = await fetch(`/api/user/addresses?userId=${user.id}`)
+        const addressesData = await addressesRes.json()
+        
+        if (addressesData.success && addressesData.data && addressesData.data.length === 0) {
+          // Si no tiene direcciones guardadas y está ingresando una nueva, está bien
+          // Pero si no tiene direcciones y no está completando el formulario, pedirle que guarde una
+          if (!shippingData.address?.street || !shippingData.address?.number) {
+            toast({
+              variant: "destructive",
+              title: t("error"),
+              description: "Debes tener al menos una dirección guardada. Ve a 'Mi Perfil' para agregar una dirección.",
+              duration: 5000,
+            })
+            onOpenChange(false)
+            router.push("/lorcana-tcg/my-profile")
+            return
+          }
+        }
+      } catch (error) {
+        console.error("Error checking addresses:", error)
+        // Continuar si hay error, pero mostrar advertencia
+      }
+    }
+
     // ✅ VALIDACIÓN SOLO AL FINALIZAR COMPRA
     if (shippingData.method === "shipping") {
       console.log('📋 Validating shipping address at checkout...')
@@ -109,8 +136,33 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
         })
         return
       }
+
+      // Validar teléfono
+      if (!shippingData.phone || shippingData.phone.trim() === "") {
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: "Por favor ingresa un teléfono de contacto",
+          duration: 5000,
+        })
+        return
+      }
+
+      // Validar formato de teléfono si está autenticado (para usuarios no autenticados, validación básica)
+      if (isAuthenticated) {
+        const phoneRegex = /^\+56\s?9\s?\d{4}\s?\d{4}$/
+        if (!phoneRegex.test(shippingData.phone.replace(/\s+/g, " "))) {
+          toast({
+            variant: "destructive",
+            title: t("error"),
+            description: "Formato de teléfono inválido. Usa: +56 9 1234 5678",
+            duration: 5000,
+          })
+          return
+        }
+      }
       
-      console.log('✅ Address validation passed')
+      console.log('✅ Address and phone validation passed')
     }
 
     console.log('✅ All validations passed, proceeding to payment...')

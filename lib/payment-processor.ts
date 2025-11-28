@@ -29,6 +29,10 @@ export interface ProcessPaymentParams {
   shippingMethod?: string
   shippingAddress?: any
   shippingCost?: number
+  // Flags para guardar datos del usuario
+  saveAddress?: boolean
+  savePhone?: boolean
+  phone?: string
 }
 
 /**
@@ -140,6 +144,97 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
       console.log(`   Total paid: $${totalAmount}`)
       console.log(`   MP Fee: $${mpFeeAmount || 0}`)
       console.log(`   Net received: $${netReceivedAmount || totalAmount}`)
+
+      // Guardar dirección y teléfono si el usuario lo solicitó
+      if (customerEmail && (params.saveAddress || params.savePhone)) {
+        try {
+          // Obtener userId del email
+          const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers()
+          const user = authUsers?.users.find(u => u.email === customerEmail)
+          
+          if (user?.id) {
+            // Guardar dirección si está marcado
+            if (params.saveAddress && shippingAddress && shippingMethod === 'shipping') {
+              try {
+                // Verificar si ya existe una dirección similar
+                const { data: existingAddresses } = await supabaseAdmin
+                  .from('user_addresses')
+                  .select('id')
+                  .eq('user_id', user.id)
+                  .eq('street', shippingAddress.street || '')
+                  .eq('number', shippingAddress.number || '')
+                  .eq('commune', shippingAddress.commune || '')
+
+                if (!existingAddresses || existingAddresses.length === 0) {
+                  // Verificar límite de direcciones
+                  const { count } = await supabaseAdmin
+                    .from('user_addresses')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', user.id)
+
+                  if (count && count < 5) {
+                    await supabaseAdmin.from('user_addresses').insert({
+                      user_id: user.id,
+                      alias: 'Dirección de compra',
+                      street: shippingAddress.street || '',
+                      number: shippingAddress.number || '',
+                      commune: shippingAddress.commune || '',
+                      city: shippingAddress.city || '',
+                      region: shippingAddress.region || '',
+                      postal_code: shippingAddress.postalCode || null,
+                      additional_info: shippingAddress.notes || null,
+                      is_default: count === 0, // Primera dirección es predeterminada
+                    })
+                    console.log(`✅ Address saved for user ${user.id}`)
+                  }
+                }
+              } catch (addrError) {
+                console.error('Error saving address:', addrError)
+              }
+            }
+
+            // Guardar teléfono si está marcado
+            if (params.savePhone && params.phone) {
+              try {
+                // Validar formato de teléfono
+                const phoneRegex = /^\+56\s?9\s?\d{4}\s?\d{4}$/
+                if (phoneRegex.test(params.phone.replace(/\s+/g, " "))) {
+                  // Verificar si ya existe este teléfono
+                  const { data: existingPhones } = await supabaseAdmin
+                    .from('user_phones')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .eq('phone_number', params.phone.trim())
+
+                  if (!existingPhones || existingPhones.length === 0) {
+                    // Verificar límite de teléfonos
+                    const { count } = await supabaseAdmin
+                      .from('user_phones')
+                      .select('*', { count: 'exact', head: true })
+                      .eq('user_id', user.id)
+
+                    if (count && count < 5) {
+                      await supabaseAdmin.from('user_phones').insert({
+                        user_id: user.id,
+                        phone_number: params.phone.trim(),
+                        phone_type: 'mobile',
+                        country_code: '+56',
+                        is_default: count === 0, // Primer teléfono es predeterminado
+                      })
+                      console.log(`✅ Phone saved for user ${user.id}`)
+                    }
+                  }
+                }
+              } catch (phoneError) {
+                console.error('Error saving phone:', phoneError)
+              }
+            }
+          }
+        } catch (userDataError) {
+          console.error('Error saving user data:', userDataError)
+          // No fallar el proceso si falla guardar datos del usuario
+        }
+      }
 
       // Enviar correos de confirmación
       if (customerEmail) {
