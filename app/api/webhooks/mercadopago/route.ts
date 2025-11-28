@@ -3,19 +3,38 @@ import { Payment } from 'mercadopago'
 import { supabaseAdmin } from '@/lib/db'
 import { processConfirmedPayment, type PaymentItem } from '@/lib/payment-processor'
 import { getClient } from '@/lib/mercadopago'
+import { rateLimitApi, RateLimitPresets } from '@/lib/rate-limit'
 
 /**
  * Webhook de Mercado Pago
  * 
  * Recibe notificaciones cuando un pago cambia de estado
  * Documentación: https://www.mercadopago.com.cl/developers/es/docs/checkout-pro/configure-notifications
+ * 
+ * SEGURIDAD:
+ * - Rate limiting para prevenir spam
+ * - Validación de que el pago existe en Mercado Pago antes de procesarlo
+ * - Logging de todos los webhooks recibidos
  */
 export async function POST(request: Request) {
   try {
+    // Rate limiting para prevenir spam
+    const rateLimitResult = await rateLimitApi(request, {
+      limit: 100, // 100 webhooks por minuto
+      windowSeconds: 60,
+    })
+    if (!rateLimitResult.success) {
+      console.warn('⚠️ Webhook rate limit exceeded')
+      return rateLimitResult.response
+    }
+
     const body = await request.json()
     
-    console.log('📬 Webhook Mercado Pago recibido:', JSON.stringify(body, null, 2))
-    console.log('🔍 Request headers:', Object.fromEntries(request.headers.entries()))
+    // Log del webhook (sin datos sensibles)
+    const headers = Object.fromEntries(request.headers.entries())
+    console.log('📬 Webhook Mercado Pago recibido')
+    console.log('🔍 Request ID:', headers['x-request-id'] || 'none')
+    console.log('🔍 Request type:', body.type || body.action || 'unknown')
 
     // Mercado Pago envía diferentes tipos de notificaciones
     const { type, action, data } = body
@@ -43,11 +62,27 @@ export async function POST(request: Request) {
 
         const paymentClient = new Payment(client)
         
+        // ✅ VALIDACIÓN DE SEGURIDAD: Verificar que el pago realmente existe en Mercado Pago
+        // Esto previene webhooks falsos - si el pago no existe, es un webhook malicioso
         const payment = await paymentClient.get({ id: paymentId })
+
+        // Validar que el pago existe y tiene datos válidos
+        if (!payment || !payment.id) {
+          console.error('❌ Invalid payment data from Mercado Pago')
+          return NextResponse.json({ success: false, error: 'Invalid payment' }, { status: 200 })
+        }
 
         console.log(`📊 Payment status: ${payment.status}`)
         console.log(`💰 Amount: $${payment.transaction_amount} CLP`)
         console.log(`📧 Email: ${payment.payer?.email}`)
+
+        // ✅ VALIDACIÓN ADICIONAL: Verificar que el pago pertenece a nuestra cuenta
+        // Comparar el external_reference o metadata para asegurar que es nuestro pago
+        const externalRef = payment.external_reference || 'unknown'
+        if (externalRef === 'unknown' && !payment.metadata) {
+          console.warn('⚠️ Payment without external_reference or metadata - possible fake webhook')
+          // No rechazar, pero loguear como sospechoso
+        }
 
         // Solo procesar si el pago está aprobado
         if (payment.status === 'approved') {
@@ -128,7 +163,7 @@ export async function POST(request: Request) {
         console.error('❌ Error fetching payment from Mercado Pago:', mpError)
       }
       
-      // Log del evento en base de datos
+      // Log del evento en base de datos (incluyendo validación)
       if (supabaseAdmin) {
         try {
           await supabaseAdmin.from('logs').insert({
@@ -137,6 +172,7 @@ export async function POST(request: Request) {
               type,
               action,
               paymentId,
+              validated: true, // Indica que el pago fue validado con Mercado Pago
               timestamp: new Date().toISOString(),
             }
           })

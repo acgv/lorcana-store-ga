@@ -1,25 +1,41 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Database } from "@/lib/db"
 import type { ApiResponse, Card } from "@/lib/types"
+import { verifyAdminSession } from "@/lib/auth-helpers"
+import { rateLimitApi, RateLimitPresets } from "@/lib/rate-limit"
 
 // Direct card update endpoint (bypasses approval workflow)
 // Used for bulk updates or automated syncs
+// ✅ SEGURIDAD: Requiere sesión autenticada con rol admin
 export async function POST(request: NextRequest) {
   try {
-    // Check API key authentication
-    const apiKey = request.headers.get("x-api-key")
-    if (!apiKey || apiKey !== process.env.ADMIN_API_KEY) {
+    // Rate limiting
+    const rateLimitResult = await rateLimitApi(request, RateLimitPresets.admin)
+    if (!rateLimitResult.success) {
+      return rateLimitResult.response
+    }
+
+    // ✅ VALIDACIÓN DE SEGURIDAD: Verificar sesión de admin
+    const auth = await verifyAdminSession(request)
+    
+    if (!auth.success) {
+      console.error('❌ Admin authentication failed:', auth.error)
       return NextResponse.json(
         {
           success: false,
-          error: "Unauthorized - Invalid API key",
+          error: auth.error,
         } as ApiResponse,
-        { status: 401 }
+        { status: auth.status }
       )
     }
 
+    console.log('✅ Admin authenticated:', auth.email)
+
     const body = await request.json()
-    const { cards, userId = "system" } = body
+    const { cards } = body
+    
+    // ✅ Usar el userId del usuario autenticado (no confiar en el del body)
+    const userId = auth.userId
 
     if (!Array.isArray(cards) || cards.length === 0) {
       return NextResponse.json(
