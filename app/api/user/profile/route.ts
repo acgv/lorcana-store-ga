@@ -1,7 +1,28 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/db"
 
-// GET - Get user profile
+// Helper function to split full name into first and last name
+function splitName(fullName: string | null | undefined): { first_name: string | null; last_name: string | null } {
+  if (!fullName || fullName.trim() === "") {
+    return { first_name: null, last_name: null }
+  }
+
+  const parts = fullName.trim().split(/\s+/)
+  
+  if (parts.length === 1) {
+    return { first_name: parts[0], last_name: null }
+  } else if (parts.length === 2) {
+    return { first_name: parts[0], last_name: parts[1] }
+  } else {
+    // More than 2 parts: first is first_name, rest is last_name
+    return {
+      first_name: parts[0],
+      last_name: parts.slice(1).join(" ")
+    }
+  }
+}
+
+// GET - Get user profile (auto-creates from auth.users if doesn't exist)
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -17,7 +38,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const { data, error } = await supabaseAdmin
+    // Try to get existing profile
+    let { data, error } = await supabaseAdmin
       .from("user_profiles")
       .select("*")
       .eq("user_id", userId)
@@ -28,9 +50,40 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
+    // If profile doesn't exist, try to create it from auth.users data
+    if (!data) {
+      // Get user data from auth.users
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId)
+      
+      if (!authError && authUser?.user) {
+        const metadata = authUser.user.user_metadata || {}
+        const fullName = metadata.name || metadata.full_name || null
+        
+        if (fullName) {
+          const { first_name, last_name } = splitName(fullName)
+          
+          // Create profile with data from auth.users
+          const { data: newProfile, error: createError } = await supabaseAdmin
+            .from("user_profiles")
+            .insert({
+              user_id: userId,
+              first_name,
+              last_name,
+            })
+            .select()
+            .single()
+
+          if (!createError && newProfile) {
+            data = newProfile
+            console.log(`✅ Auto-created profile for user ${userId} from auth.users`)
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      data: data || null,
+      data: data || { user_id: userId },
     })
   } catch (error) {
     console.error("Error in GET /api/user/profile:", error)
