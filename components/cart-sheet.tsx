@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast"
 import { ShippingSelector, type ShippingData } from "@/components/shipping-selector"
 import { usePromotion } from "@/hooks/use-promotion"
 import { useUser } from "@/hooks/use-user"
+import { supabase } from "@/lib/db"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 
@@ -182,11 +183,28 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
       console.log('🛒 Creating payment preference for cart:', cartItems)
       console.log('📦 Shipping data:', shippingData)
 
-      // Crear preferencia de pago
+      // Obtener token de sesión para autenticación
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      if (!token) {
+        console.error('❌ No session token available')
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: "Sesión expirada. Por favor inicia sesión nuevamente.",
+          duration: 5000,
+        })
+        router.push("/lorcana-tcg/login?redirect=" + encodeURIComponent(window.location.pathname))
+        return
+      }
+
+      // Crear preferencia de pago con autenticación
       const response = await fetch('/api/payment/create-preference', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`, // ✅ Enviar token de sesión
         },
         body: JSON.stringify({
           items: cartItems,
@@ -196,7 +214,6 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
           },
           promotionDiscount: productDiscount, // Incluir descuento de productos
           origin: window.location.origin,
-          userEmail: user?.email || '', // ✅ Enviar email del usuario autenticado
         }),
       })
 

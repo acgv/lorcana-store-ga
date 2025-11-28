@@ -33,8 +33,8 @@ cp .env.example .env.local
 # Edita .env.local con tus credenciales de Supabase
 
 # 3. Configurar base de datos (Supabase)
-# Ejecuta scripts/supabase-schema.sql en Supabase SQL Editor
-# Ejecuta scripts/fix-inventory-update-permissions.sql en Supabase SQL Editor
+# Ejecuta los scripts en scripts/setup/ en el orden indicado en scripts/setup/README.md
+# Ver scripts/setup/README.md para el orden de ejecución recomendado
 
 # 4. Importar datos reales de Lorcana (1,837 cartas)
 pnpm import:cards

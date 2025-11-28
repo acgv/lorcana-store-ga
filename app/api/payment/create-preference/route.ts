@@ -1,15 +1,33 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createPaymentPreference, type CardItem } from '@/lib/mercadopago'
+import { verifySupabaseSession } from '@/lib/auth-helpers'
+import { rateLimitApi, RateLimitPresets } from '@/lib/rate-limit'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimitResult = await rateLimitApi(request, RateLimitPresets.api)
+    if (!rateLimitResult.success) {
+      return rateLimitResult.response
+    }
+
+    // ✅ VALIDACIÓN DE SEGURIDAD: Verificar sesión real de Supabase
+    const auth = await verifySupabaseSession(request)
+    
+    if (!auth.success) {
+      console.error('❌ Authentication failed:', auth.error)
+      return NextResponse.json(
+        { success: false, error: 'Debes iniciar sesión para realizar una compra' },
+        { status: auth.status }
+      )
+    }
+
     const body = await request.json()
-    const { items, shipping, customerEmail, origin, userEmail } = body as {
+    const { items, shipping, customerEmail, origin } = body as {
       items: CardItem[]
       shipping?: any
       customerEmail?: string
       origin?: string
-      userEmail?: string // Email del usuario autenticado (enviado desde el frontend)
     }
     
     // Extraer flags de guardado del shipping data
@@ -17,19 +35,17 @@ export async function POST(request: Request) {
     const savePhone = shipping?.savePhone || false
     const phone = shipping?.phone || undefined
 
-    // ✅ Verificar que se proporcione el email del usuario (indica que está autenticado)
-    if (!userEmail) {
-      console.error('❌ No user email provided - user not authenticated')
-      return NextResponse.json(
-        { success: false, error: 'Debes iniciar sesión para realizar una compra' },
-        { status: 401 }
-      )
-    }
+    // ✅ Usar el email del usuario autenticado (no confiar en el del body)
+    const userEmail = auth.email
+    const userId = auth.userId
+
+    console.log('✅ Authenticated user:', userEmail)
+    console.log('✅ User ID:', userId)
 
     console.log('📝 Creating payment preference with items:', items)
     console.log('📦 Shipping data:', shipping)
     console.log('🌐 Origin domain:', origin)
-    console.log('👤 User:', userEmail)
+    console.log('👤 Authenticated user:', userEmail)
 
     // Validar items
     if (!items || !Array.isArray(items) || items.length === 0) {

@@ -46,12 +46,19 @@ pnpm install
 Ejecuta estos scripts **EN ORDEN** en Supabase SQL Editor:
 
 ```sql
-1. scripts/setup/supabase-schema.sql            -- Tabla cards
-2. scripts/setup/create-orders-table.sql        -- Tabla orders  
-3. scripts/setup/create-user-collections-table.sql  -- Colecciones personales
-4. scripts/setup/setup-user-roles.sql           -- Roles de usuario
-5. scripts/setup/secure-rls-policies.sql        -- Políticas de seguridad
+1. scripts/setup/supabase-schema.sql                    -- Tabla cards
+2. scripts/setup/create-orders-table.sql                 -- Tabla orders  
+3. scripts/setup/create-user-collections-table.sql       -- Colecciones personales
+4. scripts/setup/create-user-profile-tables.sql         -- Perfiles, direcciones, teléfonos
+5. scripts/setup/create-shipping-thresholds-table.sql    -- Umbrales de envío
+6. scripts/setup/setup-products-table.sql                -- Tabla de productos (consolidado)
+7. scripts/setup/setup-promotions-table.sql              -- Tabla de promociones (consolidado)
+8. scripts/setup/setup-user-roles.sql                   -- Roles de usuario
+9. scripts/setup/secure-rls-policies.sql                 -- Políticas de seguridad
+10. scripts/setup/fix-all-updated-at-triggers.sql        -- Triggers de updated_at
 ```
+
+**Ver guía completa:** [scripts/setup/README.md](../scripts/setup/README.md)
 
 ---
 
