@@ -9,6 +9,8 @@ import { useLanguage } from "@/components/language-provider"
 import { useToast } from "@/hooks/use-toast"
 import { ShippingSelector, type ShippingData } from "@/components/shipping-selector"
 import { usePromotion } from "@/hooks/use-promotion"
+import { useUser } from "@/hooks/use-user"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 
 interface CartSheetProps {
@@ -21,6 +23,8 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const { t } = useLanguage()
   const { toast } = useToast()
   const { calculateProductDiscount, getFinalShippingCost } = usePromotion()
+  const { isAuthenticated, loading: userLoading, user } = useUser()
+  const router = useRouter()
   const [processingCheckout, setProcessingCheckout] = useState(false)
   const [shippingData, setShippingData] = useState<ShippingData>({
     method: "shipping", // Cambiar a "shipping" por defecto ya que "pickup" está oculto
@@ -41,6 +45,26 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
     
     if (items.length === 0) {
       console.log('❌ No items in cart')
+      return
+    }
+
+    // ✅ Verificar autenticación antes de proceder
+    if (userLoading) {
+      console.log('⏳ Waiting for user authentication check...')
+      return
+    }
+
+    if (!isAuthenticated) {
+      console.log('❌ User not authenticated')
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: "Debes iniciar sesión para realizar una compra",
+        duration: 5000,
+      })
+      // Cerrar el carrito y redirigir al login
+      onOpenChange(false)
+      router.push('/lorcana-tcg/login')
       return
     }
 
@@ -116,6 +140,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
           },
           promotionDiscount: productDiscount, // Incluir descuento de productos
           origin: window.location.origin,
+          userEmail: user?.email || '', // ✅ Enviar email del usuario autenticado
         }),
       })
 

@@ -4,16 +4,27 @@ import { createPaymentPreference, type CardItem } from '@/lib/mercadopago'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { items, shipping, customerEmail, origin } = body as {
+    const { items, shipping, customerEmail, origin, userEmail } = body as {
       items: CardItem[]
       shipping?: any
       customerEmail?: string
       origin?: string
+      userEmail?: string // Email del usuario autenticado (enviado desde el frontend)
+    }
+
+    // ✅ Verificar que se proporcione el email del usuario (indica que está autenticado)
+    if (!userEmail) {
+      console.error('❌ No user email provided - user not authenticated')
+      return NextResponse.json(
+        { success: false, error: 'Debes iniciar sesión para realizar una compra' },
+        { status: 401 }
+      )
     }
 
     console.log('📝 Creating payment preference with items:', items)
     console.log('📦 Shipping data:', shipping)
     console.log('🌐 Origin domain:', origin)
+    console.log('👤 User:', userEmail)
 
     // Validar items
     if (!items || !Array.isArray(items) || items.length === 0) {
