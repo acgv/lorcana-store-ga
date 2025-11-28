@@ -96,7 +96,29 @@ export default function ComparePricesPage() {
   const loadData = async () => {
     try {
       setRefreshing(true)
-      const response = await fetch("/api/admin/compare-prices")
+      
+      // Obtener token de sesión para autenticación
+      const { supabase } = await import("@/lib/db")
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`
+      }
+
+      const response = await fetch("/api/admin/compare-prices", {
+        headers,
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+      
       const result = await response.json()
 
       if (result.success) {
