@@ -271,9 +271,13 @@ export default function ComparePricesPage() {
       return false
     }
 
-    // Filtro por set
-    if (filterSet !== "all" && comp.set !== filterSet) {
-      return false
+    // Filtro por set (normalizar ambos para comparar)
+    if (filterSet !== "all") {
+      const compSetNormalized = normalizeSetName(comp.set)
+      const filterSetNormalized = normalizeSetName(filterSet)
+      if (compSetNormalized !== filterSetNormalized) {
+        return false
+      }
     }
 
     // Filtro por stock
@@ -320,14 +324,33 @@ export default function ComparePricesPage() {
     return normalized
   }
 
-  // Obtener sets únicos de comparisons (la fuente principal que se muestra en la tabla)
-  // Usar el set original, no normalizado, para mantener compatibilidad con el filtro
-  const allSets = data?.comparisons.map((c) => c.set) || []
-  const uniqueSets = Array.from(new Set(allSets)).sort()
+  // Obtener sets únicos de todas las fuentes para tener la lista completa
+  // Normalizar los sets para evitar duplicados por variaciones de nombre
+  const allSetsRaw = [
+    ...(data?.comparisons.map((c) => c.set) || []),
+    ...(data?.cardsOnlyInAPI.map((c) => c.set) || []),
+    ...(data?.cardsOnlyInDB.map((c) => c.set) || []),
+  ]
+  
+  // Normalizar sets para agrupar variaciones (ej: "whi" y "whisper" -> "whi")
+  const normalizedSetMap = new Map<string, string>() // Map<normalized, original>
+  
+  allSetsRaw.forEach((set) => {
+    if (!set) return
+    const normalized = normalizeSetName(set)
+    // Guardar el primer set original que encontramos para cada set normalizado
+    if (!normalizedSetMap.has(normalized)) {
+      normalizedSetMap.set(normalized, set)
+    }
+  })
+  
+  // Obtener sets únicos usando los valores originales
+  const uniqueSets = Array.from(normalizedSetMap.values()).sort()
   
   // Función para obtener nombre de display del set
   const getSetDisplayName = (set: string) => {
-    return setDisplayNames[set] || set
+    const normalized = normalizeSetName(set)
+    return setDisplayNames[normalized] || setDisplayNames[set] || set
   }
 
   if (loading) {
