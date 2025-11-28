@@ -46,26 +46,31 @@ export function PromotionDescription() {
     return lines.map((line, index) => {
       const trimmed = line.trim()
       
-      // Detectar iconos comunes (emojis pueden tener diferentes longitudes)
-      // Checkmark
-      if (trimmed.match(/^[✔✓]/)) {
-        return { type: 'check', text: trimmed.replace(/^[✔✓]\s*/, '').trim(), icon: CheckCircle2 }
+      // Detectar iconos comunes - usando regex más flexible para emojis
+      // Checkmark (✔ ✓ ✅)
+      if (/^[✔✓✅]/.test(trimmed)) {
+        const text = trimmed.replace(/^[✔✓✅]\s*/, '').trim()
+        return { type: 'check', text, icon: CheckCircle2 }
       } 
-      // Lock/Arrow up
-      else if (trimmed.match(/^[⬆🔒]/)) {
-        return { type: 'lock', text: trimmed.replace(/^[⬆🔒]\s*/, '').trim(), icon: Lock }
+      // Lock/Arrow up (⬆ 🔒 🔐)
+      else if (/^[⬆🔒🔐]/.test(trimmed)) {
+        const text = trimmed.replace(/^[⬆🔒🔐]\s*/, '').trim()
+        return { type: 'lock', text, icon: Lock }
       } 
-      // Truck
-      else if (trimmed.match(/^[🚚🚛]/)) {
-        return { type: 'truck', text: trimmed.replace(/^[🚚🚛]\s*/, '').trim(), icon: Truck }
+      // Truck (🚚 🚛 🚗)
+      else if (/^[🚚🚛🚗]/.test(trimmed)) {
+        const text = trimmed.replace(/^[🚚🚛🚗]\s*/, '').trim()
+        return { type: 'truck', text, icon: Truck }
       } 
-      // Sparkle
-      else if (trimmed.match(/^[✨⭐]/)) {
-        return { type: 'sparkle', text: trimmed.replace(/^[✨⭐]\s*/, '').trim(), icon: Sparkles }
+      // Sparkle (✨ ⭐ 💫)
+      else if (/^[✨⭐💫]/.test(trimmed)) {
+        const text = trimmed.replace(/^[✨⭐💫]\s*/, '').trim()
+        return { type: 'sparkle', text, icon: Sparkles }
       } 
-      // Calendar
-      else if (trimmed.match(/^[🗓️📅]/)) {
-        return { type: 'calendar', text: trimmed.replace(/^[🗓️📅]\s*/, '').trim(), icon: Calendar }
+      // Calendar (🗓️ 📅 📆)
+      else if (/^[🗓️📅📆]/.test(trimmed)) {
+        const text = trimmed.replace(/^[🗓️📅📆]\s*/, '').trim()
+        return { type: 'calendar', text, icon: Calendar }
       } 
       // Texto sin icono
       else {
@@ -76,29 +81,43 @@ export function PromotionDescription() {
 
   const parsedLines = parseDescription(promotion.description)
 
+  // Función para determinar si un color es oscuro
+  const isDarkColor = (hex: string): boolean => {
+    if (!hex) return true
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    const brightness = (r * 299 + g * 299 + b * 114) / 1000
+    return brightness < 128
+  }
+
+  const isDark = isDarkColor(promotion.banner_color)
+  const bgColor = isDark ? promotion.banner_color : `${promotion.banner_color}15`
+  const textColor = isDark ? 'text-white' : 'text-foreground'
+  const titleColor = isDark ? 'text-white' : promotion.banner_color
+
   return (
     <section className="container mx-auto px-4 py-12">
       <div 
         className="max-w-4xl mx-auto p-8 rounded-2xl border-2 shadow-lg"
         style={{ 
           borderColor: promotion.banner_color,
-          backgroundColor: `${promotion.banner_color}10`
+          backgroundColor: bgColor
         }}
       >
         {promotion.title && (
           <h2 
-            className="font-display text-3xl md:text-4xl font-bold mb-6 text-center"
-            style={{ color: promotion.banner_color }}
+            className={`font-display text-3xl md:text-4xl font-bold mb-6 text-center ${titleColor}`}
           >
             {promotion.title}
           </h2>
         )}
         
-        <div className="space-y-4 text-base md:text-lg">
+        <div className={`space-y-4 text-base md:text-lg ${textColor}`}>
           {parsedLines.map((line, index) => {
             if (line.type === 'text') {
               return (
-                <p key={index} className="text-foreground font-medium leading-relaxed">
+                <p key={index} className="font-medium leading-relaxed">
                   {line.text}
                 </p>
               )
@@ -106,11 +125,11 @@ export function PromotionDescription() {
             
             const Icon = line.icon
             const iconColors: Record<string, string> = {
-              check: 'text-green-500',
-              lock: 'text-blue-500',
-              truck: 'text-orange-500',
-              sparkle: 'text-yellow-500',
-              calendar: 'text-purple-500',
+              check: 'text-green-400',
+              lock: 'text-blue-400',
+              truck: 'text-orange-400',
+              sparkle: 'text-yellow-400',
+              calendar: 'text-purple-400',
             }
             
             return (
@@ -118,7 +137,7 @@ export function PromotionDescription() {
                 {Icon && (
                   <Icon className={`h-5 w-5 mt-0.5 flex-shrink-0 ${iconColors[line.type] || 'text-primary'}`} />
                 )}
-                <p className="text-foreground leading-relaxed flex-1">
+                <p className="leading-relaxed flex-1">
                   {line.text}
                 </p>
               </div>
