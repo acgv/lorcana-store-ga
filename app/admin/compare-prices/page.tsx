@@ -443,7 +443,7 @@ export default function ComparePricesPage() {
                       <SelectValue placeholder="Stock" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todo</SelectItem>
+                      <SelectItem value="all">Todo el Stock</SelectItem>
                       <SelectItem value="with">Con stock</SelectItem>
                       <SelectItem value="without">Sin stock</SelectItem>
                     </SelectContent>
@@ -453,7 +453,7 @@ export default function ComparePricesPage() {
                       <SelectValue placeholder="Precio" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="all">Todos los Precios</SelectItem>
                       <SelectItem value="needs-update">Necesita actualización</SelectItem>
                       <SelectItem value="higher">Más caro que estándar</SelectItem>
                       <SelectItem value="lower">Más barato que estándar</SelectItem>
