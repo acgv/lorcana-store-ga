@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { AuthGuard } from "@/components/auth-guard"
 import { AdminHeader } from "@/components/admin-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -89,6 +89,19 @@ export default function ComparePricesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterRarity, setFilterRarity] = useState<string>("all")
   const [filterSet, setFilterSet] = useState<string>("all")
+  
+  // Debug: ver qué sets hay en los datos cuando cambia el filtro
+  useEffect(() => {
+    if (data?.comparisons && filterSet !== "all") {
+      const uniqueSetsInData = [...new Set(data.comparisons.map(c => c.set))].sort()
+      console.log('🔍 Filter Set Debug:', {
+        selectedFilter: filterSet,
+        uniqueSetsInData: uniqueSetsInData.slice(0, 10),
+        totalComparisons: data.comparisons.length,
+        matchingCount: data.comparisons.filter(c => c.set === filterSet).length
+      })
+    }
+  }, [filterSet, data])
   const [filterStock, setFilterStock] = useState<string>("all")
   const [filterPrice, setFilterPrice] = useState<string>("all")
   const [activeTab, setActiveTab] = useState("comparison")
@@ -346,45 +359,38 @@ export default function ComparePricesPage() {
     return trimmed
   }
 
-  // Filtrar comparaciones
-  const filteredComparisons = data?.comparisons.filter((comp) => {
-    // Búsqueda por nombre
-    if (searchTerm && !comp.cardName.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false
-    }
-
-    // Filtro por rareza
-    if (filterRarity !== "all" && comp.rarity !== filterRarity) {
-      return false
-    }
-
-    // Filtro por set (exactamente igual que en catálogo)
-    if (filterSet !== "all") {
-      // Debug: mostrar valores cuando se selecciona un filtro
-      if (filterSet !== "all" && data?.comparisons.length > 0 && Math.random() < 0.1) {
-        console.log('🔍 Set filter debug:', {
-          filterSet,
-          compSet: comp.set,
-          match: comp.set === filterSet,
-          allSets: [...new Set(data.comparisons.map(c => c.set))].slice(0, 5)
-        })
-      }
-      if (comp.set !== filterSet) {
+  // Filtrar comparaciones (usando useMemo como en catálogo)
+  const filteredComparisons = useMemo(() => {
+    if (!data?.comparisons) return []
+    
+    return data.comparisons.filter((comp) => {
+      // Búsqueda por nombre
+      if (searchTerm && !comp.cardName.toLowerCase().includes(searchTerm.toLowerCase())) {
         return false
       }
-    }
+
+      // Filtro por rareza
+      if (filterRarity !== "all" && comp.rarity !== filterRarity) {
+        return false
+      }
+
+      // Filtro por set (exactamente igual que en catálogo)
+      if (filterSet !== "all" && comp.set !== filterSet) {
+        return false
+      }
 
     // Filtro por stock
     if (filterStock === "with" && !comp.hasStock) return false
     if (filterStock === "without" && comp.hasStock) return false
 
-    // Filtro por precio
-    if (filterPrice === "needs-update" && !comp.needsPriceUpdate) return false
-    if (filterPrice === "higher" && comp.priceDifferencePercent <= 0) return false
-    if (filterPrice === "lower" && comp.priceDifferencePercent >= 0) return false
+      // Filtro por precio
+      if (filterPrice === "needs-update" && !comp.needsPriceUpdate) return false
+      if (filterPrice === "higher" && comp.priceDifferencePercent <= 0) return false
+      if (filterPrice === "lower" && comp.priceDifferencePercent >= 0) return false
 
-    return true
-  }) || []
+      return true
+    })
+  }, [data?.comparisons, searchTerm, filterRarity, filterSet, filterStock, filterPrice])
 
 
 
