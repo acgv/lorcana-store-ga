@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { useUser } from "@/hooks/use-user"
 import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
-import { LogOut, User, Users, Package, ShoppingBag, FileText, Activity, Wrench, Tag, Truck } from "lucide-react"
+import { LogOut, User, Users, Package, ShoppingBag, FileText, Activity, Wrench, Tag, Truck, TrendingUp } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import {
   DropdownMenu,
@@ -185,6 +185,13 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
               <DropdownMenuItem asChild>
                 <Link href="/admin/email-test" className="cursor-pointer">
                   Enviar Correo de Prueba
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/admin/compare-prices" className="cursor-pointer">
+                  <TrendingUp className="mr-2 h-4 w-4" />
+                  Comparativa Precios
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
