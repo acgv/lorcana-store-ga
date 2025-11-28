@@ -156,10 +156,6 @@ async function searchInProducts(
   }
 
   return null
-  } catch (error) {
-    console.warn(`⚠️ Error getting price from CardMarket for ${cardName}:`, error)
-    return null
-  }
 }
 
 /**
