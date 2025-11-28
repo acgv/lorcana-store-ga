@@ -215,18 +215,35 @@ export async function GET(request: NextRequest) {
 
     console.log("🔄 Fetching comparison data...")
 
-    // 1. Obtener todas las cartas de la base de datos
-    const { data: dbCards, error: dbError } = await supabaseAdmin
-      .from("cards")
-      .select("id, name, set, number, rarity, type, price, foilPrice, normalStock, foilStock, image")
-      .eq("status", "approved")
-
-    if (dbError) {
-      console.error("Error fetching database cards:", dbError)
-      throw dbError
+    // 1. Obtener todas las cartas de la base de datos (sin límite)
+    // Supabase por defecto limita a 1000, necesitamos obtener todas
+    let dbCards: any[] = []
+    let from = 0
+    const pageSize = 1000
+    let hasMore = true
+    
+    while (hasMore) {
+      const { data, error: dbError } = await supabaseAdmin
+        .from("cards")
+        .select("id, name, set, number, rarity, type, price, foilPrice, normalStock, foilStock, image")
+        .eq("status", "approved")
+        .range(from, from + pageSize - 1)
+      
+      if (dbError) {
+        console.error("Error fetching database cards:", dbError)
+        throw dbError
+      }
+      
+      if (data && data.length > 0) {
+        dbCards = dbCards.concat(data)
+        from += pageSize
+        hasMore = data.length === pageSize
+      } else {
+        hasMore = false
+      }
     }
 
-    console.log(`✅ Found ${dbCards?.length || 0} cards in database`)
+    console.log(`✅ Found ${dbCards.length} cards in database`)
 
     // 2. Obtener todas las cartas de la API de Lorcana
     let lorcanaCards: LorcanaAPICard[] = []
@@ -255,7 +272,7 @@ export async function GET(request: NextRequest) {
 
     // 3. Crear mapa de cartas de la BD por ID
     const dbCardsMap = new Map<string, DatabaseCard>()
-    dbCards?.forEach((card) => {
+    dbCards.forEach((card) => {
       dbCardsMap.set(card.id, card as DatabaseCard)
     })
 
@@ -269,14 +286,10 @@ export async function GET(request: NextRequest) {
     let processed = 0
     const totalCards = lorcanaCards.length
     
-    // Limitar el número de cartas a procesar para evitar timeouts
-    // Procesar solo las primeras 500 cartas o todas si son menos
-    const maxCardsToProcess = 500
-    const cardsToProcess = lorcanaCards.slice(0, maxCardsToProcess)
-    
-    if (lorcanaCards.length > maxCardsToProcess) {
-      console.log(`⚠️ Limiting to first ${maxCardsToProcess} cards to avoid timeout`)
-    }
+    // Procesar todas las cartas de la API
+    // Nota: Si hay muchas cartas, esto puede tardar, pero ahora procesamos todas
+    const cardsToProcess = lorcanaCards
+    console.log(`🔄 Processing ${cardsToProcess.length} cards from API...`)
 
     for (const apiCard of cardsToProcess) {
       // Filtrar promocionales
@@ -414,7 +427,7 @@ export async function GET(request: NextRequest) {
     console.log(`✅ Price comparison completed. Processed ${processed} cards.`)
 
     // Cartas solo en BD (no están en la API)
-    dbCards?.forEach((card) => {
+    dbCards.forEach((card) => {
       const found = lorcanaCards.some(
         (apiCard) => generateCardId(apiCard.Set_Name, apiCard.Card_Num) === card.id
       )
@@ -429,7 +442,7 @@ export async function GET(request: NextRequest) {
 
     // Estadísticas
     const stats = {
-      totalInDatabase: dbCards?.length || 0,
+      totalInDatabase: dbCards.length,
       totalInAPI: lorcanaCards.length,
       totalCompared: comparisons.length,
       withStock: comparisons.filter((c) => c.hasStock).length,
