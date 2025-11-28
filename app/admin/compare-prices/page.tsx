@@ -320,9 +320,9 @@ export default function ComparePricesPage() {
     return normalized
   }
 
-  // Obtener sets únicos solo de comparisons (la fuente principal que se muestra en la tabla)
-  // Esto evita duplicados y mantiene consistencia
-  const allSets = data?.comparisons.map((c) => normalizeSetName(c.set)) || []
+  // Obtener sets únicos de comparisons (la fuente principal que se muestra en la tabla)
+  // Usar el set original, no normalizado, para mantener compatibilidad con el filtro
+  const allSets = data?.comparisons.map((c) => c.set) || []
   const uniqueSets = Array.from(new Set(allSets)).sort()
   
   // Función para obtener nombre de display del set
