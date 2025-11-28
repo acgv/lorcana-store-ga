@@ -259,39 +259,6 @@ export default function ComparePricesPage() {
     loadData()
   }, [])
 
-  // Filtrar comparaciones
-  const filteredComparisons = data?.comparisons.filter((comp) => {
-    // Búsqueda por nombre
-    if (searchTerm && !comp.cardName.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false
-    }
-
-    // Filtro por rareza
-    if (filterRarity !== "all" && comp.rarity !== filterRarity) {
-      return false
-    }
-
-    // Filtro por set (normalizar ambos para comparar)
-    if (filterSet !== "all") {
-      const compSetNormalized = normalizeSetName(comp.set)
-      const filterSetNormalized = normalizeSetName(filterSet)
-      if (compSetNormalized !== filterSetNormalized) {
-        return false
-      }
-    }
-
-    // Filtro por stock
-    if (filterStock === "with" && !comp.hasStock) return false
-    if (filterStock === "without" && comp.hasStock) return false
-
-    // Filtro por precio
-    if (filterPrice === "needs-update" && !comp.needsPriceUpdate) return false
-    if (filterPrice === "higher" && comp.priceDifferencePercent <= 0) return false
-    if (filterPrice === "lower" && comp.priceDifferencePercent >= 0) return false
-
-    return true
-  }) || []
-
   // Mapeo de sets normalizados a nombres legibles
   const setDisplayNames: Record<string, string> = {
     'firstChapter': 'The First Chapter',
@@ -307,8 +274,24 @@ export default function ComparePricesPage() {
     'whisper': 'Whispers in the Well',
   }
 
+  // Orden de sets por lanzamiento (1-10)
+  const setOrder: Record<string, number> = {
+    'firstChapter': 1,
+    'riseOfFloodborn': 2,
+    'intoInklands': 3,
+    'ursulaReturn': 4,
+    'shimmering': 5,
+    'azurite': 6,
+    'archazia': 7,
+    'reignOfJafar': 8,
+    'fabled': 9,
+    'whi': 10,
+    'whisper': 10,
+  }
+
   // Mapeo inverso: normalizar diferentes variaciones al mismo nombre
   const normalizeSetName = (set: string): string => {
+    if (!set) return ''
     const normalized = set.toLowerCase().trim()
     // Mapear variaciones comunes
     if (normalized.includes('whisper') || normalized === 'whi') return 'whi'
@@ -323,6 +306,36 @@ export default function ComparePricesPage() {
     if (normalized.includes('fabled') || normalized === 'fabled') return 'fabled'
     return normalized
   }
+
+  // Filtrar comparaciones
+  const filteredComparisons = data?.comparisons.filter((comp) => {
+    // Búsqueda por nombre
+    if (searchTerm && !comp.cardName.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return false
+    }
+
+    // Filtro por rareza
+    if (filterRarity !== "all" && comp.rarity !== filterRarity) {
+      return false
+    }
+
+    // Filtro por set
+    if (filterSet !== "all" && comp.set !== filterSet) {
+      return false
+    }
+
+    // Filtro por stock
+    if (filterStock === "with" && !comp.hasStock) return false
+    if (filterStock === "without" && comp.hasStock) return false
+
+    // Filtro por precio
+    if (filterPrice === "needs-update" && !comp.needsPriceUpdate) return false
+    if (filterPrice === "higher" && comp.priceDifferencePercent <= 0) return false
+    if (filterPrice === "lower" && comp.priceDifferencePercent >= 0) return false
+
+    return true
+  }) || []
+
 
   // Obtener sets únicos de todas las fuentes para tener la lista completa
   // Normalizar los sets para evitar duplicados por variaciones de nombre
@@ -344,8 +357,14 @@ export default function ComparePricesPage() {
     }
   })
   
-  // Obtener sets únicos usando los valores originales
-  const uniqueSets = Array.from(normalizedSetMap.values()).sort()
+  // Obtener sets únicos usando los valores originales y ordenarlos por orden de lanzamiento (1-10)
+  const uniqueSets = Array.from(normalizedSetMap.values()).sort((a, b) => {
+    const normalizedA = normalizeSetName(a)
+    const normalizedB = normalizeSetName(b)
+    const orderA = setOrder[normalizedA] || 999
+    const orderB = setOrder[normalizedB] || 999
+    return orderA - orderB
+  })
   
   // Función para obtener nombre de display del set
   const getSetDisplayName = (set: string) => {
@@ -514,11 +533,16 @@ export default function ComparePricesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos los sets</SelectItem>
-                      {uniqueSets.map((set) => (
-                        <SelectItem key={set} value={set}>
-                          {getSetDisplayName(set)}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="firstChapter">Set 1 - The First Chapter</SelectItem>
+                      <SelectItem value="riseOfFloodborn">Set 2 - Rise of the Floodborn</SelectItem>
+                      <SelectItem value="intoInklands">Set 3 - Into the Inklands</SelectItem>
+                      <SelectItem value="ursulaReturn">Set 4 - Ursula's Return</SelectItem>
+                      <SelectItem value="shimmering">Set 5 - Shimmering Skies</SelectItem>
+                      <SelectItem value="azurite">Set 6 - Azurite Sea</SelectItem>
+                      <SelectItem value="archazia">Set 7 - Archazia's Island</SelectItem>
+                      <SelectItem value="reignOfJafar">Set 8 - Reign of Jafar</SelectItem>
+                      <SelectItem value="fabled">Set 9 - Fabled</SelectItem>
+                      <SelectItem value="whi">Set 10 - Whispers in the Well</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={filterStock} onValueChange={setFilterStock}>
