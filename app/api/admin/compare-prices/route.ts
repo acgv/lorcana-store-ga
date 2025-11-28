@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/db"
+import { calculateFinalPrice, getCalculationParams, calculatePriceDifference } from "@/lib/price-calculator"
 
 interface LorcanaAPICard {
   Name: string
@@ -9,6 +10,7 @@ interface LorcanaAPICard {
   Rarity: string
   Type: string
   Image: string
+  Cost?: number // Costo de ink (no precio de mercado)
 }
 
 interface DatabaseCard {
@@ -41,11 +43,16 @@ interface ComparisonResult {
   currentPrice: number
   currentFoilPrice: number
   
-  // Precios estándar de la API (basados en rareza)
-  standardPrice: number
-  standardFoilPrice: number
+  // Precios de mercado (de TCGPlayer o estándar) - en USD
+  marketPriceUSD: number | null
+  marketFoilPriceUSD: number | null
+  priceSource: "tcgplayer" | "standard" // Fuente del precio
   
-  // Diferencias
+  // Precios sugeridos (calculados con la fórmula)
+  suggestedPriceCLP: number | null
+  suggestedFoilPriceCLP: number | null
+  
+  // Diferencias con precio sugerido
   priceDifference: number
   foilPriceDifference: number
   priceDifferencePercent: number
@@ -57,18 +64,19 @@ interface ComparisonResult {
   image: string
 }
 
-// Precios estándar por rareza (igual que en el script de importación)
-function getStandardPrice(rarity: string): number {
-  const standardPrices: Record<string, number> = {
-    common: 500,        // $5.00
-    uncommon: 1000,     // $10.00
-    rare: 2500,         // $25.00
-    superRare: 5000,    // $50.00
-    legendary: 30000,   // $300.00
-    enchanted: 50000,   // $500.00
+// Precios estándar por rareza en USD (basados en valores típicos de mercado)
+// Estos se usarán para calcular el precio sugerido con la fórmula del Excel
+function getStandardPriceUSD(rarity: string): number {
+  const standardPricesUSD: Record<string, number> = {
+    common: 0.50,       // $0.50 USD
+    uncommon: 1.00,     // $1.00 USD
+    rare: 2.50,         // $2.50 USD
+    superRare: 5.00,    // $5.00 USD
+    legendary: 30.00,   // $30.00 USD
+    enchanted: 50.00,   // $50.00 USD
   }
   
-  return standardPrices[rarity] || 500
+  return standardPricesUSD[rarity] || 0.50
 }
 
 // Mapeo de sets (igual que en el script)
@@ -179,6 +187,10 @@ export async function GET(request: NextRequest) {
     const cardsOnlyInDB: Array<{ id: string; name: string; set: string }> = []
 
     // Comparar cartas de la API con la BD
+    console.log("🔄 Starting price comparison...")
+    let processed = 0
+    const totalCards = lorcanaCards.length
+
     for (const apiCard of lorcanaCards) {
       // Filtrar promocionales
       if (
@@ -193,15 +205,84 @@ export async function GET(request: NextRequest) {
       const dbCard = dbCardsMap.get(cardId)
 
       const rarity = rarityMap[apiCard.Rarity] || "common"
-      const standardPrice = getStandardPrice(rarity)
-      const standardFoilPrice = Math.round(standardPrice * 1.6) // Foil es 1.6x el precio normal
+      
+      // Intentar obtener precio de TCGPlayer usando métodos alternativos
+      let marketPriceUSD: number | null = null
+      let marketFoilPriceUSD: number | null = null
+      let priceSource: "tcgplayer" | "standard" = "standard"
+      
+      // 1. Intentar con API keys de TCGPlayer (si están configuradas)
+      const hasTCGPlayerKeys = process.env.TCGPLAYER_PUBLIC_KEY && process.env.TCGPLAYER_PRIVATE_KEY
+      
+      if (hasTCGPlayerKeys) {
+        try {
+          const { getTCGPlayerPrice } = await import("@/lib/tcgplayer-api")
+          const tcgPrice = await getTCGPlayerPrice(apiCard.Name)
+          
+          if (tcgPrice && tcgPrice.normal && tcgPrice.normal.market > 0) {
+            marketPriceUSD = tcgPrice.normal.market || tcgPrice.normal.mid
+            marketFoilPriceUSD = tcgPrice.foil ? (tcgPrice.foil.market || tcgPrice.foil.mid) : null
+            priceSource = "tcgplayer"
+          }
+        } catch (error) {
+          console.warn(`⚠️ Error getting TCGPlayer price for ${apiCard.Name}:`, error)
+        }
+      }
+      
+      // 2. Si no hay keys, intentar métodos alternativos (Card Market API, TCGAPIs, etc.)
+      if (!marketPriceUSD) {
+        try {
+          const { getTCGPlayerPriceAlternative } = await import("@/lib/tcgplayer-alternative")
+          const altPrice = await getTCGPlayerPriceAlternative(apiCard.Name)
+          
+          if (altPrice && altPrice.normal) {
+            marketPriceUSD = altPrice.normal
+            marketFoilPriceUSD = altPrice.foil
+            priceSource = "tcgplayer" // Aunque viene de una fuente alternativa, son precios de TCGPlayer
+          }
+        } catch (error) {
+          console.warn(`⚠️ Error getting alternative TCGPlayer price for ${apiCard.Name}:`, error)
+        }
+      }
+      
+      // 3. Si no se obtuvo precio, usar precio estándar por rareza
+      if (!marketPriceUSD) {
+        marketPriceUSD = getStandardPriceUSD(rarity)
+        marketFoilPriceUSD = marketPriceUSD * 1.6 // Foil típicamente 1.6x el precio normal
+      }
 
       if (dbCard) {
-        // Carta existe en ambas - comparar
-        const priceDiff = dbCard.price - standardPrice
-        const foilPriceDiff = dbCard.foilPrice - standardFoilPrice
-        const priceDiffPercent = standardPrice > 0 ? (priceDiff / standardPrice) * 100 : 0
-        const foilPriceDiffPercent = standardFoilPrice > 0 ? (foilPriceDiff / standardFoilPrice) * 100 : 0
+        // Calcular precio sugerido usando la fórmula del Excel
+        const calcParams = getCalculationParams()
+        let suggestedPriceCLP: number | null = null
+        let suggestedFoilPriceCLP: number | null = null
+
+        if (marketPriceUSD) {
+          // Calcular precio sugerido basado en precio de TCGPlayer
+          const calculation = calculateFinalPrice({
+            ...calcParams,
+            basePriceUSD: marketPriceUSD,
+          })
+          suggestedPriceCLP = calculation.finalPriceCLP
+
+          // Si hay precio foil, calcular también
+          if (marketFoilPriceUSD) {
+            const foilCalculation = calculateFinalPrice({
+              ...calcParams,
+              basePriceUSD: marketFoilPriceUSD,
+            })
+            suggestedFoilPriceCLP = foilCalculation.finalPriceCLP
+          }
+        }
+
+        // Comparar precio actual con precio sugerido
+        const priceComparison = suggestedPriceCLP
+          ? calculatePriceDifference(dbCard.price || 0, suggestedPriceCLP)
+          : { difference: 0, differencePercent: 0, needsUpdate: false }
+
+        const foilComparison = suggestedFoilPriceCLP
+          ? calculatePriceDifference(dbCard.foilPrice || 0, suggestedFoilPriceCLP)
+          : { difference: 0, differencePercent: 0, needsUpdate: false }
 
         comparisons.push({
           cardId: dbCard.id,
@@ -214,16 +295,20 @@ export async function GET(request: NextRequest) {
           currentFoilStock: dbCard.foilStock || 0,
           currentPrice: dbCard.price || 0,
           currentFoilPrice: dbCard.foilPrice || 0,
-          standardPrice,
-          standardFoilPrice,
-          priceDifference: priceDiff,
-          foilPriceDifference: foilPriceDiff,
-          priceDifferencePercent: Math.round(priceDiffPercent * 100) / 100,
-          foilPriceDifferencePercent: Math.round(foilPriceDiffPercent * 100) / 100,
+          marketPriceUSD,
+          marketFoilPriceUSD,
+          priceSource,
+          suggestedPriceCLP,
+          suggestedFoilPriceCLP,
+          priceDifference: priceComparison.difference,
+          foilPriceDifference: foilComparison.difference,
+          priceDifferencePercent: priceComparison.differencePercent,
+          foilPriceDifferencePercent: foilComparison.differencePercent,
           hasStock: (dbCard.normalStock || 0) > 0 || (dbCard.foilStock || 0) > 0,
-          needsPriceUpdate: Math.abs(priceDiffPercent) > 5 || Math.abs(foilPriceDiffPercent) > 5, // Más de 5% de diferencia
+          needsPriceUpdate: priceComparison.needsUpdate || foilComparison.needsUpdate,
           image: dbCard.image || apiCard.Image,
         })
+      } else {
       } else {
         // Carta solo en API (no está en nuestra BD)
         cardsOnlyInAPI.push({
@@ -233,7 +318,14 @@ export async function GET(request: NextRequest) {
           rarity: rarity,
         })
       }
+
+      processed++
+      if (processed % 50 === 0) {
+        console.log(`⏳ Processed ${processed}/${totalCards} cards...`)
+      }
     }
+
+    console.log(`✅ Price comparison completed. Processed ${processed} cards.`)
 
     // Cartas solo en BD (no están en la API)
     dbCards?.forEach((card) => {

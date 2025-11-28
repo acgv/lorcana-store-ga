@@ -50,8 +50,11 @@ interface ComparisonResult {
   currentFoilStock: number
   currentPrice: number
   currentFoilPrice: number
-  standardPrice: number
-  standardFoilPrice: number
+  marketPriceUSD: number | null
+  marketFoilPriceUSD: number | null
+  priceSource: "tcgplayer" | "standard"
+  suggestedPriceCLP: number | null
+  suggestedFoilPriceCLP: number | null
   priceDifference: number
   foilPriceDifference: number
   priceDifferencePercent: number
@@ -359,10 +362,12 @@ export default function ComparePricesPage() {
                           <TableHead className="text-right">Stock Normal</TableHead>
                           <TableHead className="text-right">Stock Foil</TableHead>
                           <TableHead className="text-right">Precio Actual</TableHead>
-                          <TableHead className="text-right">Precio Estándar</TableHead>
+                          <TableHead className="text-right">Precio TCGPlayer (USD)</TableHead>
+                          <TableHead className="text-right">Precio Sugerido (CLP)</TableHead>
                           <TableHead className="text-right">Diferencia</TableHead>
                           <TableHead className="text-right">Precio Foil Actual</TableHead>
-                          <TableHead className="text-right">Precio Foil Estándar</TableHead>
+                          <TableHead className="text-right">Precio Foil TCGPlayer (USD)</TableHead>
+                          <TableHead className="text-right">Precio Foil Sugerido (CLP)</TableHead>
                           <TableHead className="text-right">Diff. Foil</TableHead>
                           <TableHead>Estado</TableHead>
                         </TableRow>
@@ -409,7 +414,10 @@ export default function ComparePricesPage() {
                               ${comp.currentPrice.toLocaleString()}
                             </TableCell>
                             <TableCell className="text-right text-muted-foreground">
-                              ${comp.standardPrice.toLocaleString()}
+                              {comp.marketPriceUSD ? `$${comp.marketPriceUSD.toFixed(2)} USD` : "-"}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-blue-600">
+                              {comp.suggestedPriceCLP ? `$${comp.suggestedPriceCLP.toLocaleString()}` : "-"}
                             </TableCell>
                             <TableCell className="text-right">
                               {comp.priceDifferencePercent !== 0 && (
@@ -436,7 +444,10 @@ export default function ComparePricesPage() {
                               ${comp.currentFoilPrice.toLocaleString()}
                             </TableCell>
                             <TableCell className="text-right text-muted-foreground">
-                              ${comp.standardFoilPrice.toLocaleString()}
+                              {comp.marketFoilPriceUSD ? `$${comp.marketFoilPriceUSD.toFixed(2)} USD` : "-"}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-blue-600">
+                              {comp.suggestedFoilPriceCLP ? `$${comp.suggestedFoilPriceCLP.toLocaleString()}` : "-"}
                             </TableCell>
                             <TableCell className="text-right">
                               {comp.foilPriceDifferencePercent !== 0 && (
