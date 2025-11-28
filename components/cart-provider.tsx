@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 
 export interface CartItem {
   id: string
@@ -24,8 +24,43 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
+const CART_STORAGE_KEY = 'lorcana-cart'
+
+// Función para cargar el carrito desde localStorage
+function loadCartFromStorage(): CartItem[] {
+  if (typeof window === 'undefined') return []
+  
+  try {
+    const stored = localStorage.getItem(CART_STORAGE_KEY)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (error) {
+    console.error('Error loading cart from storage:', error)
+  }
+  
+  return []
+}
+
+// Función para guardar el carrito en localStorage
+function saveCartToStorage(items: CartItem[]): void {
+  if (typeof window === 'undefined') return
+  
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items))
+  } catch (error) {
+    console.error('Error saving cart to storage:', error)
+  }
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([])
+  // Cargar carrito desde localStorage al inicializar
+  const [items, setItems] = useState<CartItem[]>(() => loadCartFromStorage())
+
+  // Guardar en localStorage cada vez que cambien los items
+  useEffect(() => {
+    saveCartToStorage(items)
+  }, [items])
 
   const addToCart = (item: Omit<CartItem, "quantity" | "maxStock">, maxStock: number) => {
     // Validar stock disponible
@@ -92,6 +127,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => {
     setItems([])
+    // Limpiar también de localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(CART_STORAGE_KEY)
+    }
   }
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)

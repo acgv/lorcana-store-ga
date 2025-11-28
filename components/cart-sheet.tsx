@@ -56,15 +56,19 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
 
     if (!isAuthenticated) {
       console.log('❌ User not authenticated')
+      // El carrito ya se guarda automáticamente en localStorage por el cart-provider
+      // Redirigir al login con parámetro para indicar que viene del checkout
       toast({
         variant: "destructive",
         title: t("error"),
-        description: "Debes iniciar sesión para realizar una compra",
+        description: "Debes iniciar sesión para realizar una compra. Tu carrito se guardará automáticamente.",
         duration: 5000,
       })
-      // Cerrar el carrito y redirigir al login
+      // Cerrar el carrito y redirigir al login con parámetro de retorno
       onOpenChange(false)
-      router.push('/lorcana-tcg/login')
+      // Guardar la URL actual para regresar después del login
+      const returnUrl = window.location.pathname + window.location.search
+      router.push(`/lorcana-tcg/login?redirect=${encodeURIComponent(returnUrl)}&from=checkout`)
       return
     }
 
