@@ -309,7 +309,6 @@ export async function GET(request: NextRequest) {
           image: dbCard.image || apiCard.Image,
         })
       } else {
-      } else {
         // Carta solo en API (no está en nuestra BD)
         cardsOnlyInAPI.push({
           name: apiCard.Name,
