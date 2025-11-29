@@ -93,7 +93,7 @@ export default function ComparePricesPage() {
   const [filterPrice, setFilterPrice] = useState<string>("all")
   const [activeTab, setActiveTab] = useState("comparison")
 
-  const loadData = async () => {
+  const loadData = async (setFilter?: string) => {
     try {
       setRefreshing(true)
       setLoading(true)
@@ -111,8 +111,15 @@ export default function ComparePricesPage() {
         headers["Authorization"] = `Bearer ${token}`
       }
 
+      // Construir URL con filtro de set si se especifica
+      const url = new URL("/api/admin/compare-prices", window.location.origin)
+      const setToFilter = setFilter || filterSet
+      if (setToFilter && setToFilter !== "all") {
+        url.searchParams.set("set", setToFilter)
+      }
+
       // Cargar todos los datos de una vez (igual que en catálogo)
-      const response = await fetch("/api/admin/compare-prices", {
+      const response = await fetch(url.toString(), {
         headers,
       })
       
@@ -186,9 +193,11 @@ export default function ComparePricesPage() {
     }
   }
 
+  // Cargar datos cuando cambie el filtro de set (o carga inicial)
   useEffect(() => {
     loadData()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterSet])
 
   // Mapeo de sets normalizados a nombres legibles
   const setDisplayNames: Record<string, string> = {
@@ -223,6 +232,20 @@ export default function ComparePricesPage() {
   // Filtrar comparaciones (exactamente igual que en catálogo y mi colección)
   const filteredComparisons = useMemo(() => {
     if (!data?.comparisons) return []
+    
+    // Debug: ver qué está pasando con el filtro
+    if (filterSet !== "all") {
+      const uniqueSets = [...new Set(data.comparisons.map(c => c.set))].sort()
+      const matchingCards = data.comparisons.filter(c => c.set === filterSet)
+      console.log('🔍 FILTRO SET DEBUG:', {
+        filterSet,
+        uniqueSetsInData: uniqueSets,
+        totalCards: data.comparisons.length,
+        matchingCards: matchingCards.length,
+        sampleMatching: matchingCards.slice(0, 3).map(c => ({ name: c.cardName, set: c.set })),
+        sampleNonMatching: data.comparisons.filter(c => c.set !== filterSet).slice(0, 3).map(c => ({ name: c.cardName, set: c.set }))
+      })
+    }
     
     return data.comparisons.filter((comp) => {
       // Búsqueda por nombre

@@ -206,11 +206,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Obtener parámetros de paginación (si no se pasan, procesar todas las cartas)
+    // Obtener parámetros de paginación y filtros
     const { searchParams } = new URL(request.url)
     const pageParam = searchParams.get("page")
     const pageSizeParam = searchParams.get("pageSize")
     const fetchExternalPrices = searchParams.get("fetchExternalPrices") === "true" // Opcional: solo si se solicita explícitamente
+    const filterSet = searchParams.get("set") // Filtro por set (igual que en catálogo)
     
     // Si no se pasan parámetros, procesar todas las cartas (igual que catálogo)
     const usePagination = pageParam !== null || pageSizeParam !== null
@@ -235,11 +236,18 @@ export async function GET(request: NextRequest) {
     let hasMore = true
     
     while (hasMore) {
-      const { data, error: dbError } = await supabaseAdmin
+      let query = supabaseAdmin
         .from("cards")
         .select("id, name, set, number, rarity, type, price, foilPrice, normalStock, foilStock, image")
         .eq("status", "approved")
         .range(from, from + dbPageSize - 1)
+      
+      // Filtrar por set si se especifica (igual que en catálogo)
+      if (filterSet && filterSet !== "all") {
+        query = query.eq("set", filterSet)
+      }
+      
+      const { data, error: dbError } = await query
       
       if (dbError) {
         console.error("Error fetching database cards:", dbError)
@@ -297,12 +305,25 @@ export async function GET(request: NextRequest) {
     console.log("🔄 Starting price comparison...")
     
     // Filtrar promocionales primero
-    const nonPromoCards = lorcanaCards.filter(
+    let nonPromoCards = lorcanaCards.filter(
       (card) =>
         !card.Image?.includes("/promo") &&
         !card.Image?.includes("/promo2/") &&
         !card.Image?.includes("/promo3/")
     )
+    
+    // Filtrar por set si se especifica (mapear el valor del filtro al nombre del set en la API)
+    if (filterSet && filterSet !== "all") {
+      // Buscar el nombre del set en la API que corresponde al valor del filtro
+      const setNamesInAPI = Object.keys(setMap).filter(key => setMap[key] === filterSet)
+      if (setNamesInAPI.length > 0) {
+        const setNameInAPI = setNamesInAPI[0]
+        nonPromoCards = nonPromoCards.filter(card => card.Set_Name === setNameInAPI)
+        console.log(`🔍 Filtrando por set: ${filterSet} (${setNameInAPI}) - ${nonPromoCards.length} cartas`)
+      } else {
+        console.warn(`⚠️ No se encontró mapeo para el set: ${filterSet}`)
+      }
+    }
     
     const totalCards = nonPromoCards.length
     const totalPages = usePagination ? Math.ceil(totalCards / pageSize) : 1
