@@ -328,7 +328,14 @@ export async function GET(request: NextRequest) {
     }
 
     let processed = 0
-    for (const apiCard of cardsToProcess) {
+    const BATCH_SIZE = 10 // Procesar 10 cartas a la vez
+    const BATCH_DELAY = 2000 // 2 segundos entre lotes para evitar rate limiting
+    
+    for (let i = 0; i < cardsToProcess.length; i += BATCH_SIZE) {
+      const batch = cardsToProcess.slice(i, i + BATCH_SIZE)
+      
+      // Procesar lote
+      for (const apiCard of batch) {
       // Usar Set_ID para generar el ID (igual que en el script de importación)
       const cardId = generateCardId(apiCard.Set_Name, apiCard.Card_Num, apiCard.Set_ID)
       const dbCard = dbCardsMap.get(cardId)
@@ -347,14 +354,14 @@ export async function GET(request: NextRequest) {
         // No establecer marketPriceUSD, quedará como null
       } else if (fetchExternalPrices) {
         try {
-          // Timeout de 8 segundos por carta para dar más tiempo a la API
+          // Timeout de 10 segundos por carta para dar más tiempo a la API
           const pricePromise = (async () => {
             const { getTCGPlayerPriceAlternative } = await import("@/lib/tcgplayer-alternative")
             return await getTCGPlayerPriceAlternative(apiCard.Name)
           })()
           
           const timeoutPromise = new Promise<null>((resolve) => 
-            setTimeout(() => resolve(null), 8000)
+            setTimeout(() => resolve(null), 10000)
           )
           
           const altPrice = await Promise.race([pricePromise, timeoutPromise])
@@ -363,14 +370,20 @@ export async function GET(request: NextRequest) {
             marketPriceUSD = altPrice.normal
             marketFoilPriceUSD = altPrice.foil || null
             priceSource = "tcgplayer"
-            console.log(`✅ Precio TCGPlayer obtenido para ${apiCard.Name}: $${marketPriceUSD} USD${marketFoilPriceUSD ? ` (foil: $${marketFoilPriceUSD} USD)` : ''}`)
+            if (processed < 5 || processed % 20 === 0) {
+              console.log(`✅ Precio TCGPlayer obtenido para ${apiCard.Name}: $${marketPriceUSD} USD${marketFoilPriceUSD ? ` (foil: $${marketFoilPriceUSD} USD)` : ''}`)
+            }
           } else {
-            console.warn(`⚠️ No se pudo obtener precio TCGPlayer para ${apiCard.Name} (timeout o sin datos) - Precio quedará como null`)
+            if (processed < 5 || processed % 20 === 0) {
+              console.warn(`⚠️ No se pudo obtener precio TCGPlayer para ${apiCard.Name} (timeout o sin datos) - Precio quedará como null`)
+            }
             // NO establecer precio estándar, quedará como null
           }
         } catch (error) {
           // Si falla, NO usar precio estándar, dejar como null
-          console.error(`❌ Error getting TCGPlayer price for ${apiCard.Name}:`, error instanceof Error ? error.message : error)
+          if (processed < 5 || processed % 20 === 0) {
+            console.error(`❌ Error getting TCGPlayer price for ${apiCard.Name}:`, error instanceof Error ? error.message : error)
+          }
           // marketPriceUSD queda como null
         }
       } else {
@@ -483,9 +496,16 @@ export async function GET(request: NextRequest) {
         })
       }
 
-      processed++
-      if (processed % 100 === 0) {
-        console.log(`⏳ Processed ${processed}/${cardsToProcess.length} cards...`)
+        processed++
+        if (processed % 20 === 0) {
+          console.log(`⏳ Processed ${processed}/${cardsToProcess.length} cards...`)
+        }
+      }
+      
+      // Delay entre lotes para evitar rate limiting (excepto en el último lote)
+      if (i + BATCH_SIZE < cardsToProcess.length) {
+        console.log(`⏸️ Esperando ${BATCH_DELAY}ms antes del siguiente lote para evitar rate limiting...`)
+        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY))
       }
     }
 
