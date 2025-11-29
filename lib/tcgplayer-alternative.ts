@@ -233,9 +233,23 @@ async function getPriceFromCardMarket(
     ? `cardmarket-${options.setId.toLowerCase()}-${options.cardNumber}`
     : `cardmarket-${cardName.toLowerCase()}`
   const cached = priceCache.get(cacheKey)
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    console.log(`💾 Cache hit para ${cardName}${options?.setId && options?.cardNumber ? ` (${options.setId}-${options.cardNumber})` : ''}`)
-    return cached.price
+  if (cached) {
+    const cacheAge = Date.now() - cached.timestamp
+    // Si tiene precio válido y está en cache válido, usarlo
+    if (cached.price && cached.price.normal && cacheAge < CACHE_TTL) {
+      console.log(`💾 Cache hit para ${cardName}${options?.setId && options?.cardNumber ? ` (${options.setId}-${options.cardNumber})` : ''}`)
+      return cached.price
+    }
+    // Si el cache tiene null, solo respetarlo si es muy reciente (menos de 5 minutos)
+    // Esto evita spam pero permite reintentos después de un tiempo razonable
+    if (!cached.price && cacheAge < 5 * 60 * 1000) { // 5 minutos
+      console.log(`⏭️ Cache reciente con null para ${cardName}, saltando búsqueda (edad: ${Math.round(cacheAge / 1000)}s)`)
+      return null
+    }
+    // Si el cache es antiguo o tiene null antiguo, intentar de nuevo
+    if (cacheAge >= 5 * 60 * 1000) {
+      console.log(`🔄 Cache antiguo para ${cardName} (${Math.round(cacheAge / 1000)}s), intentando búsqueda de nuevo`)
+    }
   }
 
   try {
@@ -350,8 +364,8 @@ async function getPriceFromCardMarket(
     
     // Si no encontramos ningún endpoint que funcione, retornar null
     if (!foundWorkingEndpoint && !response) {
-      console.warn(`⚠️ No se encontró ningún endpoint funcional para ${cardName}`)
-      priceCache.set(cacheKey, { price: null, timestamp: Date.now() + 3600000 }) // Cache por 1 hora
+      // Cache null solo por 5 minutos para permitir reintentos
+      priceCache.set(cacheKey, { price: null, timestamp: Date.now() })
       return null
     }
     
@@ -372,8 +386,8 @@ async function getPriceFromCardMarket(
         // 404 significa que el endpoint no existe o la carta no se encuentra
         // NO hacer retry, simplemente retornar null
         // 404 es esperado - CardMarket no tiene soporte para Lorcana, no loggear
-        // Guardar en cache como null por más tiempo para evitar intentos repetidos
-        priceCache.set(cacheKey, { price: null, timestamp: Date.now() + 3600000 }) // Cache por 1 hora
+        // Cache null solo por 5 minutos para permitir reintentos
+        priceCache.set(cacheKey, { price: null, timestamp: Date.now() })
         return null
       } else {
         const errorText = await response.text().catch(() => 'No se pudo leer el error')
@@ -419,7 +433,8 @@ async function getPriceFromCardMarket(
       console.error(`❌ Error parseando JSON de la respuesta:`, parseError)
       const text = await response.text().catch(() => 'No se pudo leer la respuesta')
       console.error(`❌ Respuesta recibida (primeros 500 chars):`, text.substring(0, 500))
-      priceCache.set(cacheKey, { price: null, timestamp: Date.now() + 3600000 })
+      // Cache null solo por 5 minutos para permitir reintentos
+      priceCache.set(cacheKey, { price: null, timestamp: Date.now() })
       return null
     }
     
@@ -437,7 +452,8 @@ async function getPriceFromCardMarket(
     // Si no hay datos, retornar null
     if (!data || (Array.isArray(data) && data.length === 0) && !data.products && !data.results && !data.data) {
       console.warn(`⚠️ Respuesta vacía o sin datos para ${cardName}`)
-      priceCache.set(cacheKey, { price: null, timestamp: Date.now() + 3600000 })
+      // Cache null solo por 5 minutos para permitir reintentos
+      priceCache.set(cacheKey, { price: null, timestamp: Date.now() })
       return null
     }
     
@@ -909,12 +925,41 @@ export async function getTCGPlayerPriceAlternative(
     setId?: string // Set_ID de la API (ej: "TFC", "ROF")
     cardNumber?: number // Número de la carta (ej: 1, 2, 3)
     setName?: string // Nombre del set (ej: "The First Chapter")
+    bypassCache?: boolean // Si es true, ignorar el cache y buscar de nuevo
   }
 ): Promise<CardPrice | null> {
   console.log(`🔍 getTCGPlayerPriceAlternative llamado para:`, {
     cardName,
     options,
   })
+
+  // Construir clave de cache usando setId y cardNumber para más precisión
+  const cacheKey = options?.setId && options?.cardNumber
+    ? `${cardName.toLowerCase()}-${options.setId}-${options.cardNumber}`
+    : cardName.toLowerCase()
+
+  // Verificar cache solo si no se está haciendo bypass
+  if (!options?.bypassCache) {
+    const cached = priceCache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      // Solo usar cache si tiene un precio válido (no null)
+      if (cached.price && cached.price.normal) {
+        console.log(`💾 Cache hit para ${cardName}${options?.setId && options?.cardNumber ? ` (${options.setId}-${options.cardNumber})` : ''}`)
+        return cached.price
+      }
+      // Si el cache tiene null, pero es muy reciente (menos de 5 minutos), no intentar de nuevo
+      // Esto evita spam de solicitudes cuando sabemos que no hay precio
+      const cacheAge = Date.now() - cached.timestamp
+      if (cacheAge < 5 * 60 * 1000) { // 5 minutos
+        console.log(`⏭️ Cache reciente con null para ${cardName}, saltando búsqueda (edad: ${Math.round(cacheAge / 1000)}s)`)
+        return null
+      }
+      // Si el cache es antiguo (más de 5 minutos), intentar de nuevo
+      console.log(`🔄 Cache antiguo para ${cardName}, intentando búsqueda de nuevo`)
+    }
+  } else {
+    console.log(`🔄 Bypass de cache solicitado para ${cardName}`)
+  }
 
   // PRIORIDAD 1: Intentar Lorcast API (especializada en Lorcana)
   // PRIORIDAD 1: Intentar Lorcast API (especializada en Lorcana)
@@ -970,6 +1015,11 @@ export async function getTCGPlayerPriceAlternative(
 
   // Solo mostrar un resumen al final si no se encontró precio
   console.warn(`⚠️ No se encontró precio de mercado para ${cardName} en ninguna fuente disponible`)
+  
+  // Guardar null en cache solo por 5 minutos (no 1 hora) para permitir reintentos
+  // Si después de 5 minutos sigue sin encontrarse, probablemente no hay precio disponible
+  priceCache.set(cacheKey, { price: null, timestamp: Date.now() })
+  
   return null
 }
 

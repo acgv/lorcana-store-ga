@@ -137,10 +137,15 @@ export async function POST(request: NextRequest) {
         },
       })
 
+      // Intentar buscar precio, permitiendo bypass de cache si es necesario
+      // El bypass se puede activar agregando ?bypassCache=true en la URL o en el body
+      const bypassCache = body.bypassCache === true || body.bypassCache === "true"
+      
       const altPrice = await getTCGPlayerPriceAlternative(cardNameToSearch, {
         setId: apiSetId,
         cardNumber: cardNumberToUse,
         setName: setName,
+        bypassCache: bypassCache,
       })
 
       console.log(`📊 Resultado de getTCGPlayerPriceAlternative:`, altPrice)
