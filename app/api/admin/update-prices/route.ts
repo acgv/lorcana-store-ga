@@ -8,7 +8,10 @@ export async function POST(request: NextRequest) {
     // Verificar que el usuario sea admin
     const adminCheck = await verifyAdmin(request)
     if (!adminCheck.success) {
-      return adminCheck.response
+      return NextResponse.json(
+        { success: false, error: adminCheck.error },
+        { status: adminCheck.status || 401 }
+      )
     }
 
     const body = await request.json()
