@@ -160,8 +160,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const pageParam = searchParams.get("page")
     const pageSizeParam = searchParams.get("pageSize")
-    // Siempre intentar obtener precios reales de TCGPlayer (a menos que se deshabilite explícitamente)
-    const fetchExternalPrices = searchParams.get("fetchExternalPrices") !== "false"
+    // NO buscar precios de TCGPlayer por defecto - se buscarán individualmente con botones
+    const fetchExternalPrices = false // Siempre false - búsqueda individual
     const filterSet = searchParams.get("set") // Filtro por set (igual que en catálogo)
     
     // Parámetros de cálculo de precios (opcionales, si no se pasan usa defaults)
@@ -328,9 +328,8 @@ export async function GET(request: NextRequest) {
     }
 
     let processed = 0
-    // Procesar UNA carta a la vez con delay entre cada una para evitar rate limiting
-    const DELAY_BETWEEN_CARDS = 3000 // 3 segundos entre cada carta
     
+    // Procesar todas las cartas (sin buscar precios de TCGPlayer automáticamente)
     for (const apiCard of cardsToProcess) {
       // Usar Set_ID para generar el ID (igual que en el script de importación)
       const cardId = generateCardId(apiCard.Set_Name, apiCard.Card_Num, apiCard.Set_ID)
@@ -338,67 +337,14 @@ export async function GET(request: NextRequest) {
 
       const rarity = rarityMap[apiCard.Rarity] || "common"
       
-      // Obtener precio REAL de TCGPlayer (CardMarket/RapidAPI) - SIEMPRE
-      // NO usar precios estándar, solo precios reales de TCGPlayer
+      // NO buscar precios de TCGPlayer automáticamente
+      // Los precios se buscarán individualmente con el botón "Buscar Precio"
       let marketPriceUSD: number | null = null
       let marketFoilPriceUSD: number | null = null
       let priceSource: "tcgplayer" | "standard" = "standard"
       
-      // Verificar que RAPIDAPI_KEY esté configurada
-      if (!process.env.RAPIDAPI_KEY) {
-        console.error(`❌ RAPIDAPI_KEY no configurada - No se pueden obtener precios de TCGPlayer`)
-        // No establecer marketPriceUSD, quedará como null
-        } else if (fetchExternalPrices) {
-        try {
-          // Timeout más corto (6 segundos) para evitar que se quede pegado
-          // Pasar set y número para búsqueda más precisa
-          const pricePromise = (async () => {
-            const { getTCGPlayerPriceAlternative } = await import("@/lib/tcgplayer-alternative")
-            return await getTCGPlayerPriceAlternative(apiCard.Name, {
-              setId: apiCard.Set_ID, // ej: "TFC", "ROF"
-              cardNumber: apiCard.Card_Num, // ej: 1, 2, 3
-              setName: apiCard.Set_Name, // ej: "The First Chapter"
-            })
-          })()
-          
-          const timeoutPromise = new Promise<null>((resolve) => 
-            setTimeout(() => resolve(null), 6000)
-          )
-          
-          const altPrice = await Promise.race([pricePromise, timeoutPromise])
-          
-          if (altPrice && altPrice.normal) {
-            marketPriceUSD = altPrice.normal
-            marketFoilPriceUSD = altPrice.foil || null
-            priceSource = "tcgplayer"
-            if (processed < 5 || processed % 20 === 0) {
-              console.log(`✅ Precio TCGPlayer obtenido para ${apiCard.Name}: $${marketPriceUSD} USD${marketFoilPriceUSD ? ` (foil: $${marketFoilPriceUSD} USD)` : ''}`)
-            }
-          } else {
-            // No loguear cada fallo para evitar saturación, solo algunos
-            if (processed < 3) {
-              console.warn(`⚠️ No se pudo obtener precio TCGPlayer para ${apiCard.Name} - Precio quedará como null`)
-            }
-            // NO establecer precio estándar, quedará como null
-          }
-        } catch (error) {
-          // Si falla, NO usar precio estándar, dejar como null
-          // Solo loguear errores críticos, no todos
-          if (processed < 3) {
-            const errorMsg = error instanceof Error ? error.message : String(error)
-            // No loguear timeouts normales
-            if (!errorMsg.includes('timeout') && !errorMsg.includes('404')) {
-              console.error(`❌ Error getting TCGPlayer price for ${apiCard.Name}:`, errorMsg)
-            }
-          }
-          // marketPriceUSD queda como null - continuar con la siguiente carta
-        }
-      } else {
-        console.warn(`⚠️ fetchExternalPrices está deshabilitado para ${apiCard.Name} - Precio quedará como null`)
-      }
-      
-      // NO usar precio estándar como fallback - solo precios reales de TCGPlayer
-      // Si marketPriceUSD es null, se mostrará como "-" en el frontend
+      // Los precios de TCGPlayer se obtendrán individualmente desde el frontend
+      // cuando el usuario haga clic en "Buscar Precio" para cada carta
 
       if (dbCard) {
         // Calcular precio sugerido usando la fórmula del Excel
@@ -504,13 +450,8 @@ export async function GET(request: NextRequest) {
       }
 
       processed++
-      if (processed % 10 === 0) {
+      if (processed % 50 === 0) {
         console.log(`⏳ Processed ${processed}/${cardsToProcess.length} cards...`)
-      }
-      
-      // Delay entre cartas para evitar rate limiting (excepto en la última carta)
-      if (processed < cardsToProcess.length) {
-        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_CARDS))
       }
     }
 

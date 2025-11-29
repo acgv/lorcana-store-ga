@@ -96,6 +96,7 @@ export default function ComparePricesPage() {
   const [updatingPrices, setUpdatingPrices] = useState<Set<string>>(new Set())
   const [updatingAll, setUpdatingAll] = useState(false)
   const [revertingSet, setRevertingSet] = useState(false)
+  const [fetchingPrices, setFetchingPrices] = useState<Set<string>>(new Set())
 
   // Parámetros de cálculo editables
   const [priceParams, setPriceParams] = useState({
@@ -297,6 +298,124 @@ export default function ComparePricesPage() {
       setLoading(false)
       setRefreshing(false)
       console.log("✅ Estados de carga reseteados")
+    }
+  }
+
+  // Función para buscar precio de TCGPlayer para una carta individual
+  const fetchCardPrice = async (comp: ComparisonResult) => {
+    setUpdatingPrices((prev) => new Set(prev).add(comp.cardId))
+    setFetchingPrices((prev) => new Set(prev).add(comp.cardId))
+
+    try {
+      const { supabase } = await import("@/lib/db")
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      // Obtener parámetros actuales desde localStorage
+      const savedParams = localStorage.getItem("priceCalculationParams")
+      let currentParams = priceParams
+      
+      if (savedParams) {
+        try {
+          currentParams = JSON.parse(savedParams)
+        } catch (e) {
+          // Usar priceParams del estado
+        }
+      }
+
+      const response = await fetch("/api/admin/fetch-card-price", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          cardId: comp.cardId,
+          cardName: comp.cardName,
+          setId: comp.set, // El set viene en formato de BD (ej: "firstChapter")
+          cardNumber: comp.number,
+          setName: comp.set, // Podríamos mapear esto mejor
+          ...currentParams,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || "Error al buscar precio")
+      }
+
+      // Actualizar el estado local con los nuevos datos
+      if (data && result.data) {
+        const updatedComparisons = data.comparisons.map((c) => {
+          if (c.cardId === comp.cardId) {
+            return {
+              ...c,
+              marketPriceUSD: result.data.marketPriceUSD,
+              marketFoilPriceUSD: result.data.marketFoilPriceUSD,
+              priceSource: result.data.priceSource,
+              suggestedPriceCLP: result.data.suggestedPriceCLP,
+              suggestedFoilPriceCLP: result.data.suggestedFoilPriceCLP,
+              priceDifference: result.data.priceDifference,
+              foilPriceDifference: result.data.foilPriceDifference,
+              priceDifferencePercent: result.data.priceDifferencePercent,
+              foilPriceDifferencePercent: result.data.foilPriceDifferencePercent,
+              needsPriceUpdate: result.data.needsPriceUpdate,
+            }
+          }
+          return c
+        })
+
+        // Recalcular estadísticas
+        const stats = {
+          ...data.stats,
+          totalCompared: updatedComparisons.length,
+          withStock: updatedComparisons.filter((c) => c.hasStock).length,
+          withoutStock: updatedComparisons.filter((c) => !c.hasStock).length,
+          needsPriceUpdate: updatedComparisons.filter((c) => c.needsPriceUpdate).length,
+          averagePriceDifference:
+            updatedComparisons.length > 0
+              ? Math.round(
+                  (updatedComparisons.reduce((sum, c) => sum + c.priceDifferencePercent, 0) /
+                    updatedComparisons.length) *
+                    100
+                ) / 100
+              : 0,
+        }
+
+        setData({
+          ...data,
+          comparisons: updatedComparisons,
+          stats,
+        })
+      }
+
+      toast({
+        title: result.data.marketPriceUSD 
+          ? "✅ Precio encontrado" 
+          : "⚠️ Precio no encontrado",
+        description: result.data.marketPriceUSD
+          ? `Precio TCGPlayer: $${result.data.marketPriceUSD.toFixed(2)} USD`
+          : "No se pudo obtener precio de TCGPlayer para esta carta",
+      })
+    } catch (error) {
+      console.error("Error fetching price:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "No se pudo buscar el precio",
+      })
+    } finally {
+      setUpdatingPrices((prev) => {
+        const next = new Set(prev)
+        next.delete(comp.cardId)
+        return next
+      })
+      setFetchingPrices((prev) => {
+        const next = new Set(prev)
+        next.delete(comp.cardId)
+        return next
+      })
     }
   }
 
@@ -1085,29 +1204,55 @@ export default function ComparePricesPage() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              {comp.suggestedPriceCLP && comp.suggestedFoilPriceCLP ? (
-                                <Button
-                                  onClick={() => updateCardPrice(comp)}
-                                  disabled={updatingPrices.has(comp.cardId) || updatingAll}
-                                  variant="outline"
-                                  size="sm"
-                                  className="w-full"
-                                >
-                                  {updatingPrices.has(comp.cardId) ? (
-                                    <>
-                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                      Actualizando...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <RefreshCw className="h-3 w-3 mr-1" />
-                                      Actualizar
-                                    </>
-                                  )}
-                                </Button>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">Sin precio sugerido</span>
-                              )}
+                              <div className="flex flex-col gap-1">
+                                {/* Botón para buscar precio de TCGPlayer */}
+                                {!comp.marketPriceUSD ? (
+                                  <Button
+                                    onClick={() => fetchCardPrice(comp)}
+                                    disabled={fetchingPrices.has(comp.cardId) || updatingPrices.has(comp.cardId) || updatingAll}
+                                    variant="default"
+                                    size="sm"
+                                    className="w-full"
+                                  >
+                                    {fetchingPrices.has(comp.cardId) ? (
+                                      <>
+                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                        Buscando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Search className="h-3 w-3 mr-1" />
+                                        Buscar Precio
+                                      </>
+                                    )}
+                                  </Button>
+                                ) : null}
+                                
+                                {/* Botón para actualizar precio si hay precio sugerido */}
+                                {comp.suggestedPriceCLP && comp.suggestedFoilPriceCLP ? (
+                                  <Button
+                                    onClick={() => updateCardPrice(comp)}
+                                    disabled={updatingPrices.has(comp.cardId) || fetchingPrices.has(comp.cardId) || updatingAll}
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full"
+                                  >
+                                    {updatingPrices.has(comp.cardId) ? (
+                                      <>
+                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                        Actualizando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <RefreshCw className="h-3 w-3 mr-1" />
+                                        Actualizar
+                                      </>
+                                    )}
+                                  </Button>
+                                ) : comp.marketPriceUSD ? (
+                                  <span className="text-xs text-muted-foreground">Sin precio sugerido</span>
+                                ) : null}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
