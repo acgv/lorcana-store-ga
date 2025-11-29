@@ -352,16 +352,16 @@ export async function GET(request: NextRequest) {
       if (!process.env.RAPIDAPI_KEY) {
         console.error(`❌ RAPIDAPI_KEY no configurada - No se pueden obtener precios de TCGPlayer`)
         // No establecer marketPriceUSD, quedará como null
-      } else if (fetchExternalPrices) {
+        } else if (fetchExternalPrices) {
         try {
-          // Timeout de 10 segundos por carta para dar más tiempo a la API
+          // Timeout más corto (6 segundos) para evitar que se quede pegado
           const pricePromise = (async () => {
             const { getTCGPlayerPriceAlternative } = await import("@/lib/tcgplayer-alternative")
             return await getTCGPlayerPriceAlternative(apiCard.Name)
           })()
           
           const timeoutPromise = new Promise<null>((resolve) => 
-            setTimeout(() => resolve(null), 10000)
+            setTimeout(() => resolve(null), 6000)
           )
           
           const altPrice = await Promise.race([pricePromise, timeoutPromise])
@@ -374,17 +374,23 @@ export async function GET(request: NextRequest) {
               console.log(`✅ Precio TCGPlayer obtenido para ${apiCard.Name}: $${marketPriceUSD} USD${marketFoilPriceUSD ? ` (foil: $${marketFoilPriceUSD} USD)` : ''}`)
             }
           } else {
-            if (processed < 5 || processed % 20 === 0) {
-              console.warn(`⚠️ No se pudo obtener precio TCGPlayer para ${apiCard.Name} (timeout o sin datos) - Precio quedará como null`)
+            // No loguear cada fallo para evitar saturación, solo algunos
+            if (processed < 3) {
+              console.warn(`⚠️ No se pudo obtener precio TCGPlayer para ${apiCard.Name} - Precio quedará como null`)
             }
             // NO establecer precio estándar, quedará como null
           }
         } catch (error) {
           // Si falla, NO usar precio estándar, dejar como null
-          if (processed < 5 || processed % 20 === 0) {
-            console.error(`❌ Error getting TCGPlayer price for ${apiCard.Name}:`, error instanceof Error ? error.message : error)
+          // Solo loguear errores críticos, no todos
+          if (processed < 3) {
+            const errorMsg = error instanceof Error ? error.message : String(error)
+            // No loguear timeouts normales
+            if (!errorMsg.includes('timeout') && !errorMsg.includes('404')) {
+              console.error(`❌ Error getting TCGPlayer price for ${apiCard.Name}:`, errorMsg)
+            }
           }
-          // marketPriceUSD queda como null
+          // marketPriceUSD queda como null - continuar con la siguiente carta
         }
       } else {
         console.warn(`⚠️ fetchExternalPrices está deshabilitado para ${apiCard.Name} - Precio quedará como null`)

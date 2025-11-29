@@ -37,6 +37,7 @@ async function waitForRateLimit(): Promise<void> {
 }
 
 // Función para hacer retry con exponential backoff
+// NO hace retry para errores 4xx (excepto 429) ya que son errores del cliente
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
@@ -53,21 +54,42 @@ async function fetchWithRetry(
         await new Promise(resolve => setTimeout(resolve, backoffDelay))
       }
       
-      const response = await fetch(url, options)
+      // Timeout de 8 segundos por solicitud
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000)
       
-      // Si es 429, esperar más tiempo antes del siguiente retry
-      if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After')
-        const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 5000 * (attempt + 1)
-        console.warn(`⚠️ Rate limit (429) - Esperando ${waitTime}ms antes del siguiente intento`)
-        await new Promise(resolve => setTimeout(resolve, waitTime))
-        lastError = new Error(`Rate limit: ${response.status} ${response.statusText}`)
-        continue
+      try {
+        const response = await fetch(url, { ...options, signal: controller.signal })
+        clearTimeout(timeoutId)
+        
+        // Si es 404, 400, 401, 403 - NO hacer retry, son errores del cliente
+        if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+          return response // Retornar la respuesta aunque sea error, para manejarlo arriba
+        }
+        
+        // Si es 429, esperar más tiempo antes del siguiente retry
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After')
+          const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 5000 * (attempt + 1)
+          console.warn(`⚠️ Rate limit (429) - Esperando ${waitTime}ms antes del siguiente intento`)
+          await new Promise(resolve => setTimeout(resolve, waitTime))
+          lastError = new Error(`Rate limit: ${response.status} ${response.statusText}`)
+          if (attempt < maxRetries - 1) {
+            continue // Intentar de nuevo solo si no es el último intento
+          }
+        }
+        
+        return response
+      } catch (fetchError) {
+        clearTimeout(timeoutId)
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          throw new Error('Request timeout after 8 seconds')
+        }
+        throw fetchError
       }
-      
-      return response
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
+      // Solo hacer retry para errores de red o 5xx, no para 4xx (excepto 429)
       if (attempt < maxRetries - 1) {
         continue // Intentar de nuevo
       }
@@ -147,13 +169,26 @@ async function getPriceFromCardMarket(cardName: string): Promise<CardPrice | nul
         console.error(`❌ CardMarket API: Rate limit (429) - Demasiadas solicitudes. Espera antes de continuar.`)
         // Guardar en cache temporalmente para evitar más solicitudes
         priceCache.set(cacheKey, { price: null, timestamp: Date.now() + 60000 }) // Cache por 1 minuto
+        return null
+      } else if (response.status === 404) {
+        // 404 significa que el endpoint no existe o la carta no se encuentra
+        // NO hacer retry, simplemente retornar null
+        console.warn(`⚠️ CardMarket API: Carta no encontrada (404) - ${cardName}`)
+        // Guardar en cache como null por más tiempo para evitar intentos repetidos
+        priceCache.set(cacheKey, { price: null, timestamp: Date.now() + 3600000 }) // Cache por 1 hora
+        return null
       } else {
-        console.warn(`⚠️ CardMarket API error: ${response.status} ${response.statusText}`)
+        console.warn(`⚠️ CardMarket API error: ${response.status} ${response.statusText} para ${cardName}`)
+        // Para otros errores 4xx, no hacer retry
+        if (response.status >= 400 && response.status < 500) {
+          priceCache.set(cacheKey, { price: null, timestamp: Date.now() + 300000 }) // Cache por 5 minutos
+          return null
+        }
       }
       
-      // Si el endpoint de Lorcana no existe, intentar sin el filtro de búsqueda
-      if (response.status === 404) {
-        // Intentar endpoint genérico de productos
+      // Para errores 5xx, podríamos intentar el endpoint genérico como fallback
+      if (response.status >= 500) {
+        console.warn(`⚠️ Error del servidor (${response.status}), intentando endpoint genérico...`)
         await waitForRateLimit()
         try {
           const genericUrl = `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?sort=episode_newest`
