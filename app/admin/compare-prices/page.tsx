@@ -318,10 +318,32 @@ export default function ComparePricesPage() {
       if (savedParams) {
         try {
           currentParams = JSON.parse(savedParams)
+          console.log(`📥 Parámetros cargados desde localStorage para ${comp.cardName}:`, currentParams)
         } catch (e) {
+          console.warn(`⚠️ Error parseando parámetros desde localStorage:`, e)
           // Usar priceParams del estado
         }
+      } else {
+        console.log(`📥 Usando parámetros del estado para ${comp.cardName}:`, currentParams)
       }
+
+      const requestBody = {
+        cardId: comp.cardId,
+        cardName: comp.cardName,
+        setId: comp.set, // El set viene en formato de BD (ej: "firstChapter")
+        cardNumber: comp.number,
+        setName: comp.set, // Podríamos mapear esto mejor
+        ...currentParams,
+      }
+      
+      console.log(`📤 Enviando request para ${comp.cardName} con parámetros:`, {
+        usTaxRate: requestBody.usTaxRate,
+        shippingUSD: requestBody.shippingUSD,
+        chileVATRate: requestBody.chileVATRate,
+        exchangeRate: requestBody.exchangeRate,
+        profitMargin: requestBody.profitMargin,
+        mercadoPagoFee: requestBody.mercadoPagoFee,
+      })
 
       const response = await fetch("/api/admin/fetch-card-price", {
         method: "POST",
@@ -329,14 +351,7 @@ export default function ComparePricesPage() {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` }),
         },
-        body: JSON.stringify({
-          cardId: comp.cardId,
-          cardName: comp.cardName,
-          setId: comp.set, // El set viene en formato de BD (ej: "firstChapter")
-          cardNumber: comp.number,
-          setName: comp.set, // Podríamos mapear esto mejor
-          ...currentParams,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       const result = await response.json()
