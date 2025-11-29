@@ -95,6 +95,7 @@ export default function ComparePricesPage() {
   const [activeTab, setActiveTab] = useState("comparison")
   const [updatingPrices, setUpdatingPrices] = useState<Set<string>>(new Set())
   const [updatingAll, setUpdatingAll] = useState(false)
+  const [revertingSet, setRevertingSet] = useState(false)
 
   // Parámetros de cálculo editables
   const [priceParams, setPriceParams] = useState({
@@ -359,6 +360,55 @@ export default function ComparePricesPage() {
     }
   }
 
+  // Función para revertir precios de un set
+  const revertSetPrices = async (set: string) => {
+    const confirmed = window.confirm(
+      `¿Estás seguro de revertir TODOS los precios del Set 1 (${set}) a valores estándar?\n\nEsto restaurará los precios basándose en la rareza de cada carta.\n\nEsta acción NO se puede deshacer.`
+    )
+
+    if (!confirmed) return
+
+    setRevertingSet(true)
+
+    try {
+      const { supabase } = await import("@/lib/db")
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      const response = await fetch("/api/admin/revert-set-prices", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ set }),
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || "Error al revertir precios")
+      }
+
+      toast({
+        title: "✅ Precios revertidos",
+        description: result.message || `Se revirtieron ${result.stats?.success || 0} precios`,
+      })
+
+      // Recargar datos para reflejar los cambios
+      await loadData()
+    } catch (error) {
+      console.error("Error reverting prices:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "No se pudieron revertir los precios",
+      })
+    } finally {
+      setRevertingSet(false)
+    }
+  }
+
   // Función para actualización masiva
   const updateAllPrices = async () => {
     if (!data) return
@@ -541,25 +591,46 @@ export default function ComparePricesPage() {
                 Compara tu inventario con los precios estándar de la API de Lorcana
               </p>
             </div>
-            <Button 
-              onClick={() => {
-                console.log("🔄 Botón 'Actualizar' clickeado")
-                loadData()
-              }} 
-              disabled={refreshing || loading}
-            >
-              {refreshing || loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Actualizando...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Actualizar
-                </>
+            <div className="flex gap-2">
+              {filterSet === "firstChapter" && (
+                <Button
+                  onClick={() => revertSetPrices("firstChapter")}
+                  disabled={revertingSet || refreshing || loading}
+                  variant="destructive"
+                >
+                  {revertingSet ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Revirtiendo...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Revertir Precios Set 1
+                    </>
+                  )}
+                </Button>
               )}
-            </Button>
+              <Button 
+                onClick={() => {
+                  console.log("🔄 Botón 'Actualizar' clickeado")
+                  loadData()
+                }} 
+                disabled={refreshing || loading || revertingSet}
+              >
+                {refreshing || loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Actualizando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Actualizar
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* Parámetros de Cálculo Editables */}
