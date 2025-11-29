@@ -97,6 +97,8 @@ export default function ComparePricesPage() {
   const [updatingAll, setUpdatingAll] = useState(false)
   const [revertingSet, setRevertingSet] = useState(false)
   const [fetchingPrices, setFetchingPrices] = useState<Set<string>>(new Set())
+  const [fetchingAllPrices, setFetchingAllPrices] = useState(false)
+  const [fetchProgress, setFetchProgress] = useState({ current: 0, total: 0 })
 
   // Parámetros de cálculo editables
   const [priceParams, setPriceParams] = useState({
@@ -340,6 +342,22 @@ export default function ComparePricesPage() {
         title: "✅ Datos cargados",
         description: `Se procesaron ${allComparisons.length} cartas${allComparisons.length === 0 ? " (ver consola para detalles)" : ""}`,
       })
+
+      // Después de cargar los datos, buscar precios automáticamente para cartas sin precio
+      // Solo si hay cartas y no todas tienen precio ya guardado
+      const cardsWithoutPrice = mergedComparisons.filter(
+        (c) => !c.marketPriceUSD && !pricesCache[c.cardId]
+      )
+
+      if (cardsWithoutPrice.length > 0 && mergedComparisons.length > 0) {
+        console.log(`🔄 Iniciando búsqueda automática de precios para ${cardsWithoutPrice.length} cartas sin precio`)
+        // Esperar un momento para que la UI se actualice antes de empezar la búsqueda masiva
+        setTimeout(() => {
+          fetchAllCardPrices(mergedComparisons)
+        }, 1000)
+      } else if (mergedComparisons.length > 0) {
+        console.log(`✅ Todas las cartas ya tienen precios guardados, no se necesita búsqueda automática`)
+      }
     } catch (error) {
       console.error("❌ Error loading comparison data:", error)
       console.error("Error details:", {
@@ -899,34 +917,33 @@ export default function ComparePricesPage() {
                 </div>
                 <Button 
                   onClick={() => {
-                    console.log("🔄 Botón 'Recalcular Precios' clickeado")
-                    // Forzar lectura de parámetros más recientes antes de recargar
-                    const saved = localStorage.getItem("priceCalculationParams")
-                    if (saved) {
-                      try {
-                        const parsed = JSON.parse(saved)
-                        setPriceParams(parsed)
-                        console.log("📝 Parámetros actualizados desde localStorage:", parsed)
-                      } catch (e) {
-                        console.warn("⚠️ Error parseando parámetros:", e)
-                      }
+                    // Buscar precios para todas las cartas del set actual
+                    if (data && data.comparisons.length > 0) {
+                      fetchAllCardPrices(data.comparisons)
+                    } else {
+                      // Si no hay datos, cargar primero
+                      loadData().then(() => {
+                        setTimeout(() => {
+                          if (data && data.comparisons.length > 0) {
+                            fetchAllCardPrices(data.comparisons)
+                          }
+                        }, 500)
+                      })
                     }
-                    // Pequeño delay para asegurar que el estado se actualice
-                    setTimeout(() => loadData(), 100)
                   }}
-                  disabled={refreshing || loading}
+                  disabled={refreshing || loading || fetchingAllPrices}
                   variant="outline"
                   size="sm"
                 >
-                  {refreshing || loading ? (
+                  {fetchingAllPrices ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Recalculando...
+                      Buscando ({fetchProgress.current}/{fetchProgress.total})...
                     </>
                   ) : (
                     <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Recalcular Precios
+                      <Search className="h-4 w-4 mr-2" />
+                      Buscar Precios del Set
                     </>
                   )}
                 </Button>
