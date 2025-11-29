@@ -268,12 +268,72 @@ export default function ComparePricesPage() {
       
       console.log(`✅ Comparaciones cargadas: ${allComparisons.length} cartas`)
 
+      // Cargar precios buscados previamente desde localStorage
+      const savedPrices = localStorage.getItem("searchedCardPrices")
+      let pricesCache: Record<string, any> = {}
+      
+      if (savedPrices) {
+        try {
+          pricesCache = JSON.parse(savedPrices)
+          console.log(`📥 Cargando ${Object.keys(pricesCache).length} precios guardados desde localStorage`)
+        } catch (e) {
+          console.warn("⚠️ Error parseando precios guardados:", e)
+        }
+      }
+
+      // Fusionar precios guardados con los datos cargados
+      const mergedComparisons = allComparisons.map((comp) => {
+        const savedPrice = pricesCache[comp.cardId]
+        
+        // Si hay precio guardado y tiene menos de 24 horas, usarlo
+        if (savedPrice && savedPrice.timestamp) {
+          const ageInHours = (Date.now() - savedPrice.timestamp) / (1000 * 60 * 60)
+          if (ageInHours < 24) {
+            console.log(`🔄 Restaurando precio guardado para ${comp.cardName} (edad: ${ageInHours.toFixed(1)} horas)`)
+            return {
+              ...comp,
+              marketPriceUSD: savedPrice.marketPriceUSD,
+              marketFoilPriceUSD: savedPrice.marketFoilPriceUSD,
+              priceSource: savedPrice.priceSource || comp.priceSource,
+              suggestedPriceCLP: savedPrice.suggestedPriceCLP,
+              suggestedFoilPriceCLP: savedPrice.suggestedFoilPriceCLP,
+              priceDifference: savedPrice.priceDifference ?? comp.priceDifference,
+              foilPriceDifference: savedPrice.foilPriceDifference ?? comp.foilPriceDifference,
+              priceDifferencePercent: savedPrice.priceDifferencePercent ?? comp.priceDifferencePercent,
+              foilPriceDifferencePercent: savedPrice.foilPriceDifferencePercent ?? comp.foilPriceDifferencePercent,
+              needsPriceUpdate: savedPrice.needsPriceUpdate ?? comp.needsPriceUpdate,
+            }
+          } else {
+            console.log(`⏰ Precio guardado para ${comp.cardName} es muy antiguo (${ageInHours.toFixed(1)} horas), ignorando`)
+          }
+        }
+        
+        return comp
+      })
+
+      // Recalcular estadísticas con los datos fusionados
+      const mergedStats = {
+        ...stats,
+        totalCompared: mergedComparisons.length,
+        withStock: mergedComparisons.filter((c) => c.hasStock).length,
+        withoutStock: mergedComparisons.filter((c) => !c.hasStock).length,
+        needsPriceUpdate: mergedComparisons.filter((c) => c.needsPriceUpdate).length,
+        averagePriceDifference:
+          mergedComparisons.length > 0
+            ? Math.round(
+                (mergedComparisons.reduce((sum, c) => sum + c.priceDifferencePercent, 0) /
+                  mergedComparisons.length) *
+                  100
+              ) / 100
+            : 0,
+      }
+
       // Actualizar estado de datos
       setData({
-        comparisons: allComparisons,
+        comparisons: mergedComparisons,
         cardsOnlyInAPI: allCardsOnlyInAPI,
         cardsOnlyInDB: allCardsOnlyInDB,
-        stats,
+        stats: mergedStats,
       })
 
       toast({
@@ -394,6 +454,48 @@ export default function ComparePricesPage() {
           }
           return c
         })
+
+        // Guardar precio buscado en localStorage para persistencia
+        const savedPrices = localStorage.getItem("searchedCardPrices")
+        let pricesCache: Record<string, {
+          marketPriceUSD: number | null
+          marketFoilPriceUSD: number | null
+          priceSource: string | null
+          suggestedPriceCLP: number | null
+          suggestedFoilPriceCLP: number | null
+          priceDifference: number
+          foilPriceDifference: number
+          priceDifferencePercent: number
+          foilPriceDifferencePercent: number
+          needsPriceUpdate: boolean
+          timestamp: number
+        }> = {}
+        
+        if (savedPrices) {
+          try {
+            pricesCache = JSON.parse(savedPrices)
+          } catch (e) {
+            console.warn("⚠️ Error parseando precios guardados:", e)
+          }
+        }
+
+        // Guardar el precio buscado con timestamp
+        pricesCache[comp.cardId] = {
+          marketPriceUSD: result.data.marketPriceUSD,
+          marketFoilPriceUSD: result.data.marketFoilPriceUSD,
+          priceSource: result.data.priceSource,
+          suggestedPriceCLP: result.data.suggestedPriceCLP,
+          suggestedFoilPriceCLP: result.data.suggestedFoilPriceCLP,
+          priceDifference: result.data.priceDifference,
+          foilPriceDifference: result.data.foilPriceDifference,
+          priceDifferencePercent: result.data.priceDifferencePercent,
+          foilPriceDifferencePercent: result.data.foilPriceDifferencePercent,
+          needsPriceUpdate: result.data.needsPriceUpdate,
+          timestamp: Date.now(),
+        }
+
+        localStorage.setItem("searchedCardPrices", JSON.stringify(pricesCache))
+        console.log(`💾 Precio guardado en localStorage para ${comp.cardName} (${comp.cardId})`)
 
         // Recalcular estadísticas
         const stats = {
