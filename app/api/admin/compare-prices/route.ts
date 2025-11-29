@@ -210,6 +210,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const pageParam = searchParams.get("page")
     const pageSizeParam = searchParams.get("pageSize")
+    const fetchExternalPrices = searchParams.get("fetchExternalPrices") === "true" // Opcional: solo si se solicita explícitamente
     
     // Si no se pasan parámetros, procesar todas las cartas (igual que catálogo)
     const usePagination = pageParam !== null || pageSizeParam !== null
@@ -324,13 +325,14 @@ export async function GET(request: NextRequest) {
 
       const rarity = rarityMap[apiCard.Rarity] || "common"
       
-      // Obtener precio real de la API (CardMarket/RapidAPI)
+      // Obtener precio real de la API (CardMarket/RapidAPI) - SOLO si se solicita explícitamente
+      // Por defecto, usar precios estándar para evitar timeouts
       let marketPriceUSD: number | null = null
       let marketFoilPriceUSD: number | null = null
       let priceSource: "tcgplayer" | "standard" = "standard"
       
-      // Intentar obtener precio de CardMarket API (RapidAPI)
-      if (process.env.RAPIDAPI_KEY) {
+      // Intentar obtener precio de CardMarket API (RapidAPI) - SOLO si se solicita
+      if (fetchExternalPrices && process.env.RAPIDAPI_KEY) {
         try {
           const { getTCGPlayerPriceAlternative } = await import("@/lib/tcgplayer-alternative")
           const altPrice = await getTCGPlayerPriceAlternative(apiCard.Name)
