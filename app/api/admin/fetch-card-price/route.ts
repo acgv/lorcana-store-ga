@@ -27,6 +27,14 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`🔍 Buscando precio TCGPlayer para carta: ${cardId} (${cardName || 'sin nombre'})`)
+    console.log(`📥 Parámetros recibidos en el body:`, {
+      usTaxRate: body.usTaxRate,
+      shippingUSD: body.shippingUSD,
+      chileVATRate: body.chileVATRate,
+      exchangeRate: body.exchangeRate,
+      profitMargin: body.profitMargin,
+      mercadoPagoFee: body.mercadoPagoFee,
+    })
 
     // Obtener la carta de la BD para tener todos los datos
     const { data: card, error: cardError } = await supabaseAdmin
@@ -43,14 +51,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Obtener parámetros de cálculo de precios (opcionales)
+    // IMPORTANTE: Si el valor es 0, también debe ser considerado (no usar || undefined)
     const customParams = {
-      usTaxRate: body.usTaxRate ? parseFloat(body.usTaxRate) : undefined,
-      shippingUSD: body.shippingUSD ? parseFloat(body.shippingUSD) : undefined,
-      chileVATRate: body.chileVATRate ? parseFloat(body.chileVATRate) : undefined,
-      exchangeRate: body.exchangeRate ? parseFloat(body.exchangeRate) : undefined,
-      profitMargin: body.profitMargin ? parseFloat(body.profitMargin) : undefined,
-      mercadoPagoFee: body.mercadoPagoFee ? parseFloat(body.mercadoPagoFee) : undefined,
+      usTaxRate: body.usTaxRate !== undefined && body.usTaxRate !== null ? parseFloat(String(body.usTaxRate)) : undefined,
+      shippingUSD: body.shippingUSD !== undefined && body.shippingUSD !== null ? parseFloat(String(body.shippingUSD)) : undefined,
+      chileVATRate: body.chileVATRate !== undefined && body.chileVATRate !== null ? parseFloat(String(body.chileVATRate)) : undefined,
+      exchangeRate: body.exchangeRate !== undefined && body.exchangeRate !== null ? parseFloat(String(body.exchangeRate)) : undefined,
+      profitMargin: body.profitMargin !== undefined && body.profitMargin !== null ? parseFloat(String(body.profitMargin)) : undefined,
+      mercadoPagoFee: body.mercadoPagoFee !== undefined && body.mercadoPagoFee !== null ? parseFloat(String(body.mercadoPagoFee)) : undefined,
     }
+    
+    console.log(`📊 Parámetros parseados:`, customParams)
 
     // Buscar precio en TCGPlayer usando set y número (más exacto)
     const cardNameToSearch = cardName || card.name
@@ -164,18 +175,44 @@ export async function POST(request: NextRequest) {
       const defaultParams = getCalculationParams()
       const calcParams = {
         ...defaultParams,
-        ...(customParams.usTaxRate !== undefined && { usTaxRate: customParams.usTaxRate }),
-        ...(customParams.shippingUSD !== undefined && { shippingUSD: customParams.shippingUSD }),
-        ...(customParams.chileVATRate !== undefined && { chileVATRate: customParams.chileVATRate }),
-        ...(customParams.exchangeRate !== undefined && { exchangeRate: customParams.exchangeRate }),
-        ...(customParams.profitMargin !== undefined && { profitMargin: customParams.profitMargin }),
-        ...(customParams.mercadoPagoFee !== undefined && { mercadoPagoFee: customParams.mercadoPagoFee }),
+        // Usar valores personalizados si están definidos (incluyendo 0)
+        usTaxRate: customParams.usTaxRate !== undefined ? customParams.usTaxRate : defaultParams.usTaxRate,
+        shippingUSD: customParams.shippingUSD !== undefined ? customParams.shippingUSD : defaultParams.shippingUSD,
+        chileVATRate: customParams.chileVATRate !== undefined ? customParams.chileVATRate : defaultParams.chileVATRate,
+        exchangeRate: customParams.exchangeRate !== undefined ? customParams.exchangeRate : defaultParams.exchangeRate,
+        profitMargin: customParams.profitMargin !== undefined ? customParams.profitMargin : defaultParams.profitMargin,
+        mercadoPagoFee: customParams.mercadoPagoFee !== undefined ? customParams.mercadoPagoFee : defaultParams.mercadoPagoFee,
       }
+
+      console.log(`📊 Parámetros de cálculo para ${cardNameToSearch}:`, {
+        basePriceUSD: marketPriceUSD,
+        usTaxRate: calcParams.usTaxRate,
+        shippingUSD: calcParams.shippingUSD,
+        chileVATRate: calcParams.chileVATRate,
+        exchangeRate: calcParams.exchangeRate,
+        profitMargin: calcParams.profitMargin,
+        mercadoPagoFee: calcParams.mercadoPagoFee,
+      })
 
       const calculation = calculateFinalPrice({
         ...calcParams,
         basePriceUSD: marketPriceUSD,
       })
+      
+      console.log(`📊 Desglose de cálculo para ${cardNameToSearch}:`, {
+        costUSDWithoutVAT: calculation.costUSDWithoutVAT,
+        costUSDWithVAT: calculation.costUSDWithVAT,
+        totalCostCLP: calculation.totalCostCLP,
+        costWithProfitCLP: calculation.costWithProfitCLP,
+        finalPriceCLP: calculation.finalPriceCLP,
+        basePriceCLP: calculation.basePriceCLP,
+        shippingCLP: calculation.shippingCLP,
+        usTaxCLP: calculation.usTaxCLP,
+        chileVATCLP: calculation.chileVATCLP,
+        profitCLP: calculation.profitCLP,
+        mercadoPagoFeeCLP: calculation.mercadoPagoFeeCLP,
+      })
+      
       suggestedPriceCLP = calculation.finalPriceCLP
 
       if (marketFoilPriceUSD) {
