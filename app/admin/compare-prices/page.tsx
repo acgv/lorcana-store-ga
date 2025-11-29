@@ -454,7 +454,7 @@ export default function ComparePricesPage() {
 
   // Función para actualizar precio de una carta individual
   const updateCardPrice = async (comp: ComparisonResult) => {
-    if (!comp.suggestedPriceCLP || !comp.suggestedFoilPriceCLP) {
+    if (!comp.suggestedPriceCLP && !comp.suggestedFoilPriceCLP) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -478,8 +478,8 @@ export default function ComparePricesPage() {
         },
         body: JSON.stringify({
           cardId: comp.cardId,
-          price: Math.round(comp.suggestedPriceCLP),
-          foilPrice: Math.round(comp.suggestedFoilPriceCLP),
+          price: comp.suggestedPriceCLP ? Math.round(comp.suggestedPriceCLP) : undefined,
+          foilPrice: comp.suggestedFoilPriceCLP ? Math.round(comp.suggestedFoilPriceCLP) : undefined,
         }),
       })
 
@@ -1261,8 +1261,8 @@ export default function ComparePricesPage() {
                                   </Button>
                                 ) : null}
                                 
-                                {/* Botón para actualizar precio si hay precio sugerido */}
-                                {comp.suggestedPriceCLP && comp.suggestedFoilPriceCLP ? (
+                                {/* Botón para actualizar precio si hay precio sugerido (normal o foil) */}
+                                {comp.suggestedPriceCLP || comp.suggestedFoilPriceCLP ? (
                                   <Button
                                     onClick={() => updateCardPrice(comp)}
                                     disabled={updatingPrices.has(comp.cardId) || fetchingPrices.has(comp.cardId) || updatingAll}
