@@ -140,24 +140,36 @@ async function getPriceFromCardMarket(
     
     if (options?.setId && options?.cardNumber) {
       // Búsqueda por set y número (MÁS EXACTO)
-      const setId = options.setId.toLowerCase()
+      const setId = options.setId // Mantener en mayúsculas (ej: "TFC")
+      const setIdLower = setId.toLowerCase()
       const cardNum = options.cardNumber
+      
+      console.log(`🔍 Construyendo endpoints para búsqueda por set y número:`, {
+        setId,
+        setIdLower,
+        cardNum,
+        cardName,
+      })
       
       // Intentar diferentes formatos de búsqueda por set y número
       endpoints.push(
-        // Formato 1: set y number como parámetros separados
+        // Formato 1: set y number como parámetros separados (mayúsculas)
         `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?set=${setId}&number=${cardNum}`,
+        // Formato 2: set y number en minúsculas
+        `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?set=${setIdLower}&number=${cardNum}`,
+        // Formato 3: cardNumber en lugar de number
         `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?set=${setId}&cardNumber=${cardNum}`,
-        // Formato 2: buscar por número y filtrar por set
+        // Formato 4: buscar por número y filtrar por set
         `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?number=${cardNum}&set=${setId}`,
-        // Formato 3: buscar combinando set y número en un string
+        // Formato 5: buscar combinando set y número en un string
         `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?search=${setId}-${cardNum}`,
+        `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?search=${setIdLower}-${cardNum}`,
         `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?search=${setId} ${cardNum}`,
-        // Formato 4: buscar por número y luego filtrar por set en los resultados
+        // Formato 6: buscar solo por número (y filtrar en resultados)
         `https://cardmarket-api-tcg.p.rapidapi.com/lorcana/products?number=${cardNum}`
       )
       
-      console.log(`🔍 Buscando por Set y Número: ${setId}-${cardNum} (${cardName})`)
+      console.log(`🔍 Buscando por Set y Número: ${setId}-${cardNum} (${cardName}) - ${endpoints.length} endpoints a probar`)
     }
     
     // Si no tenemos set/número o como fallback, usar variaciones del nombre
@@ -290,8 +302,22 @@ async function getPriceFromCardMarket(
     }
 
     const data = await response.json()
+    
+    // Log de la estructura de datos recibida
+    console.log(`📦 Estructura de datos recibida:`, {
+      isArray: Array.isArray(data),
+      hasProducts: !!data.products,
+      hasResults: !!data.results,
+      hasData: !!data.data,
+      keys: typeof data === 'object' ? Object.keys(data) : 'not an object',
+      firstItem: Array.isArray(data) && data.length > 0 ? data[0] : (data.products?.[0] || data.results?.[0] || data.data?.[0] || null),
+      totalItems: Array.isArray(data) ? data.length : (data.products?.length || data.results?.length || data.data?.length || 0),
+    })
+    
     // Pasar set y número a searchInProducts para búsqueda más precisa
     const result = await searchInProducts(data, cardName, rapidApiKey, options)
+    
+    console.log(`📊 Resultado de searchInProducts:`, result)
     
     // Guardar en cache
     priceCache.set(cacheKey, { price: result, timestamp: Date.now() })
@@ -320,37 +346,54 @@ async function searchInProducts(
   }
 ): Promise<CardPrice | null> {
   // La estructura puede variar, intentar diferentes formatos
+  // Según la documentación de la API, los productos vienen en data.data
   let products = []
   if (Array.isArray(data)) {
     products = data
+  } else if (data.data && Array.isArray(data.data)) {
+    // Estructura: { data: [...], paging: {...}, results: ... }
+    products = data.data
   } else if (data.products) {
     products = data.products
   } else if (data.results) {
     products = data.results
-  } else if (data.data) {
-    products = Array.isArray(data.data) ? data.data : [data.data]
+  } else if (data.data && !Array.isArray(data.data)) {
+    products = [data.data]
   }
+  
+  console.log(`🔍 Buscando en ${products.length} productos...`)
   
   // Buscar producto - PRIORIDAD: por set y número si están disponibles
   let matchingProduct: any = null
   
   if (options?.setId && options?.cardNumber) {
+    console.log(`🔍 Buscando por set y número: ${options.setId}-${options.cardNumber}`)
+    
     // Buscar por set y número (más exacto)
     matchingProduct = products.find((p: any) => {
       // Verificar número de carta
-      const productNumber = p.number || p.cardNumber || p.cardNum || p.card_number
+      const productNumber = p.number || p.cardNumber || p.cardNum || p.card_number || p.card_num
       const numberMatch = productNumber === options.cardNumber || 
                          productNumber === String(options.cardNumber) ||
-                         productNumber === Number(options.cardNumber)
+                         Number(productNumber) === Number(options.cardNumber)
       
       // Verificar set (puede venir en diferentes formatos)
-      const productSet = (p.set || p.setId || p.set_id || p.setName || "").toLowerCase()
+      const productSet = (p.set || p.setId || p.set_id || p.setName || p.set_name || "").toLowerCase()
       const setIdLower = options.setId.toLowerCase()
       const setNameLower = options.setName?.toLowerCase() || ""
       
       const setMatch = productSet === setIdLower || 
                       productSet.includes(setIdLower) ||
+                      setIdLower.includes(productSet) ||
                       (setNameLower && productSet.includes(setNameLower.split(" ")[0]))
+      
+      if (numberMatch && setMatch) {
+        console.log(`✅ Coincidencia encontrada:`, {
+          productNumber,
+          productSet,
+          name: p.name || p.productName || p.title,
+        })
+      }
       
       return numberMatch && setMatch
     })
@@ -358,6 +401,12 @@ async function searchInProducts(
     // Si no encontramos por set/número, buscar por nombre como fallback
     if (!matchingProduct) {
       console.warn(`⚠️ No se encontró carta por set/número (${options.setId}-${options.cardNumber}), buscando por nombre...`)
+      console.log(`📋 Primeros 3 productos para debug:`, products.slice(0, 3).map((p: any) => ({
+        name: p.name || p.productName || p.title,
+        number: p.number || p.cardNumber || p.cardNum,
+        set: p.set || p.setId || p.setName,
+      })))
+      
       matchingProduct = products.find((p: any) => {
         const name = (p.name || p.productName || p.title || "").toLowerCase()
         const searchName = cardName.toLowerCase()
@@ -368,6 +417,7 @@ async function searchInProducts(
     }
   } else {
     // Buscar solo por nombre (fallback)
+    console.log(`🔍 Buscando solo por nombre: ${cardName}`)
     matchingProduct = products.find((p: any) => {
       const name = (p.name || p.productName || p.title || "").toLowerCase()
       const searchName = cardName.toLowerCase()
@@ -377,42 +427,87 @@ async function searchInProducts(
   
   // Si no encontramos nada, usar el primer resultado como último recurso
   if (!matchingProduct && products.length > 0) {
+    console.warn(`⚠️ No se encontró coincidencia exacta, usando primer resultado como fallback`)
     matchingProduct = products[0]
   }
+  
+  if (!matchingProduct) {
+    console.warn(`⚠️ No hay productos disponibles para buscar`)
+    return null
+  }
+  
+  console.log(`📦 Producto encontrado:`, {
+    name: matchingProduct.name || matchingProduct.productName || matchingProduct.title,
+    number: matchingProduct.number || matchingProduct.cardNumber || matchingProduct.cardNum,
+    set: matchingProduct.set || matchingProduct.setId || matchingProduct.setName,
+    availablePriceFields: Object.keys(matchingProduct).filter(k => k.toLowerCase().includes('price')),
+  })
 
   if (matchingProduct) {
-    // Intentar obtener precio de diferentes campos posibles
-    const normalPrice = 
-      matchingProduct.price ||
-      matchingProduct.marketPrice ||
-      matchingProduct.avgPrice ||
-      matchingProduct.priceGuide?.avgSellPrice ||
-      matchingProduct.priceGuide?.lowPrice ||
-      matchingProduct.lowPrice ||
-      matchingProduct.midPrice ||
-      matchingProduct.tcgplayerPrice ||
-      null
+    // Según la estructura de la API que me mostraste:
+    // prices.cardmarket.lowest (en EUR)
+    // prices.tcgplayer.low o prices.tcgplayer.market (en USD)
+    // episode.code (código del set, ej: "PFL", "MEG")
+    
+    // Priorizar TCGPlayer si está disponible (ya está en USD)
+    const tcgplayerPrice = matchingProduct.prices?.tcgplayer?.low || 
+                          matchingProduct.prices?.tcgplayer?.market ||
+                          null
+    const tcgplayerFoil = matchingProduct.prices?.tcgplayer?.foil?.low ||
+                          matchingProduct.prices?.tcgplayer?.foil?.market ||
+                          null
+    
+    // Si no hay TCGPlayer, usar CardMarket (en EUR, convertir a USD)
+    const cardmarketPrice = matchingProduct.prices?.cardmarket?.lowest || null
+    const cardmarketFoil = matchingProduct.prices?.cardmarket?.foil?.lowest || null
+    
+    let normalPriceUSD: number | null = null
+    let foilPriceUSD: number | null = null
+    
+    if (tcgplayerPrice) {
+      // TCGPlayer ya está en USD
+      normalPriceUSD = typeof tcgplayerPrice === 'number' ? tcgplayerPrice : parseFloat(String(tcgplayerPrice))
+      if (tcgplayerFoil) {
+        foilPriceUSD = typeof tcgplayerFoil === 'number' ? tcgplayerFoil : parseFloat(String(tcgplayerFoil))
+      }
+    } else if (cardmarketPrice) {
+      // CardMarket está en EUR, convertir a USD (aproximadamente 1 EUR = 1.1 USD)
+      const eurToUsdRate = 1.1
+      normalPriceUSD = (typeof cardmarketPrice === 'number' ? cardmarketPrice : parseFloat(String(cardmarketPrice))) * eurToUsdRate
+      if (cardmarketFoil) {
+        foilPriceUSD = (typeof cardmarketFoil === 'number' ? cardmarketFoil : parseFloat(String(cardmarketFoil))) * eurToUsdRate
+      }
+    } else {
+      // Fallback: buscar en otros campos posibles
+      const fallbackPrice = matchingProduct.price ||
+                            matchingProduct.marketPrice ||
+                            matchingProduct.avgPrice ||
+                            matchingProduct.priceGuide?.avgSellPrice ||
+                            matchingProduct.priceGuide?.lowPrice ||
+                            matchingProduct.lowPrice ||
+                            matchingProduct.midPrice ||
+                            null
+      
+      if (fallbackPrice) {
+        normalPriceUSD = typeof fallbackPrice === 'number' ? fallbackPrice : parseFloat(String(fallbackPrice))
+      }
+    }
 
-    const foilPrice = 
-      matchingProduct.foilPrice ||
-      matchingProduct.foilMarketPrice ||
-      matchingProduct.foilPriceGuide?.avgSellPrice ||
-      matchingProduct.foilPriceGuide?.lowPrice ||
-      matchingProduct.foilFoilPrice ||
-      null
-
-    if (normalPrice) {
-      // Los precios pueden venir en diferentes formatos
-      // CardMarket puede dar precios en EUR, así que si es muy bajo, podría ser EUR
-      // Por ahora asumimos USD, pero se puede ajustar
-      const priceValue = typeof normalPrice === 'number' ? normalPrice : parseFloat(String(normalPrice))
-      const foilValue = foilPrice ? (typeof foilPrice === 'number' ? foilPrice : parseFloat(String(foilPrice))) : null
+    if (normalPriceUSD) {
+      console.log(`💰 Precio extraído:`, {
+        normal: normalPriceUSD,
+        foil: foilPriceUSD,
+        source: tcgplayerPrice ? 'tcgplayer' : (cardmarketPrice ? 'cardmarket' : 'fallback'),
+        originalCurrency: tcgplayerPrice ? 'USD' : (cardmarketPrice ? 'EUR' : 'unknown'),
+      })
       
       return {
-        normal: priceValue,
-        foil: foilValue,
-        source: "cardmarket-tcgplayer",
+        normal: normalPriceUSD,
+        foil: foilPriceUSD,
+        source: tcgplayerPrice ? 'tcgplayer' : (cardmarketPrice ? 'cardmarket' : 'fallback'),
       }
+    } else {
+      console.warn(`⚠️ No se encontró precio en el producto encontrado`)
     }
   }
 
@@ -470,19 +565,33 @@ export async function getTCGPlayerPriceAlternative(
     setName?: string // Nombre del set (ej: "The First Chapter")
   }
 ): Promise<CardPrice | null> {
+  console.log(`🔍 getTCGPlayerPriceAlternative llamado para:`, {
+    cardName,
+    options,
+  })
+
   // Intentar Card Market API primero (si está configurada)
   // Pasar set y número para búsqueda más precisa
+  console.log(`🔄 Intentando CardMarket API...`)
   const cardMarketPrice = await getPriceFromCardMarket(cardName, options)
-  if (cardMarketPrice) {
+  console.log(`📊 Resultado CardMarket:`, cardMarketPrice)
+  
+  if (cardMarketPrice && cardMarketPrice.normal) {
+    console.log(`✅ Precio encontrado en CardMarket: $${cardMarketPrice.normal} USD`)
     return cardMarketPrice
   }
 
   // Intentar TCGAPIs como alternativa
+  console.log(`🔄 Intentando TCGAPIs como alternativa...`)
   const tcgApisPrice = await getPriceFromTCGAPIs(cardName)
-  if (tcgApisPrice) {
+  console.log(`📊 Resultado TCGAPIs:`, tcgApisPrice)
+  
+  if (tcgApisPrice && tcgApisPrice.normal) {
+    console.log(`✅ Precio encontrado en TCGAPIs: $${tcgApisPrice.normal} USD`)
     return tcgApisPrice
   }
 
+  console.warn(`⚠️ No se encontró precio en ninguna fuente para ${cardName}`)
   return null
 }
 

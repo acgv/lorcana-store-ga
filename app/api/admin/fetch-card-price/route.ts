@@ -54,53 +54,83 @@ export async function POST(request: NextRequest) {
 
     // Buscar precio en TCGPlayer usando set y número (más exacto)
     const cardNameToSearch = cardName || card.name
-    const setIdToUse = setId || card.set?.toUpperCase() // Convertir a formato de API (ej: "firstChapter" -> "TFC")
+    const setIdFromDB = setId || card.set // El set viene de BD como "firstChapter" (camelCase)
     const cardNumberToUse = cardNumber || card.number
 
+    console.log(`🔍 Datos de la carta desde BD:`, {
+      cardId: card.id,
+      name: card.name,
+      set: card.set,
+      number: card.number,
+      setIdFromDB,
+      cardNumberToUse,
+    })
+
     // Mapear set de BD a Set_ID de API
-    // El set en BD viene como "firstChapter", pero necesitamos "TFC" para la API
+    // El set en BD viene como "firstChapter" (camelCase), necesitamos "TFC" para la API
     const setToIdMap: Record<string, string> = {
       'firstchapter': 'TFC',
+      'firstChapter': 'TFC', // También camelCase
       'riseoffloodborn': 'ROF',
+      'riseOfFloodborn': 'ROF',
       'intoinklands': 'ITI',
+      'intoInklands': 'ITI',
       'ursulareturn': 'UR',
+      'ursulaReturn': 'UR',
       'shimmering': 'SS',
       'azurite': 'AS',
       'archazia': 'AI',
       'reignofjafar': 'ROJ',
+      'reignOfJafar': 'ROJ',
       'fabled': 'F',
       'whi': 'WIW',
       'whisper': 'WIW',
     }
 
-    // Si recibimos setId directamente (ya en formato API), usarlo
-    // Si recibimos set de BD, mapearlo
+    // Mapear set de BD a Set_ID de API
     let apiSetId: string | undefined = undefined
-    if (setIdToUse) {
-      const setIdLower = setIdToUse.toLowerCase()
-      if (setToIdMap[setIdLower]) {
-        apiSetId = setToIdMap[setIdLower]
-      } else if (setIdToUse.length <= 4 && setIdToUse === setIdToUse.toUpperCase()) {
+    if (setIdFromDB) {
+      const setIdLower = setIdFromDB.toLowerCase()
+      // Buscar en el mapa (tanto minúsculas como camelCase)
+      if (setToIdMap[setIdLower] || setToIdMap[setIdFromDB]) {
+        apiSetId = setToIdMap[setIdLower] || setToIdMap[setIdFromDB]
+      } else if (setIdFromDB.length <= 4 && setIdFromDB === setIdFromDB.toUpperCase()) {
         // Ya está en formato API (ej: "TFC", "ROF")
-        apiSetId = setIdToUse
+        apiSetId = setIdFromDB
       } else {
         // Intentar usar el valor tal cual
-        apiSetId = setIdToUse
+        apiSetId = setIdFromDB
       }
     }
 
-    console.log(`🔍 Buscando con: setId=${apiSetId}, cardNumber=${cardNumberToUse}, name=${cardNameToSearch}`)
+    console.log(`🔍 Buscando precio TCGPlayer con:`, {
+      apiSetId,
+      cardNumber: cardNumberToUse,
+      cardName: cardNameToSearch,
+      setIdFromDB,
+    })
 
     let marketPriceUSD: number | null = null
     let marketFoilPriceUSD: number | null = null
-    let priceSource: "tcgplayer" | "standard" = "standard"
+    let priceSource: "tcgplayer" | "standard" | null = null
 
     try {
+      console.log(`🔄 Llamando a getTCGPlayerPriceAlternative con:`, {
+        cardName: cardNameToSearch,
+        options: {
+          setId: apiSetId,
+          cardNumber: cardNumberToUse,
+          setName: setName,
+        },
+      })
+
       const altPrice = await getTCGPlayerPriceAlternative(cardNameToSearch, {
         setId: apiSetId,
         cardNumber: cardNumberToUse,
         setName: setName,
       })
+
+      console.log(`📊 Resultado de getTCGPlayerPriceAlternative:`, altPrice)
 
       if (altPrice && altPrice.normal) {
         marketPriceUSD = altPrice.normal
@@ -109,16 +139,19 @@ export async function POST(request: NextRequest) {
         console.log(`✅ Precio TCGPlayer obtenido: $${marketPriceUSD} USD${marketFoilPriceUSD ? ` (foil: $${marketFoilPriceUSD} USD)` : ''}`)
       } else {
         console.warn(`⚠️ No se pudo obtener precio TCGPlayer para ${cardNameToSearch}`)
+        console.warn(`⚠️ Resultado fue:`, altPrice)
+        // priceSource queda como null (no "standard")
       }
     } catch (error) {
       console.error(`❌ Error buscando precio TCGPlayer:`, error)
+      console.error(`❌ Stack trace:`, error instanceof Error ? error.stack : 'No stack available')
     }
 
     // Calcular precio sugerido si tenemos precio de TCGPlayer
     let suggestedPriceCLP: number | null = null
     let suggestedFoilPriceCLP: number | null = null
 
-    if (marketPriceUSD && priceSource === "tcgplayer") {
+    if (marketPriceUSD && priceSource === "tcgplayer" && marketPriceUSD > 0) {
       const defaultParams = getCalculationParams()
       const calcParams = {
         ...defaultParams,
@@ -161,7 +194,7 @@ export async function POST(request: NextRequest) {
         cardName: card.name,
         marketPriceUSD,
         marketFoilPriceUSD,
-        priceSource,
+        priceSource: priceSource || null, // null si no se encontró precio
         suggestedPriceCLP,
         suggestedFoilPriceCLP,
         priceDifference: priceComparison.difference,
@@ -169,6 +202,15 @@ export async function POST(request: NextRequest) {
         priceDifferencePercent: priceComparison.differencePercent,
         foilPriceDifferencePercent: foilComparison.differencePercent,
         needsPriceUpdate: priceComparison.needsUpdate || foilComparison.needsUpdate,
+        // Información de debug
+        debug: {
+          searchedWith: {
+            setId: apiSetId,
+            cardNumber: cardNumberToUse,
+            cardName: cardNameToSearch,
+          },
+          foundPrice: marketPriceUSD !== null,
+        },
       },
     })
   } catch (error) {
