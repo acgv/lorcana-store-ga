@@ -914,6 +914,175 @@ async function getPriceFromTCGPlayerScraping(
 }
 
 /**
+ * Obtener precio desde DexHunter API (incluye precios de mercado)
+ * https://api.dexhunter.io/v1/lorcana/prices
+ */
+async function getPriceFromDexHunter(
+  cardName: string,
+  options?: {
+    setId?: string
+    cardNumber?: number
+    setName?: string
+  }
+): Promise<CardPrice | null> {
+  try {
+    await waitForRateLimit()
+    
+    // DexHunter API - obtener todos los precios y buscar la carta
+    const pricesUrl = "https://api.dexhunter.io/v1/lorcana/prices"
+    
+    console.log(`🔍 Intentando DexHunter API para ${cardName}`)
+    
+    const response = await fetch(pricesUrl, {
+      headers: {
+        "Accept": "application/json",
+      },
+      signal: AbortSignal.timeout(10000), // 10 segundos timeout
+    })
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        // No loggear 404 - es esperado si no hay datos
+        return null
+      }
+      console.warn(`⚠️ DexHunter API error (${response.status}): ${response.statusText}`)
+      return null
+    }
+    
+    const data = await response.json()
+    
+    // La estructura puede variar, intentar diferentes formatos
+    const prices = data.prices || data.data || data.cards || (Array.isArray(data) ? data : [])
+    
+    if (!Array.isArray(prices) || prices.length === 0) {
+      return null
+    }
+    
+    // Buscar la carta por nombre (y opcionalmente por set/número)
+    const searchName = cardName.toLowerCase()
+    let matchedCard = null
+    
+    for (const card of prices) {
+      const cardNameLower = (card.name || card.cardName || card.title || "").toLowerCase()
+      
+      // Buscar coincidencia exacta o parcial
+      if (cardNameLower === searchName || 
+          cardNameLower.includes(searchName) || 
+          searchName.includes(cardNameLower.split(" - ")[0])) {
+        
+        // Si tenemos setId y cardNumber, intentar match más preciso
+        if (options?.setId && options?.cardNumber) {
+          const cardSetId = (card.setId || card.set_id || card.set || "").toLowerCase()
+          const cardNum = card.number || card.cardNumber || card.card_number
+          
+          if (cardSetId === options.setId.toLowerCase() && cardNum === options.cardNumber) {
+            matchedCard = card
+            break
+          }
+        } else {
+          matchedCard = card
+          // Continuar buscando por si hay una mejor coincidencia
+        }
+      }
+    }
+    
+    if (!matchedCard) {
+      return null
+    }
+    
+    // Extraer precios - DexHunter puede tener diferentes estructuras
+    const normalPrice = matchedCard.price || 
+                      matchedCard.marketPrice || 
+                      matchedCard.tcgplayerPrice ||
+                      matchedCard.prices?.normal ||
+                      matchedCard.prices?.market ||
+                      null
+    
+    const foilPrice = matchedCard.foilPrice || 
+                     matchedCard.foilMarketPrice ||
+                     matchedCard.prices?.foil ||
+                     matchedCard.prices?.foilMarket ||
+                     null
+    
+    if (normalPrice) {
+      const price = typeof normalPrice === 'number' ? normalPrice : parseFloat(String(normalPrice))
+      const foil = foilPrice ? (typeof foilPrice === 'number' ? foilPrice : parseFloat(String(foilPrice))) : null
+      
+      if (price > 0 && price < 10000) { // Validación razonable
+        console.log(`✅ Precio encontrado en DexHunter: $${price} USD${foil ? ` (foil: $${foil} USD)` : ''}`)
+        return {
+          normal: price,
+          foil: foil,
+          source: 'dexhunter',
+        }
+      }
+    }
+    
+    return null
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      // Timeout - no loggear
+      return null
+    }
+    // No loggear errores de DexHunter - son esperados si no está disponible
+    return null
+  }
+}
+
+/**
+ * Obtener precio desde Lorcana API (solo datos de carta, no precios de mercado)
+ * https://api.lorcana-api.com/cards
+ * NOTA: Esta API NO proporciona precios de mercado, solo datos de cartas
+ */
+async function getCardDataFromLorcanaAPI(
+  cardName: string,
+  options?: {
+    setId?: string
+    cardNumber?: number
+  }
+): Promise<CardPrice | null> {
+  try {
+    await waitForRateLimit()
+    
+    // La API de Lorcana no tiene precios de mercado, solo datos de cartas
+    // Pero podemos usarla para validar que la carta existe
+    let searchUrl = "https://api.lorcana-api.com/cards"
+    
+    if (options?.setId && options?.cardNumber) {
+      // Buscar por set y número
+      searchUrl = `https://api.lorcana-api.com/cards/fetch?set=${options.setId}&number=${options.cardNumber}`
+    } else {
+      // Buscar por nombre
+      searchUrl = `https://api.lorcana-api.com/cards/fetch?search=${encodeURIComponent(cardName)}`
+    }
+    
+    const response = await fetch(searchUrl, {
+      headers: {
+        "Accept": "application/json",
+      },
+      signal: AbortSignal.timeout(8000),
+    })
+    
+    if (!response.ok) {
+      return null
+    }
+    
+    const data = await response.json()
+    const cards = Array.isArray(data) ? data : (data.cards || data.data || [])
+    
+    if (cards.length === 0) {
+      return null
+    }
+    
+    // La API de Lorcana NO tiene precios de mercado
+    // Solo retornamos null para indicar que la carta existe pero no hay precio
+    return null
+  } catch (error) {
+    return null
+  }
+}
+
+/**
  * Obtener precio de TCGPlayer usando métodos alternativos
  * 
  * Intenta múltiples fuentes en orden de preferencia
@@ -961,30 +1130,42 @@ export async function getTCGPlayerPriceAlternative(
     console.log(`🔄 Bypass de cache solicitado para ${cardName}`)
   }
 
-  // PRIORIDAD 1: Intentar Lorcast API (especializada en Lorcana)
-  // PRIORIDAD 1: Intentar Lorcast API (especializada en Lorcana)
+  // PRIORIDAD 1: Intentar DexHunter API (tiene precios de mercado reales)
+  // https://api.dexhunter.io/v1/lorcana/prices
+  const dexHunterPrice = await getPriceFromDexHunter(cardName, options)
+  
+  if (dexHunterPrice && dexHunterPrice.normal) {
+    console.log(`✅ Precio encontrado en DexHunter: $${dexHunterPrice.normal} USD`)
+    priceCache.set(cacheKey, { price: dexHunterPrice, timestamp: Date.now() })
+    return dexHunterPrice
+  }
+
+  // PRIORIDAD 2: Intentar Lorcast API (especializada en Lorcana)
   // NOTA: Lorcast actualmente no tiene soporte para Lorcana, pero lo intentamos por si acaso
   const lorcastPrice = await getPriceFromLorcast(cardName, options)
   
   if (lorcastPrice && lorcastPrice.normal) {
     console.log(`✅ Precio encontrado en Lorcast: $${lorcastPrice.normal} USD`)
+    priceCache.set(cacheKey, { price: lorcastPrice, timestamp: Date.now() })
     return lorcastPrice
   }
 
-  // PRIORIDAD 2: Intentar Card Market API (si está configurada)
+  // PRIORIDAD 3: Intentar Card Market API (si está configurada)
   // NOTA: Esta API NO tiene soporte para Lorcana actualmente
   const cardMarketPrice = await getPriceFromCardMarket(cardName, options)
   
   if (cardMarketPrice && cardMarketPrice.normal) {
     console.log(`✅ Precio encontrado en CardMarket: $${cardMarketPrice.normal} USD`)
+    priceCache.set(cacheKey, { price: cardMarketPrice, timestamp: Date.now() })
     return cardMarketPrice
   }
 
-  // PRIORIDAD 3: Intentar TCGAPIs como alternativa
+  // PRIORIDAD 4: Intentar TCGAPIs como alternativa
   const tcgApisPrice = await getPriceFromTCGAPIs(cardName)
   
   if (tcgApisPrice && tcgApisPrice.normal) {
     console.log(`✅ Precio encontrado en TCGAPIs: $${tcgApisPrice.normal} USD`)
+    priceCache.set(cacheKey, { price: tcgApisPrice, timestamp: Date.now() })
     return tcgApisPrice
   }
 

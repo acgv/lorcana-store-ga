@@ -99,6 +99,8 @@ export default function ComparePricesPage() {
   const [fetchingPrices, setFetchingPrices] = useState<Set<string>>(new Set())
   const [fetchingAllPrices, setFetchingAllPrices] = useState(false)
   const [fetchProgress, setFetchProgress] = useState({ current: 0, total: 0 })
+  const [editingPrice, setEditingPrice] = useState<{ cardId: string; field: 'price' | 'foilPrice' | 'priceUSD' | 'foilPriceUSD' } | null>(null)
+  const [editingPriceValue, setEditingPriceValue] = useState<string>("")
 
   // Parámetros de cálculo editables
   const [priceParams, setPriceParams] = useState({
@@ -343,21 +345,10 @@ export default function ComparePricesPage() {
         description: `Se procesaron ${allComparisons.length} cartas${allComparisons.length === 0 ? " (ver consola para detalles)" : ""}`,
       })
 
-      // Después de cargar los datos, buscar precios automáticamente para cartas sin precio
-      // Solo si hay cartas y no todas tienen precio ya guardado
-      const cardsWithoutPrice = mergedComparisons.filter(
-        (c) => !c.marketPriceUSD && !pricesCache[c.cardId]
-      )
-
-      if (cardsWithoutPrice.length > 0 && mergedComparisons.length > 0) {
-        console.log(`🔄 Iniciando búsqueda automática de precios para ${cardsWithoutPrice.length} cartas sin precio`)
-        // Esperar un momento para que la UI se actualice antes de empezar la búsqueda masiva
-        setTimeout(() => {
-          fetchAllCardPrices(mergedComparisons)
-        }, 1000)
-      } else if (mergedComparisons.length > 0) {
-        console.log(`✅ Todas las cartas ya tienen precios guardados, no se necesita búsqueda automática`)
-      }
+      // BÚSQUEDA AUTOMÁTICA DESACTIVADA
+      // Las APIs de precios no son confiables, por lo que se desactiva la búsqueda automática
+      // El usuario puede usar el botón "Buscar Precio" individual si lo desea
+      console.log(`ℹ️ Búsqueda automática de precios desactivada - usar botón individual si se necesita`)
     } catch (error) {
       console.error("❌ Error loading comparison data:", error)
       console.error("Error details:", {
@@ -762,8 +753,8 @@ export default function ComparePricesPage() {
         },
         body: JSON.stringify({
           cardId: comp.cardId,
-          price: comp.suggestedPriceCLP ? Math.round(comp.suggestedPriceCLP) : undefined,
-          foilPrice: comp.suggestedFoilPriceCLP ? Math.round(comp.suggestedFoilPriceCLP) : undefined,
+          price: priceToUpdate ? Math.round(priceToUpdate) : undefined,
+          foilPrice: foilPriceToUpdate ? Math.round(foilPriceToUpdate) : undefined,
         }),
       })
 
@@ -1128,6 +1119,8 @@ export default function ComparePricesPage() {
                       </>
                     )}
                   </Button>
+                  {/* Botón de búsqueda masiva desactivado - las APIs no son confiables */}
+                  {/* 
                   <Button 
                     onClick={() => {
                       // Buscar precios para todas las cartas del set actual
@@ -1160,6 +1153,7 @@ export default function ComparePricesPage() {
                       </>
                     )}
                   </Button>
+                  */}
                 </div>
               </div>
             </CardHeader>
@@ -1492,7 +1486,134 @@ export default function ComparePricesPage() {
                               ${comp.currentPrice.toLocaleString()}
                             </TableCell>
                             <TableCell className="text-right text-muted-foreground">
-                              {comp.marketPriceUSD ? `$${comp.marketPriceUSD.toFixed(2)} USD` : "-"}
+                              {editingPrice?.cardId === comp.cardId && editingPrice.field === 'priceUSD' ? (
+                                <div className="flex flex-col items-end gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">USD:</span>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={editingPriceValue}
+                                      onChange={(e) => {
+                                        setEditingPriceValue(e.target.value)
+                                        // Calcular automáticamente el precio en CLP
+                                        const usdPrice = parseFloat(e.target.value)
+                                        if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                          const calculated = calculateFinalPrice({
+                                            basePriceUSD: usdPrice,
+                                            usTaxRate: priceParams.usTaxRate,
+                                            shippingUSD: priceParams.shippingUSD,
+                                            chileVATRate: priceParams.chileVATRate,
+                                            exchangeRate: priceParams.exchangeRate,
+                                            profitMargin: priceParams.profitMargin,
+                                            mercadoPagoFee: priceParams.mercadoPagoFee,
+                                          })
+                                          // Actualizar el estado local para mostrar el precio calculado
+                                          if (data) {
+                                            const updatedComparisons = data.comparisons.map((c) => {
+                                              if (c.cardId === comp.cardId) {
+                                                return {
+                                                  ...c,
+                                                  marketPriceUSD: usdPrice,
+                                                  suggestedPriceCLP: calculated.finalPriceCLP,
+                                                }
+                                              }
+                                              return c
+                                            })
+                                            setData({
+                                              ...data,
+                                              comparisons: updatedComparisons,
+                                            })
+                                          }
+                                        }
+                                      }}
+                                      className="w-20 h-8 text-right"
+                                      autoFocus
+                                      placeholder="0.00"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          const usdPrice = parseFloat(editingPriceValue)
+                                          if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                            const calculated = calculateFinalPrice({
+                                              basePriceUSD: usdPrice,
+                                              usTaxRate: priceParams.usTaxRate,
+                                              shippingUSD: priceParams.shippingUSD,
+                                              chileVATRate: priceParams.chileVATRate,
+                                              exchangeRate: priceParams.exchangeRate,
+                                              profitMargin: priceParams.profitMargin,
+                                              mercadoPagoFee: priceParams.mercadoPagoFee,
+                                            })
+                                            updateCardPrice(comp, calculated.finalPriceCLP, undefined)
+                                            setEditingPrice(null)
+                                            setEditingPriceValue("")
+                                          }
+                                        } else if (e.key === 'Escape') {
+                                          setEditingPrice(null)
+                                          setEditingPriceValue("")
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        const usdPrice = parseFloat(editingPriceValue)
+                                        if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                          const calculated = calculateFinalPrice({
+                                            basePriceUSD: usdPrice,
+                                            usTaxRate: priceParams.usTaxRate,
+                                            shippingUSD: priceParams.shippingUSD,
+                                            chileVATRate: priceParams.chileVATRate,
+                                            exchangeRate: priceParams.exchangeRate,
+                                            profitMargin: priceParams.profitMargin,
+                                            mercadoPagoFee: priceParams.mercadoPagoFee,
+                                          })
+                                          updateCardPrice(comp, calculated.finalPriceCLP, undefined)
+                                        }
+                                        setEditingPrice(null)
+                                        setEditingPriceValue("")
+                                      }}
+                                    />
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        setEditingPrice(null)
+                                        setEditingPriceValue("")
+                                      }}
+                                    >
+                                      ✕
+                                    </Button>
+                                  </div>
+                                  {(() => {
+                                    const usdPrice = parseFloat(editingPriceValue)
+                                    if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                      const calculated = calculateFinalPrice({
+                                        basePriceUSD: usdPrice,
+                                        usTaxRate: priceParams.usTaxRate,
+                                        shippingUSD: priceParams.shippingUSD,
+                                        chileVATRate: priceParams.chileVATRate,
+                                        exchangeRate: priceParams.exchangeRate,
+                                        profitMargin: priceParams.profitMargin,
+                                        mercadoPagoFee: priceParams.mercadoPagoFee,
+                                      })
+                                      return (
+                                        <div className="text-xs text-blue-600">
+                                          = ${calculated.finalPriceCLP.toLocaleString()} CLP
+                                        </div>
+                                      )
+                                    }
+                                    return null
+                                  })()}
+                                </div>
+                              ) : (
+                                <div 
+                                  className="cursor-pointer hover:bg-muted rounded px-2 py-1 inline-block"
+                                  onClick={() => {
+                                    setEditingPrice({ cardId: comp.cardId, field: 'priceUSD' })
+                                    setEditingPriceValue(comp.marketPriceUSD?.toString() || "")
+                                  }}
+                                  title="Click para ingresar precio en USD (se calculará automáticamente en CLP)"
+                                >
+                                  {comp.marketPriceUSD ? `$${comp.marketPriceUSD.toFixed(2)} USD` : "Click para ingresar"}
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell className="text-right font-semibold text-blue-600">
                               {comp.suggestedPriceCLP ? `$${comp.suggestedPriceCLP.toLocaleString()}` : "-"}
@@ -1519,10 +1640,189 @@ export default function ComparePricesPage() {
                               )}
                             </TableCell>
                             <TableCell className="text-right font-semibold">
-                              ${comp.currentFoilPrice.toLocaleString()}
+                              {editingPrice?.cardId === comp.cardId && editingPrice.field === 'foilPrice' ? (
+                                <div className="flex items-center gap-2 justify-end">
+                                  <Input
+                                    type="number"
+                                    value={editingPriceValue}
+                                    onChange={(e) => setEditingPriceValue(e.target.value)}
+                                    className="w-24 h-8 text-right"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        const newPrice = parseFloat(editingPriceValue)
+                                        if (!isNaN(newPrice) && newPrice >= 0) {
+                                          updateCardPrice(comp, undefined, newPrice)
+                                          setEditingPrice(null)
+                                          setEditingPriceValue("")
+                                        }
+                                      } else if (e.key === 'Escape') {
+                                        setEditingPrice(null)
+                                        setEditingPriceValue("")
+                                      }
+                                    }}
+                                    onBlur={() => {
+                                      const newPrice = parseFloat(editingPriceValue)
+                                      if (!isNaN(newPrice) && newPrice >= 0) {
+                                        updateCardPrice(comp, undefined, newPrice)
+                                      }
+                                      setEditingPrice(null)
+                                      setEditingPriceValue("")
+                                    }}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setEditingPrice(null)
+                                      setEditingPriceValue("")
+                                    }}
+                                  >
+                                    ✕
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div 
+                                  className="cursor-pointer hover:bg-muted rounded px-2 py-1 inline-block"
+                                  onClick={() => {
+                                    setEditingPrice({ cardId: comp.cardId, field: 'foilPrice' })
+                                    setEditingPriceValue(comp.currentFoilPrice.toString())
+                                  }}
+                                  title="Click para editar precio foil"
+                                >
+                                  ${comp.currentFoilPrice.toLocaleString()}
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell className="text-right text-muted-foreground">
-                              {comp.marketFoilPriceUSD ? `$${comp.marketFoilPriceUSD.toFixed(2)} USD` : "-"}
+                              {editingPrice?.cardId === comp.cardId && editingPrice.field === 'foilPriceUSD' ? (
+                                <div className="flex flex-col items-end gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">USD:</span>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={editingPriceValue}
+                                      onChange={(e) => {
+                                        setEditingPriceValue(e.target.value)
+                                        // Calcular automáticamente el precio en CLP
+                                        const usdPrice = parseFloat(e.target.value)
+                                        if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                          const calculated = calculateFinalPrice({
+                                            basePriceUSD: usdPrice,
+                                            usTaxRate: priceParams.usTaxRate,
+                                            shippingUSD: priceParams.shippingUSD,
+                                            chileVATRate: priceParams.chileVATRate,
+                                            exchangeRate: priceParams.exchangeRate,
+                                            profitMargin: priceParams.profitMargin,
+                                            mercadoPagoFee: priceParams.mercadoPagoFee,
+                                          })
+                                          // Actualizar el estado local para mostrar el precio calculado
+                                          if (data) {
+                                            const updatedComparisons = data.comparisons.map((c) => {
+                                              if (c.cardId === comp.cardId) {
+                                                return {
+                                                  ...c,
+                                                  marketFoilPriceUSD: usdPrice,
+                                                  suggestedFoilPriceCLP: calculated.finalPriceCLP,
+                                                }
+                                              }
+                                              return c
+                                            })
+                                            setData({
+                                              ...data,
+                                              comparisons: updatedComparisons,
+                                            })
+                                          }
+                                        }
+                                      }}
+                                      className="w-20 h-8 text-right"
+                                      autoFocus
+                                      placeholder="0.00"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          const usdPrice = parseFloat(editingPriceValue)
+                                          if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                            const calculated = calculateFinalPrice({
+                                              basePriceUSD: usdPrice,
+                                              usTaxRate: priceParams.usTaxRate,
+                                              shippingUSD: priceParams.shippingUSD,
+                                              chileVATRate: priceParams.chileVATRate,
+                                              exchangeRate: priceParams.exchangeRate,
+                                              profitMargin: priceParams.profitMargin,
+                                              mercadoPagoFee: priceParams.mercadoPagoFee,
+                                            })
+                                            updateCardPrice(comp, undefined, calculated.finalPriceCLP)
+                                            setEditingPrice(null)
+                                            setEditingPriceValue("")
+                                          }
+                                        } else if (e.key === 'Escape') {
+                                          setEditingPrice(null)
+                                          setEditingPriceValue("")
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        const usdPrice = parseFloat(editingPriceValue)
+                                        if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                          const calculated = calculateFinalPrice({
+                                            basePriceUSD: usdPrice,
+                                            usTaxRate: priceParams.usTaxRate,
+                                            shippingUSD: priceParams.shippingUSD,
+                                            chileVATRate: priceParams.chileVATRate,
+                                            exchangeRate: priceParams.exchangeRate,
+                                            profitMargin: priceParams.profitMargin,
+                                            mercadoPagoFee: priceParams.mercadoPagoFee,
+                                          })
+                                          updateCardPrice(comp, undefined, calculated.finalPriceCLP)
+                                        }
+                                        setEditingPrice(null)
+                                        setEditingPriceValue("")
+                                      }}
+                                    />
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        setEditingPrice(null)
+                                        setEditingPriceValue("")
+                                      }}
+                                    >
+                                      ✕
+                                    </Button>
+                                  </div>
+                                  {(() => {
+                                    const usdPrice = parseFloat(editingPriceValue)
+                                    if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                      const calculated = calculateFinalPrice({
+                                        basePriceUSD: usdPrice,
+                                        usTaxRate: priceParams.usTaxRate,
+                                        shippingUSD: priceParams.shippingUSD,
+                                        chileVATRate: priceParams.chileVATRate,
+                                        exchangeRate: priceParams.exchangeRate,
+                                        profitMargin: priceParams.profitMargin,
+                                        mercadoPagoFee: priceParams.mercadoPagoFee,
+                                      })
+                                      return (
+                                        <div className="text-xs text-blue-600">
+                                          = ${calculated.finalPriceCLP.toLocaleString()} CLP
+                                        </div>
+                                      )
+                                    }
+                                    return null
+                                  })()}
+                                </div>
+                              ) : (
+                                <div 
+                                  className="cursor-pointer hover:bg-muted rounded px-2 py-1 inline-block"
+                                  onClick={() => {
+                                    setEditingPrice({ cardId: comp.cardId, field: 'foilPriceUSD' })
+                                    setEditingPriceValue(comp.marketFoilPriceUSD?.toString() || "")
+                                  }}
+                                  title="Click para ingresar precio foil en USD (se calculará automáticamente en CLP)"
+                                >
+                                  {comp.marketFoilPriceUSD ? `$${comp.marketFoilPriceUSD.toFixed(2)} USD` : "Click para ingresar"}
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell className="text-right font-semibold text-blue-600">
                               {comp.suggestedFoilPriceCLP ? `$${comp.suggestedFoilPriceCLP.toLocaleString()}` : "-"}
