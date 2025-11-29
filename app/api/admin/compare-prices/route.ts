@@ -206,10 +206,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Obtener parámetros de paginación
+    // Obtener parámetros de paginación (si no se pasan, procesar todas las cartas)
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get("page") || "1", 10)
-    const pageSize = parseInt(searchParams.get("pageSize") || "50", 10) // Procesar 50 cartas por vez
+    const pageParam = searchParams.get("page")
+    const pageSizeParam = searchParams.get("pageSize")
+    
+    // Si no se pasan parámetros, procesar todas las cartas (igual que catálogo)
+    const usePagination = pageParam !== null || pageSizeParam !== null
+    const page = pageParam ? parseInt(pageParam, 10) : 1
+    const pageSize = pageSizeParam ? parseInt(pageSizeParam, 10) : (usePagination ? 50 : 999999) // Si no hay paginación, procesar todas
     const skip = (page - 1) * pageSize
 
     if (!supabaseAdmin) {
@@ -299,14 +304,18 @@ export async function GET(request: NextRequest) {
     )
     
     const totalCards = nonPromoCards.length
-    const totalPages = Math.ceil(totalCards / pageSize)
+    const totalPages = usePagination ? Math.ceil(totalCards / pageSize) : 1
     
-    // Procesar solo el lote actual (paginación)
-    const startIndex = skip
-    const endIndex = Math.min(skip + pageSize, totalCards)
+    // Procesar todas las cartas si no hay paginación, o solo el lote actual si hay paginación
+    const startIndex = usePagination ? skip : 0
+    const endIndex = usePagination ? Math.min(skip + pageSize, totalCards) : totalCards
     const cardsToProcess = nonPromoCards.slice(startIndex, endIndex)
     
-    console.log(`🔄 Processing page ${page}/${totalPages} (cards ${startIndex + 1}-${endIndex} of ${totalCards})...`)
+    if (usePagination) {
+      console.log(`🔄 Processing page ${page}/${totalPages} (cards ${startIndex + 1}-${endIndex} of ${totalCards})...`)
+    } else {
+      console.log(`🔄 Processing all ${totalCards} cards (no pagination)...`)
+    }
 
     let processed = 0
     for (const apiCard of cardsToProcess) {
@@ -418,8 +427,8 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ Price comparison completed. Processed ${processed} cards in this batch.`)
 
-    // Calcular cartas solo en BD (solo en la última página para eficiencia)
-    if (page === totalPages) {
+    // Calcular cartas solo en BD (solo en la última página si hay paginación, o siempre si no hay paginación)
+    if (!usePagination || page === totalPages) {
       const allApiCardIds = new Set(
         nonPromoCards.map((apiCard) => generateCardId(apiCard.Set_Name, apiCard.Card_Num))
       )
@@ -461,15 +470,18 @@ export async function GET(request: NextRequest) {
         cardsOnlyInAPI,
         cardsOnlyInDB,
         stats: batchStats,
-        pagination: {
-          page,
-          pageSize,
-          totalPages,
-          totalCards,
-          totalInDatabase: dbCards.length,
-          totalInAPI: lorcanaCards.length,
-          hasMore: page < totalPages,
-        },
+        // Solo incluir paginación si se está usando
+        ...(usePagination && {
+          pagination: {
+            page,
+            pageSize,
+            totalPages,
+            totalCards,
+            totalInDatabase: dbCards.length,
+            totalInAPI: lorcanaCards.length,
+            hasMore: page < totalPages,
+          },
+        }),
       },
     })
   } catch (error) {

@@ -96,6 +96,7 @@ export default function ComparePricesPage() {
   const loadData = async () => {
     try {
       setRefreshing(true)
+      setLoading(true)
       
       // Obtener token de sesión para autenticación
       const { supabase } = await import("@/lib/db")
@@ -110,34 +111,32 @@ export default function ComparePricesPage() {
         headers["Authorization"] = `Bearer ${token}`
       }
 
-      // Cargar primera página para obtener información de paginación
-      const firstPageResponse = await fetch("/api/admin/compare-prices?page=1&pageSize=50", {
+      // Cargar todos los datos de una vez (igual que en catálogo)
+      const response = await fetch("/api/admin/compare-prices", {
         headers,
       })
       
-      if (!firstPageResponse.ok) {
-        const errorData = await firstPageResponse.json().catch(() => ({ error: "Unknown error" }))
-        throw new Error(errorData.error || `HTTP ${firstPageResponse.status}`)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+        throw new Error(errorData.error || `HTTP ${response.status}`)
       }
       
-      const firstPageResult = await firstPageResponse.json()
+      const result = await response.json()
 
-      if (!firstPageResult.success) {
-        throw new Error(firstPageResult.error || "Failed to load comparison data")
+      if (!result.success) {
+        throw new Error(result.error || "Failed to load comparison data")
       }
 
-      const pagination = firstPageResult.data.pagination
-      let allComparisons: ComparisonResult[] = [...firstPageResult.data.comparisons]
-      let allCardsOnlyInAPI: Array<{ name: string; set: string; number: number; rarity: string }> = [
-        ...firstPageResult.data.cardsOnlyInAPI,
-      ]
-      let allCardsOnlyInDB: Array<{ id: string; name: string; set: string }> = 
-        firstPageResult.data.cardsOnlyInDB || []
+      const allComparisons: ComparisonResult[] = result.data?.comparisons || []
+      const allCardsOnlyInAPI: Array<{ name: string; set: string; number: number; rarity: string }> = 
+        result.data?.cardsOnlyInAPI || []
+      const allCardsOnlyInDB: Array<{ id: string; name: string; set: string }> = 
+        result.data?.cardsOnlyInDB || []
 
-      // Mostrar primera página inmediatamente
-      const updateStats = () => ({
-        totalInDatabase: pagination.totalInDatabase || firstPageResult.data.stats.totalInDatabase,
-        totalInAPI: pagination.totalInAPI || firstPageResult.data.stats.totalInAPI,
+      // Calcular estadísticas
+      const stats = {
+        totalInDatabase: result.data?.stats?.totalInDatabase || 0,
+        totalInAPI: result.data?.stats?.totalInAPI || 0,
         totalCompared: allComparisons.length,
         withStock: allComparisons.filter((c) => c.hasStock).length,
         withoutStock: allComparisons.filter((c) => !c.hasStock).length,
@@ -152,7 +151,7 @@ export default function ComparePricesPage() {
                   100
               ) / 100
             : 0,
-      })
+      }
 
       // Log temporal para ver qué valores de set vienen en los datos
       const uniqueSetsInData = [...new Set(allComparisons.map(c => c.set))].sort()
@@ -161,104 +160,19 @@ export default function ComparePricesPage() {
         name: c.cardName,
         set: c.set
       })))
+      console.log(`✅ Comparaciones cargadas: ${allComparisons.length} cartas`)
 
       setData({
         comparisons: allComparisons,
         cardsOnlyInAPI: allCardsOnlyInAPI,
         cardsOnlyInDB: allCardsOnlyInDB,
-        stats: updateStats(),
+        stats,
       })
 
-      setLoading(false) // Ya podemos mostrar los datos
-
-      // Si hay más páginas, cargarlas en segundo plano y actualizar progresivamente
-      if (pagination.hasMore && pagination.totalPages > 1) {
-
-        // Cargar páginas restantes en paralelo (con límite para no sobrecargar)
-        const pagesToLoad = Array.from({ length: pagination.totalPages - 1 }, (_, i) => i + 2)
-        const batchSize = 5 // Cargar 5 páginas a la vez
-        let lastPageData: any = null
-
-        for (let i = 0; i < pagesToLoad.length; i += batchSize) {
-          const batch = pagesToLoad.slice(i, i + batchSize)
-          const batchPromises = batch.map(async (page) => {
-            const response = await fetch(`/api/admin/compare-prices?page=${page}&pageSize=50`, {
-              headers,
-            })
-            if (!response.ok) {
-              console.warn(`Failed to load page ${page}`)
-              return null
-            }
-            const result = await response.json()
-            return result.success ? result.data : null
-          })
-
-          const batchResults = await Promise.all(batchPromises)
-          
-          batchResults.forEach((pageData, index) => {
-            if (pageData) {
-              allComparisons.push(...pageData.comparisons)
-              allCardsOnlyInAPI.push(...pageData.cardsOnlyInAPI)
-              
-              // Guardar la última página para obtener cartas solo en BD
-              const pageNum = batch[index]
-              if (pageNum === pagination.totalPages) {
-                lastPageData = pageData
-              }
-            }
-          })
-
-          // Log temporal para ver qué valores de set vienen en los datos
-          const uniqueSetsInData = [...new Set(allComparisons.map(c => c.set))].sort()
-          console.log('🔍 Sets únicos después de cargar página:', uniqueSetsInData)
-
-          // Actualizar UI con datos parciales inmediatamente
-          setData({
-            comparisons: [...allComparisons],
-            cardsOnlyInAPI: [...allCardsOnlyInAPI],
-            cardsOnlyInDB: [...allCardsOnlyInDB],
-            stats: updateStats(),
-          })
-
-          // Mostrar progreso
-          const currentPage = Math.min(i + batchSize, pagesToLoad.length)
-          const totalPages = pagesToLoad.length
-          toast({
-            title: "Cargando...",
-            description: `Página ${currentPage}/${totalPages} (${allComparisons.length} cartas cargadas)`,
-            duration: 2000,
-          })
-        }
-
-        // Obtener cartas solo en BD de la última página
-        if (lastPageData && lastPageData.cardsOnlyInDB) {
-          allCardsOnlyInDB = lastPageData.cardsOnlyInDB
-        }
-
-        // Log final para ver todos los sets únicos
-        const finalUniqueSets = [...new Set(allComparisons.map(c => c.set))].sort()
-        console.log('🔍 Sets únicos FINALES en todos los datos:', finalUniqueSets)
-        console.log('🔍 Total de comparaciones:', allComparisons.length)
-
-        // Actualización final con todos los datos
-        setData({
-          comparisons: allComparisons,
-          cardsOnlyInAPI: allCardsOnlyInAPI,
-          cardsOnlyInDB: allCardsOnlyInDB,
-          stats: updateStats(),
-        })
-
-        toast({
-          title: "✅ Carga completada",
-          description: `Se procesaron ${allComparisons.length} cartas de ${pagination.totalPages} páginas`,
-        })
-      } else {
-        // Si solo hay una página, ya está todo cargado
-        toast({
-          title: "✅ Datos cargados",
-          description: `Se procesaron ${allComparisons.length} cartas`,
-        })
-      }
+      toast({
+        title: "✅ Datos cargados",
+        description: `Se procesaron ${allComparisons.length} cartas`,
+      })
     } catch (error) {
       console.error("Error loading comparison data:", error)
       toast({
