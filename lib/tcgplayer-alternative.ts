@@ -100,11 +100,107 @@ async function fetchWithRetry(
 }
 
 /**
+ * Obtener precio usando Lorcast API (especializada en Lorcana)
+ * Esta API proporciona precios de TCGPlayer para cartas de Lorcana
+ * Host: api.lorcast.com
+ */
+async function getPriceFromLorcast(
+  cardName: string,
+  options?: {
+    setId?: string // Set_ID de la API (ej: "TFC", "ROF")
+    cardNumber?: number // Número de la carta (ej: 1, 2, 3)
+    setName?: string // Nombre del set (ej: "The First Chapter")
+  }
+): Promise<CardPrice | null> {
+  try {
+    // Construir URL de búsqueda en Lorcast API
+    // La API de Lorcast permite búsqueda por nombre, set y número
+    let searchUrl = `https://api.lorcast.com/v1/cards/search?name=${encodeURIComponent(cardName)}`
+    
+    if (options?.setId) {
+      searchUrl += `&set=${encodeURIComponent(options.setId)}`
+    }
+    
+    if (options?.cardNumber) {
+      searchUrl += `&number=${options.cardNumber}`
+    }
+    
+    console.log(`🔍 Buscando en Lorcast API: ${searchUrl}`)
+    
+    const response = await fetch(searchUrl, {
+      headers: {
+        "Accept": "application/json",
+      },
+    })
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.warn(`⚠️ Lorcast API: Carta no encontrada - ${cardName}`)
+        return null
+      }
+      console.warn(`⚠️ Lorcast API error: ${response.status} ${response.statusText}`)
+      return null
+    }
+    
+    const data = await response.json()
+    
+    // La estructura de Lorcast puede variar, intentar diferentes formatos
+    let card = null
+    if (Array.isArray(data) && data.length > 0) {
+      // Si hay múltiples resultados, buscar el más cercano
+      card = data.find((c: any) => {
+        const name = (c.name || c.Name || "").toLowerCase()
+        const searchName = cardName.toLowerCase()
+        return name === searchName || name.includes(searchName) || searchName.includes(name.split(" - ")[0])
+      }) || data[0] // Si no encuentra exacto, usar el primero
+    } else if (data.card || data.data) {
+      card = data.card || data.data
+    } else if (data.name || data.Name) {
+      card = data
+    }
+    
+    if (!card) {
+      console.warn(`⚠️ Lorcast API: No se encontró carta en la respuesta`)
+      return null
+    }
+    
+    // Extraer precios - Lorcast proporciona precios en USD
+    const normalPrice = card.prices?.tcgplayer?.normal || 
+                       card.prices?.tcgplayer?.market ||
+                       card.prices?.normal ||
+                       card.tcgplayerPrice ||
+                       card.price ||
+                       null
+    
+    const foilPrice = card.prices?.tcgplayer?.foil ||
+                     card.prices?.foil ||
+                     card.tcgplayerFoilPrice ||
+                     card.foilPrice ||
+                     null
+    
+    if (normalPrice) {
+      console.log(`✅ Precio encontrado en Lorcast: $${normalPrice} USD${foilPrice ? ` (foil: $${foilPrice} USD)` : ''}`)
+      return {
+        normal: typeof normalPrice === 'number' ? normalPrice : parseFloat(String(normalPrice)),
+        foil: foilPrice ? (typeof foilPrice === 'number' ? foilPrice : parseFloat(String(foilPrice))) : null,
+        source: 'lorcast-tcgplayer',
+      }
+    }
+    
+    return null
+  } catch (error) {
+    console.warn(`⚠️ Error obteniendo precio de Lorcast:`, error)
+    return null
+  }
+}
+
+/**
  * Obtener precio usando CardMarket API TCG (via RapidAPI)
  * Esta API agrega datos de TCGPlayer y otros mercados
  * Host: cardmarket-api-tcg.p.rapidapi.com
  * 
- * Ahora acepta set y número para búsqueda más precisa
+ * NOTA: Esta API NO tiene soporte para Lorcana actualmente
+ * Se mantiene como fallback pero probablemente retornará null
  */
 async function getPriceFromCardMarket(
   cardName: string,
@@ -263,11 +359,14 @@ async function getPriceFromCardMarket(
         // 404 significa que el endpoint no existe o la carta no se encuentra
         // NO hacer retry, simplemente retornar null
         console.warn(`⚠️ CardMarket API: Carta no encontrada (404) - ${cardName}`)
+        console.warn(`⚠️ Posible causa: El endpoint /lorcana/products puede no existir o no tener datos de Lorcana`)
         // Guardar en cache como null por más tiempo para evitar intentos repetidos
         priceCache.set(cacheKey, { price: null, timestamp: Date.now() + 3600000 }) // Cache por 1 hora
         return null
       } else {
+        const errorText = await response.text().catch(() => 'No se pudo leer el error')
         console.warn(`⚠️ CardMarket API error: ${response.status} ${response.statusText} para ${cardName}`)
+        console.warn(`⚠️ Detalle del error:`, errorText.substring(0, 300))
         // Para otros errores 4xx, no hacer retry
         if (response.status >= 400 && response.status < 500) {
           priceCache.set(cacheKey, { price: null, timestamp: Date.now() + 300000 }) // Cache por 5 minutos
@@ -301,7 +400,16 @@ async function getPriceFromCardMarket(
       return null
     }
 
-    const data = await response.json()
+    let data: any
+    try {
+      data = await response.json()
+    } catch (parseError) {
+      console.error(`❌ Error parseando JSON de la respuesta:`, parseError)
+      const text = await response.text().catch(() => 'No se pudo leer la respuesta')
+      console.error(`❌ Respuesta recibida (primeros 500 chars):`, text.substring(0, 500))
+      priceCache.set(cacheKey, { price: null, timestamp: Date.now() + 3600000 })
+      return null
+    }
     
     // Log de la estructura de datos recibida
     console.log(`📦 Estructura de datos recibida:`, {
@@ -309,10 +417,17 @@ async function getPriceFromCardMarket(
       hasProducts: !!data.products,
       hasResults: !!data.results,
       hasData: !!data.data,
-      keys: typeof data === 'object' ? Object.keys(data) : 'not an object',
-      firstItem: Array.isArray(data) && data.length > 0 ? data[0] : (data.products?.[0] || data.results?.[0] || data.data?.[0] || null),
-      totalItems: Array.isArray(data) ? data.length : (data.products?.length || data.results?.length || data.data?.length || 0),
+      keys: typeof data === 'object' && data !== null ? Object.keys(data) : 'not an object',
+      firstItem: Array.isArray(data) && data.length > 0 ? data[0] : (data?.products?.[0] || data?.results?.[0] || data?.data?.[0] || null),
+      totalItems: Array.isArray(data) ? data.length : (data?.products?.length || data?.results?.length || data?.data?.length || 0),
     })
+    
+    // Si no hay datos, retornar null
+    if (!data || (Array.isArray(data) && data.length === 0) && !data.products && !data.results && !data.data) {
+      console.warn(`⚠️ Respuesta vacía o sin datos para ${cardName}`)
+      priceCache.set(cacheKey, { price: null, timestamp: Date.now() + 3600000 })
+      return null
+    }
     
     // Pasar set y número a searchInProducts para búsqueda más precisa
     const result = await searchInProducts(data, cardName, rapidApiKey, options)
@@ -570,8 +685,18 @@ export async function getTCGPlayerPriceAlternative(
     options,
   })
 
-  // Intentar Card Market API primero (si está configurada)
-  // Pasar set y número para búsqueda más precisa
+  // PRIORIDAD 1: Intentar Lorcast API (especializada en Lorcana)
+  console.log(`🔄 Intentando Lorcast API (especializada en Lorcana)...`)
+  const lorcastPrice = await getPriceFromLorcast(cardName, options)
+  console.log(`📊 Resultado Lorcast:`, lorcastPrice)
+  
+  if (lorcastPrice && lorcastPrice.normal) {
+    console.log(`✅ Precio encontrado en Lorcast: $${lorcastPrice.normal} USD`)
+    return lorcastPrice
+  }
+
+  // PRIORIDAD 2: Intentar Card Market API (si está configurada)
+  // NOTA: Esta API NO tiene soporte para Lorcana actualmente
   console.log(`🔄 Intentando CardMarket API...`)
   const cardMarketPrice = await getPriceFromCardMarket(cardName, options)
   console.log(`📊 Resultado CardMarket:`, cardMarketPrice)
@@ -581,7 +706,7 @@ export async function getTCGPlayerPriceAlternative(
     return cardMarketPrice
   }
 
-  // Intentar TCGAPIs como alternativa
+  // PRIORIDAD 3: Intentar TCGAPIs como alternativa
   console.log(`🔄 Intentando TCGAPIs como alternativa...`)
   const tcgApisPrice = await getPriceFromTCGAPIs(cardName)
   console.log(`📊 Resultado TCGAPIs:`, tcgApisPrice)
@@ -592,6 +717,7 @@ export async function getTCGPlayerPriceAlternative(
   }
 
   console.warn(`⚠️ No se encontró precio en ninguna fuente para ${cardName}`)
+  console.warn(`⚠️ Nota: La API de CardMarket no tiene soporte para Lorcana. Considera usar Lorcast API.`)
   return null
 }
 

@@ -345,6 +345,20 @@ export default function ComparePricesPage() {
         throw new Error(result.error || "Error al buscar precio")
       }
 
+      // Si no se encontró precio, mostrar mensaje informativo
+      if (result.data && !result.data.marketPriceUSD) {
+        toast({
+          variant: "default",
+          title: "⚠️ Precio no encontrado",
+          description: `No se encontró precio de TCGPlayer para ${comp.cardName}. La API de CardMarket no tiene soporte para Lorcana.`,
+        })
+      } else if (result.data && result.data.marketPriceUSD) {
+        toast({
+          title: "✅ Precio TCGPlayer obtenido",
+          description: `Precio de ${comp.cardName} encontrado: $${result.data.marketPriceUSD} USD`,
+        })
+      }
+
       // Actualizar el estado local con los nuevos datos
       if (data && result.data) {
         const updatedComparisons = data.comparisons.map((c) => {
@@ -390,14 +404,18 @@ export default function ComparePricesPage() {
         })
       }
 
-      toast({
-        title: result.data.marketPriceUSD 
-          ? "✅ Precio encontrado" 
-          : "⚠️ Precio no encontrado",
-        description: result.data.marketPriceUSD
-          ? `Precio TCGPlayer: $${result.data.marketPriceUSD.toFixed(2)} USD`
-          : "No se pudo obtener precio de TCGPlayer para esta carta",
-      })
+      if (result.data.marketPriceUSD) {
+        toast({
+          title: "✅ Precio encontrado",
+          description: `Precio TCGPlayer: $${result.data.marketPriceUSD.toFixed(2)} USD${result.data.marketFoilPriceUSD ? ` (Foil: $${result.data.marketFoilPriceUSD.toFixed(2)} USD)` : ''}`,
+        })
+      } else {
+        toast({
+          variant: "default",
+          title: "⚠️ Precio no encontrado",
+          description: `La API de CardMarket no tiene soporte para Lorcana. Se intentó buscar en Lorcast API como alternativa.`,
+        })
+      }
     } catch (error) {
       console.error("Error fetching price:", error)
       toast({
