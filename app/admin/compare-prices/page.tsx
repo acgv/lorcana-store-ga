@@ -6,6 +6,7 @@ import { AdminHeader } from "@/components/admin-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -93,6 +94,36 @@ export default function ComparePricesPage() {
   const [filterPrice, setFilterPrice] = useState<string>("all")
   const [activeTab, setActiveTab] = useState("comparison")
 
+  // Parámetros de cálculo editables
+  const [priceParams, setPriceParams] = useState({
+    usTaxRate: 0.08,
+    shippingUSD: 8,
+    chileVATRate: 0.19,
+    exchangeRate: 1000,
+    profitMargin: 0.20,
+    mercadoPagoFee: 0.034,
+  })
+
+  // Cargar parámetros desde localStorage al inicio
+  useEffect(() => {
+    const saved = localStorage.getItem("priceCalculationParams")
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        setPriceParams(parsed)
+      } catch (e) {
+        console.error("Error loading price params:", e)
+      }
+    }
+  }, [])
+
+  // Guardar parámetros en localStorage cuando cambien
+  const updatePriceParam = (key: keyof typeof priceParams, value: number) => {
+    const updated = { ...priceParams, [key]: value }
+    setPriceParams(updated)
+    localStorage.setItem("priceCalculationParams", JSON.stringify(updated))
+  }
+
   const loadData = async (setFilter?: string) => {
     try {
       setRefreshing(true)
@@ -111,7 +142,7 @@ export default function ComparePricesPage() {
         headers["Authorization"] = `Bearer ${token}`
       }
 
-      // Construir URL con filtro de set (siempre se envía, incluso si es "all")
+      // Construir URL con filtro de set y parámetros de cálculo
       const url = new URL("/api/admin/compare-prices", window.location.origin)
       const setToFilter = setFilter !== undefined ? setFilter : filterSet
       if (setToFilter && setToFilter !== "all") {
@@ -120,6 +151,14 @@ export default function ComparePricesPage() {
       } else {
         console.log(`🔍 Cargando datos para todos los sets`)
       }
+      
+      // Agregar parámetros de cálculo de precios
+      url.searchParams.set("usTaxRate", priceParams.usTaxRate.toString())
+      url.searchParams.set("shippingUSD", priceParams.shippingUSD.toString())
+      url.searchParams.set("chileVATRate", priceParams.chileVATRate.toString())
+      url.searchParams.set("exchangeRate", priceParams.exchangeRate.toString())
+      url.searchParams.set("profitMargin", priceParams.profitMargin.toString())
+      url.searchParams.set("mercadoPagoFee", priceParams.mercadoPagoFee.toString())
 
       // Cargar todos los datos de una vez (igual que en catálogo)
       const response = await fetch(url.toString(), {
@@ -322,6 +361,118 @@ export default function ComparePricesPage() {
               )}
             </Button>
           </div>
+
+          {/* Parámetros de Cálculo Editables */}
+          <Card className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Parámetros de Cálculo de Precios</CardTitle>
+                  <CardDescription>
+                    Edita los valores constantes utilizados para calcular los precios sugeridos
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={loadData} 
+                  disabled={refreshing}
+                  variant="outline"
+                  size="sm"
+                >
+                  {refreshing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Recalculando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Recalcular Precios
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="usTaxRate">Tax en EEUU (ej: 0.08)</Label>
+                  <Input
+                    id="usTaxRate"
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    max="1"
+                    value={priceParams.usTaxRate}
+                    onChange={(e) => updatePriceParam("usTaxRate", parseFloat(e.target.value) || 0)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="shippingUSD">Envío en USD</Label>
+                  <Input
+                    id="shippingUSD"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={priceParams.shippingUSD}
+                    onChange={(e) => updatePriceParam("shippingUSD", parseFloat(e.target.value) || 0)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="chileVATRate">IVA Chile (19%)</Label>
+                  <Input
+                    id="chileVATRate"
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    max="1"
+                    value={priceParams.chileVATRate}
+                    onChange={(e) => updatePriceParam("chileVATRate", parseFloat(e.target.value) || 0)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="exchangeRate">Tipo de cambio USD→CLP</Label>
+                  <Input
+                    id="exchangeRate"
+                    type="number"
+                    step="1"
+                    min="1"
+                    value={priceParams.exchangeRate}
+                    onChange={(e) => updatePriceParam("exchangeRate", parseFloat(e.target.value) || 0)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="profitMargin">Ganancia deseada (ej: 0.20)</Label>
+                  <Input
+                    id="profitMargin"
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    max="1"
+                    value={priceParams.profitMargin}
+                    onChange={(e) => updatePriceParam("profitMargin", parseFloat(e.target.value) || 0)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mercadoPagoFee">Comisión MercadoPago (ej: 0.034)</Label>
+                  <Input
+                    id="mercadoPagoFee"
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    max="1"
+                    value={priceParams.mercadoPagoFee}
+                    onChange={(e) => updatePriceParam("mercadoPagoFee", parseFloat(e.target.value) || 0)}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Estadísticas */}
           {data?.stats && (

@@ -231,7 +231,17 @@ export async function GET(request: NextRequest) {
     const fetchExternalPrices = searchParams.get("fetchExternalPrices") === "true" // Opcional: solo si se solicita explícitamente
     const filterSet = searchParams.get("set") // Filtro por set (igual que en catálogo)
     
-    console.log(`🔍 API recibió parámetros:`, { filterSet, pageParam, pageSizeParam })
+    // Parámetros de cálculo de precios (opcionales, si no se pasan usa defaults)
+    const customParams = {
+      usTaxRate: searchParams.get("usTaxRate") ? parseFloat(searchParams.get("usTaxRate")!) : undefined,
+      shippingUSD: searchParams.get("shippingUSD") ? parseFloat(searchParams.get("shippingUSD")!) : undefined,
+      chileVATRate: searchParams.get("chileVATRate") ? parseFloat(searchParams.get("chileVATRate")!) : undefined,
+      exchangeRate: searchParams.get("exchangeRate") ? parseFloat(searchParams.get("exchangeRate")!) : undefined,
+      profitMargin: searchParams.get("profitMargin") ? parseFloat(searchParams.get("profitMargin")!) : undefined,
+      mercadoPagoFee: searchParams.get("mercadoPagoFee") ? parseFloat(searchParams.get("mercadoPagoFee")!) : undefined,
+    }
+    
+    console.log(`🔍 API recibió parámetros:`, { filterSet, pageParam, pageSizeParam, customParams })
     
     // Si no se pasan parámetros, procesar todas las cartas (igual que catálogo)
     const usePagination = pageParam !== null || pageSizeParam !== null
@@ -410,7 +420,17 @@ export async function GET(request: NextRequest) {
 
       if (dbCard) {
         // Calcular precio sugerido usando la fórmula del Excel
-        const calcParams = getCalculationParams()
+        // Usar parámetros personalizados si se proporcionaron, sino usar defaults
+        const calcParams = {
+          ...getCalculationParams(),
+          ...(customParams.usTaxRate !== undefined && { usTaxRate: customParams.usTaxRate }),
+          ...(customParams.shippingUSD !== undefined && { shippingUSD: customParams.shippingUSD }),
+          ...(customParams.chileVATRate !== undefined && { chileVATRate: customParams.chileVATRate }),
+          ...(customParams.exchangeRate !== undefined && { exchangeRate: customParams.exchangeRate }),
+          ...(customParams.profitMargin !== undefined && { profitMargin: customParams.profitMargin }),
+          ...(customParams.mercadoPagoFee !== undefined && { mercadoPagoFee: customParams.mercadoPagoFee }),
+        }
+        
         let suggestedPriceCLP: number | null = null
         let suggestedFoilPriceCLP: number | null = null
 
