@@ -563,6 +563,13 @@ export async function GET(request: NextRequest) {
         : 0,
     }
 
+    console.log(`✅ API respondiendo con:`, {
+      comparisons: comparisons.length,
+      cardsOnlyInAPI: cardsOnlyInAPI.length,
+      cardsOnlyInDB: cardsOnlyInDB.length,
+      stats: batchStats,
+    })
+
     return NextResponse.json({
       success: true,
       data: {

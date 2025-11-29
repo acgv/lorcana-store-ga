@@ -205,6 +205,13 @@ export default function ComparePricesPage() {
       const allCardsOnlyInDB: Array<{ id: string; name: string; set: string }> = 
         result.data?.cardsOnlyInDB || []
 
+      console.log(`📊 Datos recibidos de la API:`, {
+        comparisons: allComparisons.length,
+        cardsOnlyInAPI: allCardsOnlyInAPI.length,
+        cardsOnlyInDB: allCardsOnlyInDB.length,
+        stats: result.data?.stats,
+      })
+
       // Calcular estadísticas
       const stats = {
         totalInDatabase: result.data?.stats?.totalInDatabase || 0,
@@ -226,14 +233,25 @@ export default function ComparePricesPage() {
       }
 
       // Log temporal para ver qué valores de set vienen en los datos
-      const uniqueSetsInData = [...new Set(allComparisons.map(c => c.set))].sort()
-      console.log('🔍 Sets únicos en los datos cargados:', uniqueSetsInData)
-      console.log('🔍 Muestra de datos (primeros 5):', allComparisons.slice(0, 5).map(c => ({
-        name: c.cardName,
-        set: c.set
-      })))
+      if (allComparisons.length > 0) {
+        const uniqueSetsInData = [...new Set(allComparisons.map(c => c.set))].sort()
+        console.log('🔍 Sets únicos en los datos cargados:', uniqueSetsInData)
+        console.log('🔍 Muestra de datos (primeros 5):', allComparisons.slice(0, 5).map(c => ({
+          name: c.cardName,
+          set: c.set,
+          suggestedPrice: c.suggestedPriceCLP,
+          currentPrice: c.currentPrice
+        })))
+      }
       console.log(`✅ Comparaciones cargadas: ${allComparisons.length} cartas`)
 
+      console.log(`📦 Estableciendo datos en el estado:`, {
+        comparisons: allComparisons.length,
+        cardsOnlyInAPI: allCardsOnlyInAPI.length,
+        cardsOnlyInDB: allCardsOnlyInDB.length,
+      })
+
+      // Actualizar estado de datos primero
       setData({
         comparisons: allComparisons,
         cardsOnlyInAPI: allCardsOnlyInAPI,
@@ -246,12 +264,18 @@ export default function ComparePricesPage() {
         description: `Se procesaron ${allComparisons.length} cartas`,
       })
     } catch (error) {
-      console.error("Error loading comparison data:", error)
+      console.error("❌ Error loading comparison data:", error)
+      console.error("Error details:", {
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+      })
       toast({
         variant: "destructive",
         title: "Error",
         description: error instanceof Error ? error.message : "No se pudo cargar la comparativa",
       })
+      // Asegurar que el loading se desactive incluso si hay error
+      setData(null)
     } finally {
       setLoading(false)
       setRefreshing(false)
