@@ -241,7 +241,20 @@ export async function GET(request: NextRequest) {
       mercadoPagoFee: searchParams.get("mercadoPagoFee") ? parseFloat(searchParams.get("mercadoPagoFee")!) : undefined,
     }
     
-    console.log(`🔍 API recibió parámetros:`, { filterSet, pageParam, pageSizeParam, customParams })
+    console.log(`🔍 API recibió parámetros:`, { 
+      filterSet, 
+      pageParam, 
+      pageSizeParam, 
+      customParams,
+      rawParams: {
+        usTaxRate: searchParams.get("usTaxRate"),
+        shippingUSD: searchParams.get("shippingUSD"),
+        chileVATRate: searchParams.get("chileVATRate"),
+        exchangeRate: searchParams.get("exchangeRate"),
+        profitMargin: searchParams.get("profitMargin"),
+        mercadoPagoFee: searchParams.get("mercadoPagoFee"),
+      }
+    })
     
     // Si no se pasan parámetros, procesar todas las cartas (igual que catálogo)
     const usePagination = pageParam !== null || pageSizeParam !== null
@@ -421,14 +434,25 @@ export async function GET(request: NextRequest) {
       if (dbCard) {
         // Calcular precio sugerido usando la fórmula del Excel
         // Usar parámetros personalizados si se proporcionaron, sino usar defaults
+        const defaultParams = getCalculationParams()
         const calcParams = {
-          ...getCalculationParams(),
+          ...defaultParams,
           ...(customParams.usTaxRate !== undefined && { usTaxRate: customParams.usTaxRate }),
           ...(customParams.shippingUSD !== undefined && { shippingUSD: customParams.shippingUSD }),
           ...(customParams.chileVATRate !== undefined && { chileVATRate: customParams.chileVATRate }),
           ...(customParams.exchangeRate !== undefined && { exchangeRate: customParams.exchangeRate }),
           ...(customParams.profitMargin !== undefined && { profitMargin: customParams.profitMargin }),
           ...(customParams.mercadoPagoFee !== undefined && { mercadoPagoFee: customParams.mercadoPagoFee }),
+        }
+        
+        // Log solo para las primeras 3 cartas para no saturar
+        if (processed < 3) {
+          console.log(`💰 Cálculo de precio para ${apiCard.Name}:`, {
+            marketPriceUSD,
+            defaultParams,
+            customParams,
+            finalCalcParams: calcParams,
+          })
         }
         
         let suggestedPriceCLP: number | null = null

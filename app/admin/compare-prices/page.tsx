@@ -119,9 +119,12 @@ export default function ComparePricesPage() {
 
   // Guardar parámetros en localStorage cuando cambien
   const updatePriceParam = (key: keyof typeof priceParams, value: number) => {
-    const updated = { ...priceParams, [key]: value }
-    setPriceParams(updated)
-    localStorage.setItem("priceCalculationParams", JSON.stringify(updated))
+    setPriceParams((prev) => {
+      const updated = { ...prev, [key]: value }
+      localStorage.setItem("priceCalculationParams", JSON.stringify(updated))
+      console.log(`📝 Parámetro actualizado: ${key} = ${value}`, updated)
+      return updated
+    })
   }
 
   const loadData = async (setFilter?: string) => {
@@ -152,13 +155,33 @@ export default function ComparePricesPage() {
         console.log(`🔍 Cargando datos para todos los sets`)
       }
       
-      // Agregar parámetros de cálculo de precios
-      url.searchParams.set("usTaxRate", priceParams.usTaxRate.toString())
-      url.searchParams.set("shippingUSD", priceParams.shippingUSD.toString())
-      url.searchParams.set("chileVATRate", priceParams.chileVATRate.toString())
-      url.searchParams.set("exchangeRate", priceParams.exchangeRate.toString())
-      url.searchParams.set("profitMargin", priceParams.profitMargin.toString())
-      url.searchParams.set("mercadoPagoFee", priceParams.mercadoPagoFee.toString())
+      // Obtener parámetros actuales (desde estado o localStorage como fallback para asegurar valores más recientes)
+      const currentParams = (() => {
+        const saved = localStorage.getItem("priceCalculationParams")
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved)
+            // Sincronizar estado con localStorage si hay diferencia
+            if (JSON.stringify(parsed) !== JSON.stringify(priceParams)) {
+              setPriceParams(parsed)
+            }
+            return parsed
+          } catch (e) {
+            return priceParams
+          }
+        }
+        return priceParams
+      })()
+
+      // Agregar parámetros de cálculo de precios (usar los más recientes)
+      url.searchParams.set("usTaxRate", currentParams.usTaxRate.toString())
+      url.searchParams.set("shippingUSD", currentParams.shippingUSD.toString())
+      url.searchParams.set("chileVATRate", currentParams.chileVATRate.toString())
+      url.searchParams.set("exchangeRate", currentParams.exchangeRate.toString())
+      url.searchParams.set("profitMargin", currentParams.profitMargin.toString())
+      url.searchParams.set("mercadoPagoFee", currentParams.mercadoPagoFee.toString())
+      
+      console.log("🔍 Enviando parámetros de cálculo:", currentParams)
 
       // Cargar todos los datos de una vez (igual que en catálogo)
       const response = await fetch(url.toString(), {
