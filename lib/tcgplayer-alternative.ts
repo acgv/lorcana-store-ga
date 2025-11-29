@@ -128,8 +128,7 @@ async function getPriceFromLorcast(
     
     for (const searchUrl of endpoints) {
       try {
-        console.log(`🔍 Intentando Lorcast API: ${searchUrl}`)
-        
+        // No loggear cada intento - solo si hay éxito o error inesperado
         const response = await fetch(searchUrl, {
           headers: {
             "Accept": "application/json",
@@ -139,19 +138,19 @@ async function getPriceFromLorcast(
         })
         
         if (!response.ok) {
+          // 404 es esperado - Lorcast no tiene soporte para Lorcana, no loggear
           if (response.status === 404) {
-            console.warn(`⚠️ Lorcast API (404): Endpoint no encontrado - ${searchUrl}`)
             continue // Intentar siguiente endpoint
           }
-          console.warn(`⚠️ Lorcast API error (${response.status}): ${response.statusText}`)
+          // Solo loggear errores inesperados (no 404)
+          if (response.status !== 404) {
+            console.warn(`⚠️ Lorcast API error (${response.status}): ${response.statusText}`)
+          }
           continue
         }
         
         const data = await response.json()
-        console.log(`📦 Respuesta de Lorcast:`, {
-          isArray: Array.isArray(data),
-          keys: typeof data === 'object' && data !== null ? Object.keys(data) : 'not an object',
-        })
+        // Solo loggear si encontramos datos útiles
         
         // La estructura de Lorcast puede variar, intentar diferentes formatos
         let card = null
@@ -169,7 +168,6 @@ async function getPriceFromLorcast(
         }
         
         if (!card) {
-          console.warn(`⚠️ Lorcast API: No se encontró carta en la respuesta`)
           continue // Intentar siguiente endpoint
         }
         
@@ -196,16 +194,12 @@ async function getPriceFromLorcast(
           }
         }
       } catch (fetchError) {
-        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          console.warn(`⚠️ Lorcast API: Timeout en ${searchUrl}`)
-        } else {
-          console.warn(`⚠️ Lorcast API: Error en ${searchUrl}:`, fetchError)
-        }
+        // No loggear errores de timeout o 404 - son esperados
         continue // Intentar siguiente endpoint
       }
     }
     
-    console.warn(`⚠️ Lorcast API: No se encontró precio después de intentar ${endpoints.length} endpoints`)
+    // No loggear que Lorcast falló - es esperado que no tenga soporte para Lorcana
     return null
   } catch (error) {
     console.warn(`⚠️ Error obteniendo precio de Lorcast:`, error)
@@ -336,7 +330,7 @@ async function getPriceFromCardMarket(
         } else if (response.status === 404) {
           // Si es 404, marcar y continuar con el siguiente
           last404Endpoint = url
-          console.warn(`⚠️ Endpoint no encontrado (404): ${url}`)
+          // 404 es esperado - CardMarket no tiene soporte para Lorcana, no loggear
           continue
         } else if (response.status === 429) {
           // Si es rate limit, esperar más tiempo antes de intentar el siguiente endpoint
@@ -362,7 +356,7 @@ async function getPriceFromCardMarket(
     }
     
     if (!response) {
-      console.warn(`⚠️ CardMarket API: No endpoints available for Lorcana`)
+      // CardMarket no tiene soporte para Lorcana - no loggear
       // Guardar en cache como null para evitar intentos repetidos
       priceCache.set(cacheKey, { price: null, timestamp: Date.now() })
       return null
@@ -377,8 +371,7 @@ async function getPriceFromCardMarket(
       } else if (response.status === 404) {
         // 404 significa que el endpoint no existe o la carta no se encuentra
         // NO hacer retry, simplemente retornar null
-        console.warn(`⚠️ CardMarket API: Carta no encontrada (404) - ${cardName}`)
-        console.warn(`⚠️ Posible causa: El endpoint /lorcana/products puede no existir o no tener datos de Lorcana`)
+        // 404 es esperado - CardMarket no tiene soporte para Lorcana, no loggear
         // Guardar en cache como null por más tiempo para evitar intentos repetidos
         priceCache.set(cacheKey, { price: null, timestamp: Date.now() + 3600000 }) // Cache por 1 hora
         return null
@@ -924,9 +917,9 @@ export async function getTCGPlayerPriceAlternative(
   })
 
   // PRIORIDAD 1: Intentar Lorcast API (especializada en Lorcana)
-  console.log(`🔄 Intentando Lorcast API (especializada en Lorcana)...`)
+  // PRIORIDAD 1: Intentar Lorcast API (especializada en Lorcana)
+  // NOTA: Lorcast actualmente no tiene soporte para Lorcana, pero lo intentamos por si acaso
   const lorcastPrice = await getPriceFromLorcast(cardName, options)
-  console.log(`📊 Resultado Lorcast:`, lorcastPrice)
   
   if (lorcastPrice && lorcastPrice.normal) {
     console.log(`✅ Precio encontrado en Lorcast: $${lorcastPrice.normal} USD`)
@@ -935,9 +928,7 @@ export async function getTCGPlayerPriceAlternative(
 
   // PRIORIDAD 2: Intentar Card Market API (si está configurada)
   // NOTA: Esta API NO tiene soporte para Lorcana actualmente
-  console.log(`🔄 Intentando CardMarket API...`)
   const cardMarketPrice = await getPriceFromCardMarket(cardName, options)
-  console.log(`📊 Resultado CardMarket:`, cardMarketPrice)
   
   if (cardMarketPrice && cardMarketPrice.normal) {
     console.log(`✅ Precio encontrado en CardMarket: $${cardMarketPrice.normal} USD`)
@@ -945,9 +936,7 @@ export async function getTCGPlayerPriceAlternative(
   }
 
   // PRIORIDAD 3: Intentar TCGAPIs como alternativa
-  console.log(`🔄 Intentando TCGAPIs como alternativa...`)
   const tcgApisPrice = await getPriceFromTCGAPIs(cardName)
-  console.log(`📊 Resultado TCGAPIs:`, tcgApisPrice)
   
   if (tcgApisPrice && tcgApisPrice.normal) {
     console.log(`✅ Precio encontrado en TCGAPIs: $${tcgApisPrice.normal} USD`)
@@ -956,22 +945,31 @@ export async function getTCGPlayerPriceAlternative(
 
   // PRIORIDAD 4: Intentar scraping de TCGPlayer (última opción)
   // NOTA: Esto puede violar términos de servicio de TCGPlayer
-  console.log(`🔄 Intentando scraping de TCGPlayer (última opción)...`)
   try {
     const scrapingPrice = await getPriceFromTCGPlayerScraping(cardName, options)
-    console.log(`📊 Resultado scraping:`, scrapingPrice)
     
     if (scrapingPrice && scrapingPrice.normal) {
       console.log(`✅ Precio encontrado en TCGPlayer (scraping): $${scrapingPrice.normal} USD`)
       return scrapingPrice
     }
   } catch (error) {
-    console.warn(`⚠️ Error en scraping de TCGPlayer:`, error)
+    // No loggear errores de scraping - son esperados si está bloqueado
   }
 
-  console.warn(`⚠️ No se encontró precio real de mercado para ${cardName}`)
-  console.warn(`⚠️ IMPORTANTE: No hay APIs públicas confiables para precios reales de Lorcana.`)
-  console.warn(`⚠️ Opciones: 1) Usar scraping (puede violar ToS), 2) Implementar API propia, 3) Usar precios estándar como fallback`)
+  // PRIORIDAD 5: Intentar scraping de eBay (última opción)
+  try {
+    const ebayPrice = await getPriceFromEbayScraping(cardName, options)
+    
+    if (ebayPrice && ebayPrice.normal) {
+      console.log(`✅ Precio encontrado en eBay (scraping): $${ebayPrice.normal} USD`)
+      return ebayPrice
+    }
+  } catch (error) {
+    // No loggear errores de scraping - son esperados si está bloqueado
+  }
+
+  // Solo mostrar un resumen al final si no se encontró precio
+  console.warn(`⚠️ No se encontró precio de mercado para ${cardName} en ninguna fuente disponible`)
   return null
 }
 
