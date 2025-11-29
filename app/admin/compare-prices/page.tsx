@@ -88,7 +88,7 @@ export default function ComparePricesPage() {
   const [data, setData] = useState<ComparisonData | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterRarity, setFilterRarity] = useState<string>("all")
-  const [filterSet, setFilterSet] = useState<string>("all")
+  const [filterSet, setFilterSet] = useState<string>("firstChapter") // Por defecto set 1
   const [filterStock, setFilterStock] = useState<string>("all")
   const [filterPrice, setFilterPrice] = useState<string>("all")
   const [activeTab, setActiveTab] = useState("comparison")
@@ -111,11 +111,14 @@ export default function ComparePricesPage() {
         headers["Authorization"] = `Bearer ${token}`
       }
 
-      // Construir URL con filtro de set si se especifica
+      // Construir URL con filtro de set (siempre se envía, incluso si es "all")
       const url = new URL("/api/admin/compare-prices", window.location.origin)
-      const setToFilter = setFilter || filterSet
+      const setToFilter = setFilter !== undefined ? setFilter : filterSet
       if (setToFilter && setToFilter !== "all") {
         url.searchParams.set("set", setToFilter)
+        console.log(`🔍 Cargando datos para set: ${setToFilter}`)
+      } else {
+        console.log(`🔍 Cargando datos para todos los sets`)
       }
 
       // Cargar todos los datos de una vez (igual que en catálogo)
@@ -195,6 +198,7 @@ export default function ComparePricesPage() {
 
   // Cargar datos cuando cambie el filtro de set (o carga inicial)
   useEffect(() => {
+    console.log(`🔄 useEffect triggered - filterSet: ${filterSet}`)
     loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterSet])
@@ -258,7 +262,8 @@ export default function ComparePricesPage() {
         return false
       }
 
-      // Filtro por set (comparación directa como en catálogo y mi colección)
+      // Filtro por set ya se aplica en el backend, pero mantenemos la validación por si acaso
+      // (Los datos ya vienen filtrados del backend, así que esto no debería ser necesario)
       if (filterSet !== "all" && comp.set !== filterSet) {
         return false
       }
