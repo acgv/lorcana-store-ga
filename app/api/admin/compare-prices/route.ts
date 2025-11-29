@@ -190,9 +190,27 @@ const rarityMap: Record<string, string> = {
 }
 
 // Generar ID de carta igual que en el script de importación
-function generateCardId(setName: string, cardNum: number): string {
-  const mappedSet = setMap[setName] || setName.toLowerCase().replace(/\s+/g, '')
-  return `${mappedSet}-${cardNum}`.toLowerCase()
+// El script usa Set_ID (ej: "TFC") no el nombre del set
+function generateCardId(setName: string, cardNum: number, setId?: string): string {
+  // Si tenemos Set_ID, usarlo directamente (como en el script de importación)
+  if (setId) {
+    return `${setId}-${cardNum}`.toLowerCase()
+  }
+  // Fallback: mapear nombre del set a Set_ID conocido
+  const setIdMap: Record<string, string> = {
+    'The First Chapter': 'tfc',
+    'Rise of the Floodborn': 'rof',
+    'Into the Inklands': 'iti',
+    "Ursula's Return": 'ur',
+    'Shimmering Skies': 'ss',
+    'Azurite Sea': 'as',
+    "Archazia's Island": 'ai',
+    'Reign of Jafar': 'roj',
+    'Fabled': 'f',
+    'Whispers in the Well': 'wiw',
+  }
+  const mappedSetId = setIdMap[setName] || setName.toLowerCase().replace(/\s+/g, '')
+  return `${mappedSetId}-${cardNum}`.toLowerCase()
 }
 
 export async function GET(request: NextRequest) {
@@ -355,7 +373,8 @@ export async function GET(request: NextRequest) {
 
     let processed = 0
     for (const apiCard of cardsToProcess) {
-      const cardId = generateCardId(apiCard.Set_Name, apiCard.Card_Num)
+      // Usar Set_ID para generar el ID (igual que en el script de importación)
+      const cardId = generateCardId(apiCard.Set_Name, apiCard.Card_Num, apiCard.Set_ID)
       const dbCard = dbCardsMap.get(cardId)
 
       const rarity = rarityMap[apiCard.Rarity] || "common"
@@ -467,7 +486,7 @@ export async function GET(request: NextRequest) {
     // Calcular cartas solo en BD (solo en la última página si hay paginación, o siempre si no hay paginación)
     if (!usePagination || page === totalPages) {
       const allApiCardIds = new Set(
-        nonPromoCards.map((apiCard) => generateCardId(apiCard.Set_Name, apiCard.Card_Num))
+        nonPromoCards.map((apiCard) => generateCardId(apiCard.Set_Name, apiCard.Card_Num, apiCard.Set_ID))
       )
       
       dbCards.forEach((card) => {
