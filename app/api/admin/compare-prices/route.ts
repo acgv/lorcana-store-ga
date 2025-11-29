@@ -328,14 +328,10 @@ export async function GET(request: NextRequest) {
     }
 
     let processed = 0
-    const BATCH_SIZE = 10 // Procesar 10 cartas a la vez
-    const BATCH_DELAY = 2000 // 2 segundos entre lotes para evitar rate limiting
+    // Procesar UNA carta a la vez con delay entre cada una para evitar rate limiting
+    const DELAY_BETWEEN_CARDS = 3000 // 3 segundos entre cada carta
     
-    for (let i = 0; i < cardsToProcess.length; i += BATCH_SIZE) {
-      const batch = cardsToProcess.slice(i, i + BATCH_SIZE)
-      
-      // Procesar lote
-      for (const apiCard of batch) {
+    for (const apiCard of cardsToProcess) {
       // Usar Set_ID para generar el ID (igual que en el script de importación)
       const cardId = generateCardId(apiCard.Set_Name, apiCard.Card_Num, apiCard.Set_ID)
       const dbCard = dbCardsMap.get(cardId)
@@ -355,9 +351,14 @@ export async function GET(request: NextRequest) {
         } else if (fetchExternalPrices) {
         try {
           // Timeout más corto (6 segundos) para evitar que se quede pegado
+          // Pasar set y número para búsqueda más precisa
           const pricePromise = (async () => {
             const { getTCGPlayerPriceAlternative } = await import("@/lib/tcgplayer-alternative")
-            return await getTCGPlayerPriceAlternative(apiCard.Name)
+            return await getTCGPlayerPriceAlternative(apiCard.Name, {
+              setId: apiCard.Set_ID, // ej: "TFC", "ROF"
+              cardNumber: apiCard.Card_Num, // ej: 1, 2, 3
+              setName: apiCard.Set_Name, // ej: "The First Chapter"
+            })
           })()
           
           const timeoutPromise = new Promise<null>((resolve) => 
@@ -502,16 +503,14 @@ export async function GET(request: NextRequest) {
         })
       }
 
-        processed++
-        if (processed % 20 === 0) {
-          console.log(`⏳ Processed ${processed}/${cardsToProcess.length} cards...`)
-        }
+      processed++
+      if (processed % 10 === 0) {
+        console.log(`⏳ Processed ${processed}/${cardsToProcess.length} cards...`)
       }
       
-      // Delay entre lotes para evitar rate limiting (excepto en el último lote)
-      if (i + BATCH_SIZE < cardsToProcess.length) {
-        console.log(`⏸️ Esperando ${BATCH_DELAY}ms antes del siguiente lote para evitar rate limiting...`)
-        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY))
+      // Delay entre cartas para evitar rate limiting (excepto en la última carta)
+      if (processed < cardsToProcess.length) {
+        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_CARDS))
       }
     }
 
