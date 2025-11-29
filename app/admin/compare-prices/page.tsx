@@ -93,6 +93,8 @@ export default function ComparePricesPage() {
   const [filterStock, setFilterStock] = useState<string>("all")
   const [filterPrice, setFilterPrice] = useState<string>("all")
   const [activeTab, setActiveTab] = useState("comparison")
+  const [updatingPrices, setUpdatingPrices] = useState<Set<string>>(new Set())
+  const [updatingAll, setUpdatingAll] = useState(false)
 
   // Parámetros de cálculo editables
   const [priceParams, setPriceParams] = useState({
@@ -129,8 +131,12 @@ export default function ComparePricesPage() {
 
   const loadData = async (setFilter?: string) => {
     try {
+      // Resetear estados de carga
       setRefreshing(true)
       setLoading(true)
+      
+      // Limpiar datos anteriores para mostrar que se está recargando
+      setData(null)
       
       // Obtener token de sesión para autenticación
       const { supabase } = await import("@/lib/db")
@@ -155,25 +161,25 @@ export default function ComparePricesPage() {
         console.log(`🔍 Cargando datos para todos los sets`)
       }
       
-      // Obtener parámetros actuales (desde estado o localStorage como fallback para asegurar valores más recientes)
-      const currentParams = (() => {
-        const saved = localStorage.getItem("priceCalculationParams")
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved)
-            // Sincronizar estado con localStorage si hay diferencia
-            if (JSON.stringify(parsed) !== JSON.stringify(priceParams)) {
-              setPriceParams(parsed)
-            }
-            return parsed
-          } catch (e) {
-            return priceParams
+      // Obtener parámetros actuales desde localStorage (siempre leer el más reciente)
+      const savedParams = localStorage.getItem("priceCalculationParams")
+      let currentParams = priceParams
+      
+      if (savedParams) {
+        try {
+          const parsed = JSON.parse(savedParams)
+          currentParams = parsed
+          // Sincronizar estado con localStorage si hay diferencia
+          if (JSON.stringify(parsed) !== JSON.stringify(priceParams)) {
+            console.log("🔄 Sincronizando parámetros desde localStorage:", parsed)
+            setPriceParams(parsed)
           }
+        } catch (e) {
+          console.warn("⚠️ Error parseando parámetros desde localStorage:", e)
         }
-        return priceParams
-      })()
+      }
 
-      // Agregar parámetros de cálculo de precios (usar los más recientes)
+      // Agregar parámetros de cálculo de precios
       url.searchParams.set("usTaxRate", currentParams.usTaxRate.toString())
       url.searchParams.set("shippingUSD", currentParams.shippingUSD.toString())
       url.searchParams.set("chileVATRate", currentParams.chileVATRate.toString())
@@ -182,6 +188,7 @@ export default function ComparePricesPage() {
       url.searchParams.set("mercadoPagoFee", currentParams.mercadoPagoFee.toString())
       
       console.log("🔍 Enviando parámetros de cálculo:", currentParams)
+      console.log("🔍 URL completa:", url.toString())
 
       // Cargar todos los datos de una vez (igual que en catálogo)
       const response = await fetch(url.toString(), {
@@ -189,7 +196,13 @@ export default function ComparePricesPage() {
       })
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+        const errorText = await response.text()
+        let errorData
+        try {
+          errorData = JSON.parse(errorText)
+        } catch {
+          errorData = { error: errorText || `HTTP ${response.status}` }
+        }
         throw new Error(errorData.error || `HTTP ${response.status}`)
       }
       
@@ -242,16 +255,18 @@ export default function ComparePricesPage() {
           suggestedPrice: c.suggestedPriceCLP,
           currentPrice: c.currentPrice
         })))
+      } else {
+        console.warn("⚠️ No se encontraron comparaciones. Esto puede indicar que:")
+        console.warn("  1. No hay cartas en la BD para el set filtrado")
+        console.warn("  2. Los IDs de las cartas no coinciden entre API y BD")
+        console.warn("  3. El filtro de set no está funcionando correctamente")
+        console.warn(`📊 Cartas solo en API: ${allCardsOnlyInAPI.length}`)
+        console.warn(`📊 Cartas solo en BD: ${allCardsOnlyInDB.length}`)
       }
+      
       console.log(`✅ Comparaciones cargadas: ${allComparisons.length} cartas`)
 
-      console.log(`📦 Estableciendo datos en el estado:`, {
-        comparisons: allComparisons.length,
-        cardsOnlyInAPI: allCardsOnlyInAPI.length,
-        cardsOnlyInDB: allCardsOnlyInDB.length,
-      })
-
-      // Actualizar estado de datos primero
+      // Actualizar estado de datos
       setData({
         comparisons: allComparisons,
         cardsOnlyInAPI: allCardsOnlyInAPI,
@@ -261,7 +276,7 @@ export default function ComparePricesPage() {
 
       toast({
         title: "✅ Datos cargados",
-        description: `Se procesaron ${allComparisons.length} cartas`,
+        description: `Se procesaron ${allComparisons.length} cartas${allComparisons.length === 0 ? " (ver consola para detalles)" : ""}`,
       })
     } catch (error) {
       console.error("❌ Error loading comparison data:", error)
@@ -277,8 +292,140 @@ export default function ComparePricesPage() {
       // Asegurar que el loading se desactive incluso si hay error
       setData(null)
     } finally {
+      // Siempre resetear estados de carga
       setLoading(false)
       setRefreshing(false)
+      console.log("✅ Estados de carga reseteados")
+    }
+  }
+
+  // Función para actualizar precio de una carta individual
+  const updateCardPrice = async (comp: ComparisonResult) => {
+    if (!comp.suggestedPriceCLP || !comp.suggestedFoilPriceCLP) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No hay precio sugerido disponible para esta carta",
+      })
+      return
+    }
+
+    setUpdatingPrices((prev) => new Set(prev).add(comp.cardId))
+
+    try {
+      const { supabase } = await import("@/lib/db")
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      const response = await fetch("/api/admin/update-prices", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          cardId: comp.cardId,
+          price: Math.round(comp.suggestedPriceCLP),
+          foilPrice: Math.round(comp.suggestedFoilPriceCLP),
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || "Error al actualizar precio")
+      }
+
+      toast({
+        title: "✅ Precio actualizado",
+        description: `Precio de ${comp.cardName} actualizado correctamente`,
+      })
+
+      // Recargar datos para reflejar los cambios
+      await loadData()
+    } catch (error) {
+      console.error("Error updating price:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "No se pudo actualizar el precio",
+      })
+    } finally {
+      setUpdatingPrices((prev) => {
+        const next = new Set(prev)
+        next.delete(comp.cardId)
+        return next
+      })
+    }
+  }
+
+  // Función para actualización masiva
+  const updateAllPrices = async () => {
+    if (!data) return
+
+    const cardsToUpdate = filteredComparisons.filter(
+      (comp) => comp.needsPriceUpdate && comp.suggestedPriceCLP && comp.suggestedFoilPriceCLP
+    )
+
+    if (cardsToUpdate.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Sin cartas para actualizar",
+        description: "No hay cartas que necesiten actualización de precio",
+      })
+      return
+    }
+
+    const confirmed = window.confirm(
+      `¿Estás seguro de actualizar los precios de ${cardsToUpdate.length} cartas?`
+    )
+
+    if (!confirmed) return
+
+    setUpdatingAll(true)
+
+    try {
+      const { supabase } = await import("@/lib/db")
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      const updates = cardsToUpdate.map((comp) => ({
+        cardId: comp.cardId,
+        price: Math.round(comp.suggestedPriceCLP!),
+        foilPrice: Math.round(comp.suggestedFoilPriceCLP!),
+      }))
+
+      const response = await fetch("/api/admin/update-prices", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ updates }),
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || "Error al actualizar precios")
+      }
+
+      toast({
+        title: "✅ Precios actualizados",
+        description: `Se actualizaron ${result.results?.success || 0} de ${cardsToUpdate.length} precios`,
+      })
+
+      // Recargar datos para reflejar los cambios
+      await loadData()
+    } catch (error) {
+      console.error("Error updating prices:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "No se pudieron actualizar los precios",
+      })
+    } finally {
+      setUpdatingAll(false)
     }
   }
 
@@ -394,8 +541,14 @@ export default function ComparePricesPage() {
                 Compara tu inventario con los precios estándar de la API de Lorcana
               </p>
             </div>
-            <Button onClick={loadData} disabled={refreshing}>
-              {refreshing ? (
+            <Button 
+              onClick={() => {
+                console.log("🔄 Botón 'Actualizar' clickeado")
+                loadData()
+              }} 
+              disabled={refreshing || loading}
+            >
+              {refreshing || loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Actualizando...
@@ -420,12 +573,27 @@ export default function ComparePricesPage() {
                   </CardDescription>
                 </div>
                 <Button 
-                  onClick={loadData} 
-                  disabled={refreshing}
+                  onClick={() => {
+                    console.log("🔄 Botón 'Recalcular Precios' clickeado")
+                    // Forzar lectura de parámetros más recientes antes de recargar
+                    const saved = localStorage.getItem("priceCalculationParams")
+                    if (saved) {
+                      try {
+                        const parsed = JSON.parse(saved)
+                        setPriceParams(parsed)
+                        console.log("📝 Parámetros actualizados desde localStorage:", parsed)
+                      } catch (e) {
+                        console.warn("⚠️ Error parseando parámetros:", e)
+                      }
+                    }
+                    // Pequeño delay para asegurar que el estado se actualice
+                    setTimeout(() => loadData(), 100)
+                  }}
+                  disabled={refreshing || loading}
                   variant="outline"
                   size="sm"
                 >
-                  {refreshing ? (
+                  {refreshing || loading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Recalculando...
@@ -609,6 +777,26 @@ export default function ComparePricesPage() {
                       Compara tus precios y stock con los estándares de la API
                     </CardDescription>
                   </div>
+                  {data && filteredComparisons.filter(c => c.needsPriceUpdate && c.suggestedPriceCLP && c.suggestedFoilPriceCLP).length > 0 && (
+                    <Button
+                      onClick={updateAllPrices}
+                      disabled={updatingAll || refreshing || loading}
+                      variant="default"
+                      size="sm"
+                    >
+                      {updatingAll ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Actualizando...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Actualizar Todos los Precios Sugeridos
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
 
                 {/* Filtros */}
@@ -703,6 +891,7 @@ export default function ComparePricesPage() {
                           <TableHead className="text-right">Precio Foil Sugerido (CLP)</TableHead>
                           <TableHead className="text-right">Diff. Foil</TableHead>
                           <TableHead>Estado</TableHead>
+                          <TableHead className="w-[120px]">Acciones</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -823,6 +1012,31 @@ export default function ComparePricesPage() {
                                   </Badge>
                                 )}
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              {comp.suggestedPriceCLP && comp.suggestedFoilPriceCLP ? (
+                                <Button
+                                  onClick={() => updateCardPrice(comp)}
+                                  disabled={updatingPrices.has(comp.cardId) || updatingAll}
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                >
+                                  {updatingPrices.has(comp.cardId) ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                      Actualizando...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <RefreshCw className="h-3 w-3 mr-1" />
+                                      Actualizar
+                                    </>
+                                  )}
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Sin precio sugerido</span>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
