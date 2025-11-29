@@ -160,7 +160,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const pageParam = searchParams.get("page")
     const pageSizeParam = searchParams.get("pageSize")
-    const fetchExternalPrices = searchParams.get("fetchExternalPrices") === "true" // Opcional: solo si se solicita explícitamente
+    // Siempre intentar obtener precios reales de TCGPlayer (a menos que se deshabilite explícitamente)
+    const fetchExternalPrices = searchParams.get("fetchExternalPrices") !== "false"
     const filterSet = searchParams.get("set") // Filtro por set (igual que en catálogo)
     
     // Parámetros de cálculo de precios (opcionales, si no se pasan usa defaults)
@@ -334,34 +335,50 @@ export async function GET(request: NextRequest) {
 
       const rarity = rarityMap[apiCard.Rarity] || "common"
       
-      // Obtener precio real de la API (CardMarket/RapidAPI) - SOLO si se solicita explícitamente
-      // Por defecto, usar precios estándar para evitar timeouts
+      // Obtener precio REAL de TCGPlayer (CardMarket/RapidAPI) - SIEMPRE
+      // NO usar precios estándar, solo precios reales de TCGPlayer
       let marketPriceUSD: number | null = null
       let marketFoilPriceUSD: number | null = null
       let priceSource: "tcgplayer" | "standard" = "standard"
       
-      // Intentar obtener precio de CardMarket API (RapidAPI) - SOLO si se solicita
-      if (fetchExternalPrices && process.env.RAPIDAPI_KEY) {
+      // Verificar que RAPIDAPI_KEY esté configurada
+      if (!process.env.RAPIDAPI_KEY) {
+        console.error(`❌ RAPIDAPI_KEY no configurada - No se pueden obtener precios de TCGPlayer`)
+        // No establecer marketPriceUSD, quedará como null
+      } else if (fetchExternalPrices) {
         try {
-          const { getTCGPlayerPriceAlternative } = await import("@/lib/tcgplayer-alternative")
-          const altPrice = await getTCGPlayerPriceAlternative(apiCard.Name)
+          // Timeout de 8 segundos por carta para dar más tiempo a la API
+          const pricePromise = (async () => {
+            const { getTCGPlayerPriceAlternative } = await import("@/lib/tcgplayer-alternative")
+            return await getTCGPlayerPriceAlternative(apiCard.Name)
+          })()
+          
+          const timeoutPromise = new Promise<null>((resolve) => 
+            setTimeout(() => resolve(null), 8000)
+          )
+          
+          const altPrice = await Promise.race([pricePromise, timeoutPromise])
           
           if (altPrice && altPrice.normal) {
             marketPriceUSD = altPrice.normal
-            marketFoilPriceUSD = altPrice.foil
+            marketFoilPriceUSD = altPrice.foil || null
             priceSource = "tcgplayer"
+            console.log(`✅ Precio TCGPlayer obtenido para ${apiCard.Name}: $${marketPriceUSD} USD${marketFoilPriceUSD ? ` (foil: $${marketFoilPriceUSD} USD)` : ''}`)
+          } else {
+            console.warn(`⚠️ No se pudo obtener precio TCGPlayer para ${apiCard.Name} (timeout o sin datos) - Precio quedará como null`)
+            // NO establecer precio estándar, quedará como null
           }
         } catch (error) {
-          // Si falla, usar precio estándar
-          console.warn(`⚠️ Error getting price for ${apiCard.Name}:`, error)
+          // Si falla, NO usar precio estándar, dejar como null
+          console.error(`❌ Error getting TCGPlayer price for ${apiCard.Name}:`, error instanceof Error ? error.message : error)
+          // marketPriceUSD queda como null
         }
+      } else {
+        console.warn(`⚠️ fetchExternalPrices está deshabilitado para ${apiCard.Name} - Precio quedará como null`)
       }
       
-      // Si no se obtuvo precio de la API, usar precio estándar por rareza
-      if (!marketPriceUSD) {
-        marketPriceUSD = getStandardPriceUSD(rarity)
-        marketFoilPriceUSD = marketPriceUSD * 1.6
-      }
+      // NO usar precio estándar como fallback - solo precios reales de TCGPlayer
+      // Si marketPriceUSD es null, se mostrará como "-" en el frontend
 
       if (dbCard) {
         // Calcular precio sugerido usando la fórmula del Excel
@@ -390,8 +407,10 @@ export async function GET(request: NextRequest) {
         let suggestedPriceCLP: number | null = null
         let suggestedFoilPriceCLP: number | null = null
 
-        if (marketPriceUSD) {
-          // Calcular precio sugerido basado en precio de TCGPlayer
+        // Solo calcular precio sugerido si tenemos precio REAL de TCGPlayer
+        // NO calcular si marketPriceUSD es null (no hay precio de TCGPlayer disponible)
+        if (marketPriceUSD && priceSource === "tcgplayer") {
+          // Calcular precio sugerido basado en precio REAL de TCGPlayer
           const calculation = calculateFinalPrice({
             ...calcParams,
             basePriceUSD: marketPriceUSD,
@@ -406,6 +425,9 @@ export async function GET(request: NextRequest) {
             })
             suggestedFoilPriceCLP = foilCalculation.finalPriceCLP
           }
+        } else {
+          // Si no hay precio de TCGPlayer, no calcular precio sugerido
+          console.warn(`⚠️ No se puede calcular precio sugerido para ${dbCard.name} - No hay precio de TCGPlayer disponible`)
         }
 
         // Comparar precio actual con precio sugerido
@@ -416,6 +438,16 @@ export async function GET(request: NextRequest) {
         const foilComparison = suggestedFoilPriceCLP
           ? calculatePriceDifference(dbCard.foilPrice || 0, suggestedFoilPriceCLP)
           : { difference: 0, differencePercent: 0, needsUpdate: false }
+
+        // Log para debugging: verificar que marketPriceUSD no sea una conversión del precio de BD
+        if (processed < 3) {
+          console.log(`🔍 Debug precio para ${dbCard.name}:`, {
+            precioBD_CLP: dbCard.price,
+            marketPriceUSD,
+            priceSource,
+            esConversionBD: marketPriceUSD && dbCard.price ? Math.abs((dbCard.price / 1000) - marketPriceUSD) < 0.01 : false,
+          })
+        }
 
         comparisons.push({
           cardId: dbCard.id,
