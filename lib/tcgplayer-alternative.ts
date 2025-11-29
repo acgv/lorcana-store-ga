@@ -772,11 +772,12 @@ async function getPriceFromTCGPlayerScraping(
                   const foil = foilPrice ? (typeof foilPrice === 'number' ? foilPrice : parseFloat(String(foilPrice))) : null
                   
                   if (price > 0 && price < 10000) { // Validación razonable
-                    console.log(`✅ [Scraping] Precio encontrado en TCGPlayer: $${price} USD${foil ? ` (foil: $${foil} USD)` : ''}`)
+                    console.log(`✅ [Scraping] Precio encontrado en TCGPlayer (JSON embebido): $${price} USD${foil ? ` (foil: $${foil} USD)` : ''}`)
+                    console.log(`📊 [Scraping] Detalles: producto="${productName}", precio=${normalPrice}, fuente=JSON embebido en HTML`)
                     return {
                       normal: price,
                       foil: foil,
-                      source: 'tcgplayer-scraping',
+                      source: 'tcgplayer-scraping-json',
                     }
                   }
                 }
@@ -806,11 +807,12 @@ async function getPriceFromTCGPlayerScraping(
         if (match && match[1]) {
           const price = parseFloat(match[1])
           if (price > 0 && price < 10000) { // Validación razonable
-            console.log(`✅ [Scraping] Precio encontrado en TCGPlayer (regex): $${price} USD`)
+            console.log(`✅ [Scraping] Precio encontrado en TCGPlayer (regex pattern: ${pattern}): $${price} USD`)
+            console.log(`📊 [Scraping] Detalles: método=regex, patrón="${pattern}", precio=${price}`)
             return {
               normal: price,
               foil: null,
-              source: 'tcgplayer-scraping',
+              source: 'tcgplayer-scraping-regex',
             }
           }
         }
@@ -846,6 +848,7 @@ async function getPriceFromTCGPlayerScraping(
         if (normalPrice) {
           const price = typeof normalPrice === 'number' ? normalPrice : parseFloat(String(normalPrice))
           console.log(`✅ [Scraping] Precio encontrado en API interna de TCGPlayer: $${price} USD`)
+          console.log(`📊 [Scraping] Detalles: método=API interna, URL=${apiUrl}, precio=${price}`)
           return {
             normal: price,
             foil: foilPrice ? (typeof foilPrice === 'number' ? foilPrice : parseFloat(String(foilPrice))) : null,
@@ -885,6 +888,7 @@ async function getPriceFromTCGPlayerScraping(
         const topPrices = prices.slice(0, Math.min(5, prices.length))
         const avgPrice = topPrices.reduce((sum, p) => sum + p, 0) / topPrices.length
         console.log(`✅ [Scraping] Precio estimado de eBay: $${avgPrice.toFixed(2)} USD (basado en ${topPrices.length} resultados)`)
+        console.log(`📊 [Scraping] Detalles: método=eBay, precios encontrados=[${topPrices.join(', ')}], promedio=${avgPrice.toFixed(2)}`)
         return {
           normal: avgPrice,
           foil: null, // eBay no distingue fácilmente entre normal y foil

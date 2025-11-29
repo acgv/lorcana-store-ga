@@ -112,7 +112,8 @@ export async function POST(request: NextRequest) {
 
     let marketPriceUSD: number | null = null
     let marketFoilPriceUSD: number | null = null
-    let priceSource: "tcgplayer" | "lorcana-api" | null = null
+    let priceSource: "tcgplayer" | "lorcana-api" | string | null = null
+    let priceSourceDetails: string | null = null
 
     // PRIORIDAD 1: Intentar obtener precio de TCGPlayer
     try {
@@ -136,8 +137,11 @@ export async function POST(request: NextRequest) {
       if (altPrice && altPrice.normal) {
         marketPriceUSD = altPrice.normal
         marketFoilPriceUSD = altPrice.foil || null
-        priceSource = "tcgplayer"
-        console.log(`✅ Precio TCGPlayer obtenido: $${marketPriceUSD} USD${marketFoilPriceUSD ? ` (foil: $${marketFoilPriceUSD} USD)` : ''}`)
+        // Usar el source específico de la función para saber exactamente de dónde vino
+        priceSource = altPrice.source || "tcgplayer"
+        priceSourceDetails = altPrice.source || "unknown"
+        console.log(`✅ Precio obtenido de ${altPrice.source}: $${marketPriceUSD} USD${marketFoilPriceUSD ? ` (foil: $${marketFoilPriceUSD} USD)` : ''}`)
+        console.log(`📊 Fuente detallada: ${altPrice.source}`)
       }
     } catch (error) {
       console.error(`❌ Error buscando precio TCGPlayer:`, error)
@@ -215,6 +219,14 @@ export async function POST(request: NextRequest) {
             cardName: cardNameToSearch,
           },
           foundPrice: marketPriceUSD !== null,
+          priceSource: priceSource || null,
+          priceSourceDetails: priceSourceDetails || null,
+          priceDetails: marketPriceUSD ? {
+            normal: marketPriceUSD,
+            foil: marketFoilPriceUSD,
+            source: priceSource,
+            sourceDetails: priceSourceDetails,
+          } : null,
         },
       },
     })
