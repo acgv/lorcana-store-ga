@@ -634,8 +634,23 @@ export default function ComparePricesPage() {
 
   // Función para revertir precios de un set
   const revertSetPrices = async (set: string) => {
+    const setNames: Record<string, string> = {
+      'firstChapter': 'Set 1 - The First Chapter',
+      'riseOfFloodborn': 'Set 2 - Rise of the Floodborn',
+      'intoInklands': 'Set 3 - Into the Inklands',
+      'ursulaReturn': 'Set 4 - Ursula\'s Return',
+      'shimmering': 'Set 5 - Shimmering Skies',
+      'azurite': 'Set 6 - Azurite Sea',
+      'archazia': 'Set 7 - Archazia\'s Island',
+      'reignOfJafar': 'Set 8 - Reign of Jafar',
+      'fabled': 'Set 9 - Fabled',
+      'whi': 'Set 10 - Whispers in the Well',
+    }
+    
+    const setName = setNames[set] || set
+    
     const confirmed = window.confirm(
-      `¿Estás seguro de revertir TODOS los precios del Set 1 (${set}) a valores estándar?\n\nEsto restaurará los precios basándose en la rareza de cada carta.\n\nEsta acción NO se puede deshacer.`
+      `¿Estás seguro de revertir TODOS los precios del ${setName} a valores estándar?\n\nEsto restaurará los precios basándose en la rareza de cada carta.\n\nEsta acción NO se puede deshacer.`
     )
 
     if (!confirmed) return
@@ -864,9 +879,9 @@ export default function ComparePricesPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              {filterSet === "firstChapter" && (
+              {filterSet && filterSet !== "all" && (
                 <Button
-                  onClick={() => revertSetPrices("firstChapter")}
+                  onClick={() => revertSetPrices(filterSet)}
                   disabled={revertingSet || refreshing || loading}
                   variant="destructive"
                 >
@@ -878,7 +893,7 @@ export default function ComparePricesPage() {
                   ) : (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      Revertir Precios Set 1
+                      Revertir Precios del Set
                     </>
                   )}
                 </Button>
@@ -915,38 +930,73 @@ export default function ComparePricesPage() {
                     Edita los valores constantes utilizados para calcular los precios sugeridos
                   </CardDescription>
                 </div>
-                <Button 
-                  onClick={() => {
-                    // Buscar precios para todas las cartas del set actual
-                    if (data && data.comparisons.length > 0) {
-                      fetchAllCardPrices(data.comparisons)
-                    } else {
-                      // Si no hay datos, cargar primero
-                      loadData().then(() => {
-                        setTimeout(() => {
-                          if (data && data.comparisons.length > 0) {
-                            fetchAllCardPrices(data.comparisons)
-                          }
-                        }, 500)
-                      })
-                    }
-                  }}
-                  disabled={refreshing || loading || fetchingAllPrices}
-                  variant="outline"
-                  size="sm"
-                >
-                  {fetchingAllPrices ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Buscando ({fetchProgress.current}/{fetchProgress.total})...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="h-4 w-4 mr-2" />
-                      Buscar Precios del Set
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => {
+                      console.log("🔄 Botón 'Recalcular Precios' clickeado")
+                      // Forzar lectura de parámetros más recientes antes de recargar
+                      const saved = localStorage.getItem("priceCalculationParams")
+                      if (saved) {
+                        try {
+                          const parsed = JSON.parse(saved)
+                          setPriceParams(parsed)
+                          console.log("📝 Parámetros actualizados desde localStorage:", parsed)
+                        } catch (e) {
+                          console.warn("⚠️ Error parseando parámetros:", e)
+                        }
+                      }
+                      // Pequeño delay para asegurar que el estado se actualice
+                      setTimeout(() => loadData(), 100)
+                    }}
+                    disabled={refreshing || loading || fetchingAllPrices}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {refreshing || loading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Recalculando...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Recalcular Precios
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      // Buscar precios para todas las cartas del set actual
+                      if (data && data.comparisons.length > 0) {
+                        fetchAllCardPrices(data.comparisons)
+                      } else {
+                        // Si no hay datos, cargar primero
+                        loadData().then(() => {
+                          setTimeout(() => {
+                            if (data && data.comparisons.length > 0) {
+                              fetchAllCardPrices(data.comparisons)
+                            }
+                          }, 500)
+                        })
+                      }
+                    }}
+                    disabled={refreshing || loading || fetchingAllPrices}
+                    variant="default"
+                    size="sm"
+                  >
+                    {fetchingAllPrices ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Buscando ({fetchProgress.current}/{fetchProgress.total})...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-4 w-4 mr-2" />
+                        Buscar Precios del Set
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
