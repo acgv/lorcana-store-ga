@@ -39,6 +39,7 @@ import {
   Filter,
 } from "lucide-react"
 import Image from "next/image"
+import { calculateFinalPrice } from "@/lib/price-calculator"
 
 interface ComparisonResult {
   cardId: string
@@ -97,8 +98,6 @@ export default function ComparePricesPage() {
   const [updatingAll, setUpdatingAll] = useState(false)
   const [revertingSet, setRevertingSet] = useState(false)
   const [fetchingPrices, setFetchingPrices] = useState<Set<string>>(new Set())
-  const [fetchingAllPrices, setFetchingAllPrices] = useState(false)
-  const [fetchProgress, setFetchProgress] = useState({ current: 0, total: 0 })
   const [editingPrice, setEditingPrice] = useState<{ cardId: string; field: 'price' | 'foilPrice' | 'priceUSD' | 'foilPriceUSD' } | null>(null)
   const [editingPriceValue, setEditingPriceValue] = useState<string>("")
 
@@ -370,8 +369,9 @@ export default function ComparePricesPage() {
     }
   }
 
-  // Función para buscar precios de todas las cartas del set
-  const fetchAllCardPrices = async (comparisons: ComparisonResult[]) => {
+  // Función para buscar precios de todas las cartas del set - ELIMINADA
+  // Función para buscar precio de TCGPlayer para una carta individual
+  const fetchCardPrice = async (comp: ComparisonResult) => {
     if (!comparisons || comparisons.length === 0) {
       toast({
         variant: "destructive",
@@ -1103,7 +1103,7 @@ export default function ComparePricesPage() {
                       // Pequeño delay para asegurar que el estado se actualice
                       setTimeout(() => loadData(), 100)
                     }}
-                    disabled={refreshing || loading || fetchingAllPrices}
+                    disabled={refreshing || loading}
                     variant="outline"
                     size="sm"
                   >
@@ -1137,7 +1137,7 @@ export default function ComparePricesPage() {
                         })
                       }
                     }}
-                    disabled={refreshing || loading || fetchingAllPrices}
+                    disabled={refreshing || loading}
                     variant="default"
                     size="sm"
                   >
@@ -1241,17 +1241,11 @@ export default function ComparePricesPage() {
 
           {/* Estadísticas */}
           {data?.stats && (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
               <Card>
                 <CardContent className="pt-4">
                   <div className="text-2xl font-bold">{data.stats.totalInDatabase}</div>
                   <p className="text-xs text-muted-foreground">En BD</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="text-2xl font-bold">{data.stats.totalInAPI}</div>
-                  <p className="text-xs text-muted-foreground">En API</p>
                 </CardContent>
               </Card>
               <Card>
@@ -1274,22 +1268,6 @@ export default function ComparePricesPage() {
                     {data.stats.needsPriceUpdate}
                   </div>
                   <p className="text-xs text-muted-foreground">Precio a Actualizar</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="text-2xl font-bold text-blue-500">
-                    {data.stats.onlyInAPI}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Solo en API</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="text-2xl font-bold text-purple-500">
-                    {data.stats.onlyInDB}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Solo en BD</p>
                 </CardContent>
               </Card>
               <Card>
