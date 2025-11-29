@@ -112,8 +112,9 @@ export async function POST(request: NextRequest) {
 
     let marketPriceUSD: number | null = null
     let marketFoilPriceUSD: number | null = null
-    let priceSource: "tcgplayer" | "standard" | null = null
+    let priceSource: "tcgplayer" | "lorcana-api" | null = null
 
+    // PRIORIDAD 1: Intentar obtener precio de TCGPlayer
     try {
       console.log(`🔄 Llamando a getTCGPlayerPriceAlternative con:`, {
         cardName: cardNameToSearch,
@@ -137,21 +138,25 @@ export async function POST(request: NextRequest) {
         marketFoilPriceUSD = altPrice.foil || null
         priceSource = "tcgplayer"
         console.log(`✅ Precio TCGPlayer obtenido: $${marketPriceUSD} USD${marketFoilPriceUSD ? ` (foil: $${marketFoilPriceUSD} USD)` : ''}`)
-      } else {
-        console.warn(`⚠️ No se pudo obtener precio TCGPlayer para ${cardNameToSearch}`)
-        console.warn(`⚠️ Resultado fue:`, altPrice)
-        // priceSource queda como null (no "standard")
       }
     } catch (error) {
       console.error(`❌ Error buscando precio TCGPlayer:`, error)
       console.error(`❌ Stack trace:`, error instanceof Error ? error.stack : 'No stack available')
     }
 
-    // Calcular precio sugerido si tenemos precio de TCGPlayer
+    // PRIORIDAD 2: Si no hay precio de TCGPlayer, NO usar precios estándar
+    // El usuario requiere precios reales de mercado, no precios estándar
+    if (!marketPriceUSD) {
+      console.warn(`⚠️ No se encontró precio real de mercado para ${cardNameToSearch}`)
+      console.warn(`⚠️ No se usará precio estándar - se requiere precio real de TCGPlayer/eBay/etc.`)
+      // Dejamos marketPriceUSD como null - no usamos precios estándar
+    }
+
+    // Calcular precio sugerido si tenemos precio (de TCGPlayer o de API de Lorcana)
     let suggestedPriceCLP: number | null = null
     let suggestedFoilPriceCLP: number | null = null
 
-    if (marketPriceUSD && priceSource === "tcgplayer" && marketPriceUSD > 0) {
+    if (marketPriceUSD && marketPriceUSD > 0) {
       const defaultParams = getCalculationParams()
       const calcParams = {
         ...defaultParams,

@@ -113,80 +113,99 @@ async function getPriceFromLorcast(
   }
 ): Promise<CardPrice | null> {
   try {
-    // Construir URL de búsqueda en Lorcast API
-    // La API de Lorcast permite búsqueda por nombre, set y número
-    let searchUrl = `https://api.lorcast.com/v1/cards/search?name=${encodeURIComponent(cardName)}`
+    // Intentar diferentes endpoints de Lorcast API
+    // Según la documentación, puede variar el formato
+    const endpoints = [
+      // Formato 1: Búsqueda por nombre
+      `https://api.lorcast.com/v1/cards/search?name=${encodeURIComponent(cardName)}`,
+      // Formato 2: Búsqueda con set y número
+      options?.setId && options?.cardNumber 
+        ? `https://api.lorcast.com/v1/cards/${options.setId}/${options.cardNumber}`
+        : null,
+      // Formato 3: Búsqueda alternativa
+      `https://lorcast.com/api/cards?name=${encodeURIComponent(cardName)}`,
+    ].filter(Boolean) as string[]
     
-    if (options?.setId) {
-      searchUrl += `&set=${encodeURIComponent(options.setId)}`
-    }
-    
-    if (options?.cardNumber) {
-      searchUrl += `&number=${options.cardNumber}`
-    }
-    
-    console.log(`🔍 Buscando en Lorcast API: ${searchUrl}`)
-    
-    const response = await fetch(searchUrl, {
-      headers: {
-        "Accept": "application/json",
-      },
-    })
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        console.warn(`⚠️ Lorcast API: Carta no encontrada - ${cardName}`)
-        return null
+    for (const searchUrl of endpoints) {
+      try {
+        console.log(`🔍 Intentando Lorcast API: ${searchUrl}`)
+        
+        const response = await fetch(searchUrl, {
+          headers: {
+            "Accept": "application/json",
+          },
+          // Timeout de 5 segundos
+          signal: AbortSignal.timeout(5000),
+        })
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.warn(`⚠️ Lorcast API (404): Endpoint no encontrado - ${searchUrl}`)
+            continue // Intentar siguiente endpoint
+          }
+          console.warn(`⚠️ Lorcast API error (${response.status}): ${response.statusText}`)
+          continue
+        }
+        
+        const data = await response.json()
+        console.log(`📦 Respuesta de Lorcast:`, {
+          isArray: Array.isArray(data),
+          keys: typeof data === 'object' && data !== null ? Object.keys(data) : 'not an object',
+        })
+        
+        // La estructura de Lorcast puede variar, intentar diferentes formatos
+        let card = null
+        if (Array.isArray(data) && data.length > 0) {
+          // Si hay múltiples resultados, buscar el más cercano
+          card = data.find((c: any) => {
+            const name = (c.name || c.Name || c.title || "").toLowerCase()
+            const searchName = cardName.toLowerCase()
+            return name === searchName || name.includes(searchName) || searchName.includes(name.split(" - ")[0])
+          }) || data[0] // Si no encuentra exacto, usar el primero
+        } else if (data.card || data.data) {
+          card = data.card || data.data
+        } else if (data.name || data.Name) {
+          card = data
+        }
+        
+        if (!card) {
+          console.warn(`⚠️ Lorcast API: No se encontró carta en la respuesta`)
+          continue // Intentar siguiente endpoint
+        }
+        
+        // Extraer precios - Lorcast proporciona precios en USD
+        const normalPrice = card.prices?.tcgplayer?.normal || 
+                           card.prices?.tcgplayer?.market ||
+                           card.prices?.normal ||
+                           card.tcgplayerPrice ||
+                           card.price ||
+                           null
+        
+        const foilPrice = card.prices?.tcgplayer?.foil ||
+                         card.prices?.foil ||
+                         card.tcgplayerFoilPrice ||
+                         card.foilPrice ||
+                         null
+        
+        if (normalPrice) {
+          console.log(`✅ Precio encontrado en Lorcast: $${normalPrice} USD${foilPrice ? ` (foil: $${foilPrice} USD)` : ''}`)
+          return {
+            normal: typeof normalPrice === 'number' ? normalPrice : parseFloat(String(normalPrice)),
+            foil: foilPrice ? (typeof foilPrice === 'number' ? foilPrice : parseFloat(String(foilPrice))) : null,
+            source: 'lorcast-tcgplayer',
+          }
+        }
+      } catch (fetchError) {
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          console.warn(`⚠️ Lorcast API: Timeout en ${searchUrl}`)
+        } else {
+          console.warn(`⚠️ Lorcast API: Error en ${searchUrl}:`, fetchError)
+        }
+        continue // Intentar siguiente endpoint
       }
-      console.warn(`⚠️ Lorcast API error: ${response.status} ${response.statusText}`)
-      return null
     }
     
-    const data = await response.json()
-    
-    // La estructura de Lorcast puede variar, intentar diferentes formatos
-    let card = null
-    if (Array.isArray(data) && data.length > 0) {
-      // Si hay múltiples resultados, buscar el más cercano
-      card = data.find((c: any) => {
-        const name = (c.name || c.Name || "").toLowerCase()
-        const searchName = cardName.toLowerCase()
-        return name === searchName || name.includes(searchName) || searchName.includes(name.split(" - ")[0])
-      }) || data[0] // Si no encuentra exacto, usar el primero
-    } else if (data.card || data.data) {
-      card = data.card || data.data
-    } else if (data.name || data.Name) {
-      card = data
-    }
-    
-    if (!card) {
-      console.warn(`⚠️ Lorcast API: No se encontró carta en la respuesta`)
-      return null
-    }
-    
-    // Extraer precios - Lorcast proporciona precios en USD
-    const normalPrice = card.prices?.tcgplayer?.normal || 
-                       card.prices?.tcgplayer?.market ||
-                       card.prices?.normal ||
-                       card.tcgplayerPrice ||
-                       card.price ||
-                       null
-    
-    const foilPrice = card.prices?.tcgplayer?.foil ||
-                     card.prices?.foil ||
-                     card.tcgplayerFoilPrice ||
-                     card.foilPrice ||
-                     null
-    
-    if (normalPrice) {
-      console.log(`✅ Precio encontrado en Lorcast: $${normalPrice} USD${foilPrice ? ` (foil: $${foilPrice} USD)` : ''}`)
-      return {
-        normal: typeof normalPrice === 'number' ? normalPrice : parseFloat(String(normalPrice)),
-        foil: foilPrice ? (typeof foilPrice === 'number' ? foilPrice : parseFloat(String(foilPrice))) : null,
-        source: 'lorcast-tcgplayer',
-      }
-    }
-    
+    console.warn(`⚠️ Lorcast API: No se encontró precio después de intentar ${endpoints.length} endpoints`)
     return null
   } catch (error) {
     console.warn(`⚠️ Error obteniendo precio de Lorcast:`, error)
@@ -667,6 +686,221 @@ async function getPriceFromTCGAPIs(cardName: string): Promise<CardPrice | null> 
 }
 
 /**
+ * Obtener precio usando scraping robusto de múltiples fuentes
+ * Intenta TCGPlayer, eBay, y otras fuentes para obtener precios reales
+ * NOTA: Esto puede violar términos de servicio. Usar con precaución.
+ */
+async function getPriceFromTCGPlayerScraping(
+  cardName: string,
+  options?: {
+    setId?: string
+    cardNumber?: number
+    setName?: string
+  }
+): Promise<CardPrice | null> {
+  // Headers más realistas para evitar bloqueos
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Cache-Control": "max-age=0",
+  }
+
+  // MÉTODO 1: TCGPlayer - Buscar por nombre completo
+  try {
+    const searchQuery = encodeURIComponent(cardName)
+    const tcgPlayerUrl = `https://www.tcgplayer.com/search/lorcana/product?q=${searchQuery}`
+    
+    console.log(`🔍 [Scraping] Intentando TCGPlayer: ${tcgPlayerUrl}`)
+    
+    const response = await fetch(tcgPlayerUrl, {
+      headers,
+      // Timeout de 15 segundos
+      signal: AbortSignal.timeout(15000),
+    })
+    
+    if (response.ok) {
+      const html = await response.text()
+      
+      // Buscar datos JSON embebidos en el HTML (TCGPlayer usa esto)
+      const jsonMatches = [
+        html.match(/window\.__INITIAL_STATE__\s*=\s*({.+?});/s),
+        html.match(/window\.__PRELOADED_STATE__\s*=\s*({.+?});/s),
+        html.match(/"products":\s*\[({.+?})\]/s),
+        html.match(/__NEXT_DATA__["\s]*=[\s]*({.+?})<\/script>/s),
+      ].filter(Boolean) as RegExpMatchArray[]
+      
+      for (const match of jsonMatches) {
+        if (match && match[1]) {
+          try {
+            const jsonData = JSON.parse(match[1])
+            // Buscar precios en la estructura JSON (diferentes posibles ubicaciones)
+            const products = jsonData.products || 
+                           jsonData.data?.products || 
+                           jsonData.props?.pageProps?.products ||
+                           jsonData.pageProps?.products ||
+                           []
+            
+            for (const product of Array.isArray(products) ? products : [products]) {
+              if (!product) continue
+              
+              const productName = (product.name || product.title || product.productName || "").toLowerCase()
+              const searchName = cardName.toLowerCase()
+              
+              // Verificar si el nombre coincide
+              if (productName.includes(searchName) || searchName.includes(productName.split(" - ")[0])) {
+                const normalPrice = product.marketPrice || 
+                                  product.lowPrice || 
+                                  product.avgPrice || 
+                                  product.price ||
+                                  product.pricing?.market ||
+                                  product.pricing?.low
+                const foilPrice = product.foilMarketPrice || 
+                                product.foilLowPrice || 
+                                product.foilPrice ||
+                                product.pricing?.foilMarket ||
+                                product.pricing?.foilLow
+                
+                if (normalPrice) {
+                  const price = typeof normalPrice === 'number' ? normalPrice : parseFloat(String(normalPrice))
+                  const foil = foilPrice ? (typeof foilPrice === 'number' ? foilPrice : parseFloat(String(foilPrice))) : null
+                  
+                  if (price > 0 && price < 10000) { // Validación razonable
+                    console.log(`✅ [Scraping] Precio encontrado en TCGPlayer: $${price} USD${foil ? ` (foil: $${foil} USD)` : ''}`)
+                    return {
+                      normal: price,
+                      foil: foil,
+                      source: 'tcgplayer-scraping',
+                    }
+                  }
+                }
+              }
+            }
+          } catch (parseError) {
+            // Continuar con el siguiente método
+            continue
+          }
+        }
+      }
+      
+      // Método alternativo: buscar precios en atributos data-* o clases específicas
+      const pricePatterns = [
+        /data-market-price=["']([\d.]+)["']/i,
+        /data-low-price=["']([\d.]+)["']/i,
+        /data-price=["']([\d.]+)["']/i,
+        /"marketPrice":\s*([\d.]+)/i,
+        /"lowPrice":\s*([\d.]+)/i,
+        /"avgPrice":\s*([\d.]+)/i,
+        /class="[^"]*price[^"]*"[^>]*>[\s$]*([\d.]+)/i,
+        /<span[^>]*class="[^"]*price[^"]*"[^>]*>[\s$]*([\d.]+)/i,
+      ]
+      
+      for (const pattern of pricePatterns) {
+        const match = html.match(pattern)
+        if (match && match[1]) {
+          const price = parseFloat(match[1])
+          if (price > 0 && price < 10000) { // Validación razonable
+            console.log(`✅ [Scraping] Precio encontrado en TCGPlayer (regex): $${price} USD`)
+            return {
+              normal: price,
+              foil: null,
+              source: 'tcgplayer-scraping',
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.warn(`⚠️ [Scraping] Error en TCGPlayer:`, error instanceof Error ? error.message : error)
+  }
+
+  // MÉTODO 2: Buscar en la API interna de TCGPlayer (si está disponible)
+  try {
+    // TCGPlayer a veces expone una API interna
+    const apiUrl = `https://www.tcgplayer.com/api/pricing/product?productName=${encodeURIComponent(cardName)}&gameName=lorcana`
+    
+    console.log(`🔍 [Scraping] Intentando API interna de TCGPlayer`)
+    
+    const apiResponse = await fetch(apiUrl, {
+      headers: {
+        ...headers,
+        "Accept": "application/json",
+        "Referer": "https://www.tcgplayer.com/",
+      },
+      signal: AbortSignal.timeout(10000),
+    })
+    
+    if (apiResponse.ok) {
+      const apiData = await apiResponse.json()
+      
+      if (apiData.marketPrice || apiData.lowPrice) {
+        const normalPrice = apiData.marketPrice || apiData.lowPrice || apiData.avgPrice
+        const foilPrice = apiData.foilMarketPrice || apiData.foilLowPrice
+        
+        if (normalPrice) {
+          const price = typeof normalPrice === 'number' ? normalPrice : parseFloat(String(normalPrice))
+          console.log(`✅ [Scraping] Precio encontrado en API interna de TCGPlayer: $${price} USD`)
+          return {
+            normal: price,
+            foil: foilPrice ? (typeof foilPrice === 'number' ? foilPrice : parseFloat(String(foilPrice))) : null,
+            source: 'tcgplayer-api-internal',
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.warn(`⚠️ [Scraping] Error en API interna de TCGPlayer:`, error instanceof Error ? error.message : error)
+  }
+
+  // MÉTODO 3: Buscar en eBay como última opción
+  try {
+    const ebayQuery = encodeURIComponent(`Disney Lorcana ${cardName}`)
+    const ebayUrl = `https://www.ebay.com/sch/i.html?_nkw=${ebayQuery}&_sop=15` // Ordenar por precio más bajo
+    
+    console.log(`🔍 [Scraping] Intentando eBay como última opción`)
+    
+    const ebayResponse = await fetch(ebayUrl, {
+      headers,
+      signal: AbortSignal.timeout(15000),
+    })
+    
+    if (ebayResponse.ok) {
+      const html = await ebayResponse.text()
+      
+      // eBay muestra precios en formato específico - buscar en el HTML
+      const priceMatches = html.match(/\$([\d,]+\.?\d*)/g) || []
+      const prices = priceMatches
+        .map(match => parseFloat(match.replace(/[$,]/g, '')))
+        .filter(price => price > 0 && price < 10000 && price > 0.5) // Filtrar precios razonables
+        .sort((a, b) => a - b) // Ordenar de menor a mayor
+      
+      if (prices.length > 0) {
+        // Usar el promedio de los primeros 5 precios más bajos como referencia
+        const topPrices = prices.slice(0, Math.min(5, prices.length))
+        const avgPrice = topPrices.reduce((sum, p) => sum + p, 0) / topPrices.length
+        console.log(`✅ [Scraping] Precio estimado de eBay: $${avgPrice.toFixed(2)} USD (basado en ${topPrices.length} resultados)`)
+        return {
+          normal: avgPrice,
+          foil: null, // eBay no distingue fácilmente entre normal y foil
+          source: 'ebay-scraping',
+        }
+      }
+    }
+  } catch (error) {
+    console.warn(`⚠️ [Scraping] Error en eBay:`, error instanceof Error ? error.message : error)
+  }
+
+  console.warn(`⚠️ [Scraping] No se encontró precio en ninguna fuente de scraping`)
+  return null
+}
+
+/**
  * Obtener precio de TCGPlayer usando métodos alternativos
  * 
  * Intenta múltiples fuentes en orden de preferencia
@@ -716,8 +950,24 @@ export async function getTCGPlayerPriceAlternative(
     return tcgApisPrice
   }
 
-  console.warn(`⚠️ No se encontró precio en ninguna fuente para ${cardName}`)
-  console.warn(`⚠️ Nota: La API de CardMarket no tiene soporte para Lorcana. Considera usar Lorcast API.`)
+  // PRIORIDAD 4: Intentar scraping de TCGPlayer (última opción)
+  // NOTA: Esto puede violar términos de servicio de TCGPlayer
+  console.log(`🔄 Intentando scraping de TCGPlayer (última opción)...`)
+  try {
+    const scrapingPrice = await getPriceFromTCGPlayerScraping(cardName, options)
+    console.log(`📊 Resultado scraping:`, scrapingPrice)
+    
+    if (scrapingPrice && scrapingPrice.normal) {
+      console.log(`✅ Precio encontrado en TCGPlayer (scraping): $${scrapingPrice.normal} USD`)
+      return scrapingPrice
+    }
+  } catch (error) {
+    console.warn(`⚠️ Error en scraping de TCGPlayer:`, error)
+  }
+
+  console.warn(`⚠️ No se encontró precio real de mercado para ${cardName}`)
+  console.warn(`⚠️ IMPORTANTE: No hay APIs públicas confiables para precios reales de Lorcana.`)
+  console.warn(`⚠️ Opciones: 1) Usar scraping (puede violar ToS), 2) Implementar API propia, 3) Usar precios estándar como fallback`)
   return null
 }
 
