@@ -1743,29 +1743,6 @@ export default function ComparePricesPage() {
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-1">
-                                {/* Botón para buscar precio de TCGPlayer */}
-                                {!comp.marketPriceUSD ? (
-                                  <Button
-                                    onClick={() => fetchCardPrice(comp)}
-                                    disabled={fetchingPrices.has(comp.cardId) || updatingPrices.has(comp.cardId) || updatingAll}
-                                    variant="default"
-                                    size="sm"
-                                    className="w-full"
-                                  >
-                                    {fetchingPrices.has(comp.cardId) ? (
-                                      <>
-                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                        Buscando...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Search className="h-3 w-3 mr-1" />
-                                        Buscar Precio
-                                      </>
-                                    )}
-                                  </Button>
-                                ) : null}
-                                
                                 {/* Botón para actualizar precio si hay precio sugerido (normal o foil) */}
                                 {(comp.suggestedPriceCLP || comp.suggestedFoilPriceCLP) ? (
                                   <Button
@@ -1773,7 +1750,7 @@ export default function ComparePricesPage() {
                                     disabled={updatingPrices.has(comp.cardId) || fetchingPrices.has(comp.cardId) || updatingAll}
                                     variant="outline"
                                     size="sm"
-                                    className="w-full mt-1"
+                                    className="w-full"
                                   >
                                     {updatingPrices.has(comp.cardId) ? (
                                       <>
