@@ -563,12 +563,16 @@ export default function ComparePricesPage() {
   }
 
   // Función para actualizar precio de una carta individual
-  const updateCardPrice = async (comp: ComparisonResult) => {
-    if (!comp.suggestedPriceCLP && !comp.suggestedFoilPriceCLP) {
+  const updateCardPrice = async (comp: ComparisonResult, manualPrice?: number, manualFoilPrice?: number) => {
+    // Si se proporcionan precios manuales, usarlos directamente
+    const priceToUpdate = manualPrice !== undefined ? manualPrice : comp.suggestedPriceCLP
+    const foilPriceToUpdate = manualFoilPrice !== undefined ? manualFoilPrice : comp.suggestedFoilPriceCLP
+    
+    if (!priceToUpdate && !foilPriceToUpdate) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No hay precio sugerido disponible para esta carta",
+        description: "No hay precio disponible para actualizar",
       })
       return
     }
