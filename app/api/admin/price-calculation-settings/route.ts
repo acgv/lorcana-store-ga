@@ -154,21 +154,23 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
-    // Si hay error relacionado con RLS o función, intentar deshabilitar RLS temporalmente
+    // Si hay error relacionado con RLS o función, la política RLS tiene problemas
     if (error && (error.code === "42703" || error.message?.includes("is_admin") || error.message?.includes("permission denied"))) {
-      console.warn("⚠️ Error de RLS detectado, intentando con bypass de RLS...")
+      console.error("❌ Error de RLS detectado:", error.message)
+      console.error("❌ Código de error:", error.code)
       
-      // Intentar ejecutar directamente con SQL si es posible
-      // O simplemente retornar éxito si los valores son válidos (guardar en localStorage como fallback)
-      console.warn("⚠️ No se pudo guardar en BD debido a problemas de RLS. Los valores se guardarán solo en localStorage.")
-      
-      // Retornar éxito de todos modos, ya que los valores se guardan en localStorage
-      return NextResponse.json({
-        success: true,
-        message: "Parámetros guardados (solo en localStorage debido a problema de RLS)",
-        data: updateData,
-        warning: "La política RLS tiene problemas. Por favor ejecuta la migración actualizada: scripts/migrations/create-price-calculation-settings-table.sql",
-      })
+      // Retornar error claro indicando que necesita ejecutar la migración
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Error de política RLS. La política está intentando usar is_admin() que no existe.",
+          code: error.code,
+          message: "Por favor ejecuta la migración SQL para corregir la política RLS:",
+          migrationFile: "scripts/migrations/fix-price-calculation-settings-rls.sql",
+          details: error.message,
+        },
+        { status: 500 }
+      )
     }
 
     if (error) {
