@@ -1441,26 +1441,26 @@ export default function ComparePricesPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[100px]">Imagen</TableHead>
-                          <TableHead>Carta</TableHead>
-                          <TableHead>Set</TableHead>
-                          <TableHead>Rareza</TableHead>
-                          <TableHead className="text-right">Precio Actual</TableHead>
-                          <TableHead className="text-right">Precio Normal (USD)</TableHead>
-                          <TableHead className="text-right">Precio Sugerido (CLP)</TableHead>
-                          <TableHead className="text-right">Diferencia</TableHead>
-                          <TableHead className="text-right">Precio Foil Actual</TableHead>
-                          <TableHead className="text-right">Precio Foil (USD)</TableHead>
-                          <TableHead className="text-right">Precio Foil Sugerido (CLP)</TableHead>
-                          <TableHead className="text-right">Diff. Foil</TableHead>
-                          <TableHead className="w-[120px]">Acciones</TableHead>
+                          <TableHead className="w-[80px]">Imagen</TableHead>
+                          <TableHead className="w-[180px] min-w-[180px]">Carta</TableHead>
+                          <TableHead className="w-[100px]">Set</TableHead>
+                          <TableHead className="w-[90px]">Rareza</TableHead>
+                          <TableHead className="text-right w-[110px]">Precio Actual</TableHead>
+                          <TableHead className="text-right w-[130px]">Precio Normal (USD)</TableHead>
+                          <TableHead className="text-right w-[130px]">Precio Sugerido (CLP)</TableHead>
+                          <TableHead className="text-right w-[100px]">Diferencia</TableHead>
+                          <TableHead className="text-right w-[110px]">Precio Foil Actual</TableHead>
+                          <TableHead className="text-right w-[130px]">Precio Foil (USD)</TableHead>
+                          <TableHead className="text-right w-[130px]">Precio Foil Sugerido (CLP)</TableHead>
+                          <TableHead className="text-right w-[100px]">Diff. Foil</TableHead>
+                          <TableHead className="w-[100px]">Acciones</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredComparisons.map((comp) => (
                           <TableRow key={comp.cardId}>
                             <TableCell>
-                              <div className="relative w-16 h-20">
+                              <div className="relative w-14 h-16">
                                 <Image
                                   src={comp.image || "/placeholder.svg"}
                                   alt={comp.cardName}
@@ -1469,12 +1469,16 @@ export default function ComparePricesPage() {
                                 />
                               </div>
                             </TableCell>
-                            <TableCell className="font-medium">{comp.cardName}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{comp.set}</Badge>
+                            <TableCell className="font-medium">
+                              <div className="line-clamp-2 text-sm leading-tight break-words max-w-[180px]">
+                                {comp.cardName}
+                              </div>
                             </TableCell>
                             <TableCell>
-                              <Badge variant="secondary">{comp.rarity}</Badge>
+                              <Badge variant="outline" className="text-xs">{comp.set}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-xs">{comp.rarity}</Badge>
                             </TableCell>
                             <TableCell className="text-right font-semibold">
                               ${comp.currentPrice.toLocaleString()}
@@ -1644,22 +1648,24 @@ export default function ComparePricesPage() {
                                 </div>
                               )}
                             </TableCell>
-                            <TableCell className="text-right font-semibold text-blue-600">
+                            <TableCell className="text-right font-semibold text-blue-600 text-sm">
                               {comp.suggestedPriceCLP ? `$${comp.suggestedPriceCLP.toLocaleString()}` : "-"}
                             </TableCell>
                             <TableCell className="text-right">
                               {comp.priceDifferencePercent !== 0 && (
                                 <div className="flex items-center justify-end gap-1">
                                   {comp.priceDifferencePercent > 0 ? (
-                                    <TrendingUp className="h-4 w-4 text-red-500" />
+                                    <TrendingUp className="h-3 w-3 text-red-500" />
                                   ) : (
-                                    <TrendingDown className="h-4 w-4 text-green-500" />
+                                    <TrendingDown className="h-3 w-3 text-green-500" />
                                   )}
                                   <span
                                     className={
-                                      Math.abs(comp.priceDifferencePercent) > 5
-                                        ? "font-bold text-red-500"
-                                        : "text-muted-foreground"
+                                      `text-xs ${
+                                        Math.abs(comp.priceDifferencePercent) > 5
+                                          ? "font-bold text-red-500"
+                                          : "text-muted-foreground"
+                                      }`
                                     }
                                   >
                                     {comp.priceDifferencePercent > 0 ? "+" : ""}
@@ -1668,7 +1674,7 @@ export default function ComparePricesPage() {
                                 </div>
                               )}
                             </TableCell>
-                            <TableCell className="text-right font-semibold">
+                            <TableCell className="text-right font-semibold text-sm">
                               {editingPrice?.cardId === comp.cardId && editingPrice.field === 'foilPrice' ? (
                                 <div className="flex items-center gap-2 justify-end">
                                   <Input
@@ -1723,10 +1729,10 @@ export default function ComparePricesPage() {
                                 </div>
                               )}
                             </TableCell>
-                            <TableCell className="text-right text-muted-foreground">
+                            <TableCell className="text-right text-muted-foreground text-sm">
                               {editingPrice?.cardId === comp.cardId && editingPrice.field === 'foilPriceUSD' ? (
-                                <div className="flex flex-col items-end gap-2">
-                                  <div className="flex items-center gap-2">
+                                <div className="flex flex-col items-end gap-1">
+                                  <div className="flex items-center gap-1">
                                     <span className="text-xs text-muted-foreground">USD:</span>
                                     <Input
                                       type="number"
@@ -1775,7 +1781,7 @@ export default function ComparePricesPage() {
                                           }
                                         }
                                       }}
-                                      className="w-20 h-8 text-right"
+                                      className="w-18 h-7 text-xs text-right"
                                       autoFocus
                                       placeholder="0.00"
                                       onKeyDown={(e) => {
@@ -1884,26 +1890,28 @@ export default function ComparePricesPage() {
                                   }}
                                   title="Click para ingresar precio foil en USD (se calculará automáticamente en CLP)"
                                 >
-                                  {comp.marketFoilPriceUSD ? `$${comp.marketFoilPriceUSD.toFixed(2)} USD` : "Click para ingresar"}
+                                  {comp.marketFoilPriceUSD ? `$${comp.marketFoilPriceUSD.toFixed(2)}` : "Click"}
                                 </div>
                               )}
                             </TableCell>
-                            <TableCell className="text-right font-semibold text-blue-600">
+                            <TableCell className="text-right font-semibold text-blue-600 text-sm">
                               {comp.suggestedFoilPriceCLP ? `$${comp.suggestedFoilPriceCLP.toLocaleString()}` : "-"}
                             </TableCell>
                             <TableCell className="text-right">
                               {comp.foilPriceDifferencePercent !== 0 && (
                                 <div className="flex items-center justify-end gap-1">
                                   {comp.foilPriceDifferencePercent > 0 ? (
-                                    <TrendingUp className="h-4 w-4 text-red-500" />
+                                    <TrendingUp className="h-3 w-3 text-red-500" />
                                   ) : (
-                                    <TrendingDown className="h-4 w-4 text-green-500" />
+                                    <TrendingDown className="h-3 w-3 text-green-500" />
                                   )}
                                   <span
                                     className={
-                                      Math.abs(comp.foilPriceDifferencePercent) > 5
-                                        ? "font-bold text-red-500"
-                                        : "text-muted-foreground"
+                                      `text-xs ${
+                                        Math.abs(comp.foilPriceDifferencePercent) > 5
+                                          ? "font-bold text-red-500"
+                                          : "text-muted-foreground"
+                                      }`
                                     }
                                   >
                                     {comp.foilPriceDifferencePercent > 0 ? "+" : ""}
