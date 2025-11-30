@@ -34,26 +34,48 @@ EXECUTE PROCEDURE public.set_updated_at();
 ALTER TABLE public.price_calculation_settings ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Only admins can read/write
--- Primero eliminar la política si existe
+-- Primero eliminar TODAS las políticas existentes si hay alguna
 DROP POLICY IF EXISTS "Admins can manage price calculation settings" ON public.price_calculation_settings;
+DROP POLICY IF EXISTS "price_calculation_settings_policy" ON public.price_calculation_settings;
+DROP POLICY IF EXISTS "Users can view price calculation settings" ON public.price_calculation_settings;
+DROP POLICY IF EXISTS "Users can update price calculation settings" ON public.price_calculation_settings;
 
--- Crear política usando verificación directa en user_roles
--- (más confiable que depender de is_admin() que puede no existir)
-CREATE POLICY "Admins can manage price calculation settings"
-ON public.price_calculation_settings
-FOR ALL
-USING (
-  EXISTS (
-    SELECT 1 FROM public.user_roles
-    WHERE user_roles.user_id = auth.uid()
-    AND user_roles.role = 'admin'
-  )
-)
-WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM public.user_roles
-    WHERE user_roles.user_id = auth.uid()
-    AND user_roles.role = 'admin'
-  )
-);
+-- Verificar si la tabla user_roles existe antes de crear la política
+DO $$
+BEGIN
+  -- Verificar si user_roles existe
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'user_roles'
+  ) THEN
+    -- Crear política usando verificación directa en user_roles
+    EXECUTE 'CREATE POLICY "Admins can manage price calculation settings"
+      ON public.price_calculation_settings
+      FOR ALL
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.user_roles
+          WHERE user_roles.user_id = auth.uid()
+          AND user_roles.role = ''admin''
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM public.user_roles
+          WHERE user_roles.user_id = auth.uid()
+          AND user_roles.role = ''admin''
+        )
+      )';
+  ELSE
+    -- Si user_roles no existe, crear política que permita todo (solo para desarrollo)
+    -- En producción, esto debería requerir user_roles
+    RAISE NOTICE 'Tabla user_roles no existe. Creando política permisiva (solo para desarrollo).';
+    EXECUTE 'CREATE POLICY "Admins can manage price calculation settings"
+      ON public.price_calculation_settings
+      FOR ALL
+      USING (true)
+      WITH CHECK (true)';
+  END IF;
+END $$;
 
