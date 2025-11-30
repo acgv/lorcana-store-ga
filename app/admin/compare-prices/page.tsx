@@ -164,39 +164,15 @@ export default function ComparePricesPage() {
     loadPriceParams()
   }, [])
 
-  // Guardar parámetros en BD y localStorage cuando cambien
-  const updatePriceParam = async (key: keyof typeof priceParams, value: number) => {
+  // Guardar parámetros solo en localStorage cuando cambien
+  // El guardado en BD se hace solo cuando se presiona "Recalcular Precios"
+  const updatePriceParam = (key: keyof typeof priceParams, value: number) => {
     const updated = { ...priceParams, [key]: value }
     setPriceParams(updated)
     
-    // Guardar en localStorage inmediatamente (para respuesta rápida)
+    // Guardar solo en localStorage (no en BD para mejor performance)
     localStorage.setItem("priceCalculationParams", JSON.stringify(updated))
-    console.log(`📝 Parámetro actualizado: ${key} = ${value}`, updated)
-    
-    // Guardar en BD de forma asíncrona (sin bloquear)
-    try {
-      const { supabase } = await import("@/lib/db")
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-
-      const response = await fetch("/api/admin/price-calculation-settings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        body: JSON.stringify(updated),
-      })
-
-      if (response.ok) {
-        console.log("✅ Parámetros guardados en BD")
-      } else {
-        console.warn("⚠️ Error guardando parámetros en BD, usando solo localStorage")
-      }
-    } catch (error) {
-      console.warn("⚠️ Error guardando parámetros en BD:", error)
-      // No mostrar error al usuario, ya está guardado en localStorage
-    }
+    console.log(`📝 Parámetro actualizado: ${key} = ${value}`)
   }
 
   const loadData = async (setFilter?: string) => {

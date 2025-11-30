@@ -23,7 +23,8 @@ INSERT INTO public.price_calculation_settings (id, "usTaxRate", "shippingUSD", "
 VALUES ('default', 0.08, 8.00, 0.19, 1000.00, 0.20, 0.034)
 ON CONFLICT (id) DO NOTHING;
 
--- Create update trigger
+-- Create update trigger (drop if exists first)
+DROP TRIGGER IF EXISTS set_price_calculation_settings_updated_at ON public.price_calculation_settings;
 CREATE TRIGGER set_price_calculation_settings_updated_at
 BEFORE UPDATE ON public.price_calculation_settings
 FOR EACH ROW
@@ -33,10 +34,43 @@ EXECUTE PROCEDURE public.set_updated_at();
 ALTER TABLE public.price_calculation_settings ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Only admins can read/write
--- Usa la función helper is_admin() que verifica en la tabla user_roles
-CREATE POLICY "Admins can manage price calculation settings"
-ON public.price_calculation_settings
-FOR ALL
-USING (public.is_admin())
-WITH CHECK (public.is_admin());
+-- Primero eliminar la política si existe
+DROP POLICY IF EXISTS "Admins can manage price calculation settings" ON public.price_calculation_settings;
+
+-- Crear política: verificar si la función is_admin() existe, si no, usar verificación directa
+DO $$
+BEGIN
+  -- Intentar usar la función is_admin() si existe
+  IF EXISTS (
+    SELECT 1 FROM pg_proc 
+    WHERE proname = 'is_admin' 
+    AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+  ) THEN
+    -- Usar la función helper is_admin()
+    EXECUTE 'CREATE POLICY "Admins can manage price calculation settings"
+      ON public.price_calculation_settings
+      FOR ALL
+      USING (public.is_admin())
+      WITH CHECK (public.is_admin())';
+  ELSE
+    -- Si no existe, usar verificación directa en user_roles
+    EXECUTE 'CREATE POLICY "Admins can manage price calculation settings"
+      ON public.price_calculation_settings
+      FOR ALL
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.user_roles
+          WHERE user_roles.user_id = auth.uid()
+          AND user_roles.role = ''admin''
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM public.user_roles
+          WHERE user_roles.user_id = auth.uid()
+          AND user_roles.role = ''admin''
+        )
+      )';
+  END IF;
+END $$;
 

@@ -158,6 +158,11 @@ export async function POST(request: NextRequest) {
         console.error("❌ Tabla price_calculation_settings no existe. Ejecuta la migración primero.")
         throw new Error("La tabla de configuración no existe. Por favor ejecuta la migración: scripts/migrations/create-price-calculation-settings-table.sql")
       }
+      // Si hay error de columna (42703), probablemente la función is_admin() no existe
+      if (error.code === "42703") {
+        console.error("❌ Error 42703: Probablemente la función is_admin() no existe. Ejecuta scripts/setup/setup-user-roles.sql primero.")
+        throw new Error("La función is_admin() no existe. Por favor ejecuta primero: scripts/setup/setup-user-roles.sql")
+      }
       console.error("❌ Error en upsert de price_calculation_settings:", error)
       throw error
     }
