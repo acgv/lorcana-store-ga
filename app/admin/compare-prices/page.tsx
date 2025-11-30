@@ -1445,17 +1445,14 @@ export default function ComparePricesPage() {
                           <TableHead>Carta</TableHead>
                           <TableHead>Set</TableHead>
                           <TableHead>Rareza</TableHead>
-                          <TableHead className="text-right">Stock Normal</TableHead>
-                          <TableHead className="text-right">Stock Foil</TableHead>
                           <TableHead className="text-right">Precio Actual</TableHead>
-                          <TableHead className="text-right">Precio TCGPlayer (USD)</TableHead>
+                          <TableHead className="text-right">Precio Normal (USD)</TableHead>
                           <TableHead className="text-right">Precio Sugerido (CLP)</TableHead>
                           <TableHead className="text-right">Diferencia</TableHead>
                           <TableHead className="text-right">Precio Foil Actual</TableHead>
-                          <TableHead className="text-right">Precio Foil TCGPlayer (USD)</TableHead>
+                          <TableHead className="text-right">Precio Foil (USD)</TableHead>
                           <TableHead className="text-right">Precio Foil Sugerido (CLP)</TableHead>
                           <TableHead className="text-right">Diff. Foil</TableHead>
-                          <TableHead>Estado</TableHead>
                           <TableHead className="w-[120px]">Acciones</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1478,24 +1475,6 @@ export default function ComparePricesPage() {
                             </TableCell>
                             <TableCell>
                               <Badge variant="secondary">{comp.rarity}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {comp.currentNormalStock > 0 ? (
-                                <span className="text-green-600 font-semibold">
-                                  {comp.currentNormalStock}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">0</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {comp.currentFoilStock > 0 ? (
-                                <span className="text-green-600 font-semibold">
-                                  {comp.currentFoilStock}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">0</span>
-                              )}
                             </TableCell>
                             <TableCell className="text-right font-semibold">
                               ${comp.currentPrice.toLocaleString()}
@@ -1932,27 +1911,6 @@ export default function ComparePricesPage() {
                                   </span>
                                 </div>
                               )}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-col gap-1">
-                                {comp.hasStock ? (
-                                  <Badge variant="default" className="text-xs">
-                                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                                    Con Stock
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="destructive" className="text-xs">
-                                    <AlertCircle className="h-3 w-3 mr-1" />
-                                    Sin Stock
-                                  </Badge>
-                                )}
-                                {comp.needsPriceUpdate && (
-                                  <Badge variant="outline" className="text-xs border-orange-500">
-                                    <DollarSign className="h-3 w-3 mr-1" />
-                                    Actualizar Precio
-                                  </Badge>
-                                )}
-                              </div>
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-1">
