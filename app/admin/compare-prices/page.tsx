@@ -563,10 +563,19 @@ export default function ComparePricesPage() {
   }
 
   // Función para actualizar precio de una carta individual
-  const updateCardPrice = async (comp: ComparisonResult, manualPrice?: number, manualFoilPrice?: number) => {
+  const updateCardPrice = async (
+    comp: ComparisonResult, 
+    manualPrice?: number, 
+    manualFoilPrice?: number,
+    manualMarketPriceUSD?: number,
+    manualMarketFoilPriceUSD?: number
+  ) => {
     // Si se proporcionan precios manuales, usarlos directamente
     const priceToUpdate = manualPrice !== undefined ? manualPrice : comp.suggestedPriceCLP
     const foilPriceToUpdate = manualFoilPrice !== undefined ? manualFoilPrice : comp.suggestedFoilPriceCLP
+    // Si se proporciona marketPriceUSD manual, usarlo (viene del campo editable)
+    const marketPriceUSDToSave = manualMarketPriceUSD !== undefined ? manualMarketPriceUSD : comp.marketPriceUSD
+    const marketFoilPriceUSDToSave = manualMarketFoilPriceUSD !== undefined ? manualMarketFoilPriceUSD : comp.marketFoilPriceUSD
     
     if (!priceToUpdate && !foilPriceToUpdate) {
       toast({
@@ -583,6 +592,30 @@ export default function ComparePricesPage() {
       const { supabase } = await import("@/lib/db")
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
+
+      // Guardar también el precio USD en localStorage para persistencia
+      if (marketPriceUSDToSave !== null && marketPriceUSDToSave !== undefined) {
+        const savedPrices = localStorage.getItem("searchedCardPrices")
+        let pricesCache: Record<string, any> = {}
+        
+        if (savedPrices) {
+          try {
+            pricesCache = JSON.parse(savedPrices)
+          } catch (e) {
+            console.warn("⚠️ Error parseando precios guardados:", e)
+          }
+        }
+
+        pricesCache[comp.cardId] = {
+          ...pricesCache[comp.cardId],
+          marketPriceUSD: marketPriceUSDToSave,
+          marketFoilPriceUSD: marketFoilPriceUSDToSave !== null && marketFoilPriceUSDToSave !== undefined ? marketFoilPriceUSDToSave : pricesCache[comp.cardId]?.marketFoilPriceUSD,
+          timestamp: Date.now(),
+        }
+
+        localStorage.setItem("searchedCardPrices", JSON.stringify(pricesCache))
+        console.log(`💾 Precio USD guardado en localStorage para ${comp.cardName}: $${marketPriceUSDToSave} USD`)
+      }
 
       const response = await fetch("/api/admin/update-prices", {
         method: "POST",
@@ -1348,22 +1381,22 @@ export default function ComparePricesPage() {
                                       autoFocus
                                       placeholder="0.00"
                                       onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          const usdPrice = parseFloat(editingPriceValue)
-                                          if (!isNaN(usdPrice) && usdPrice >= 0) {
-                                            const calculated = calculateFinalPrice({
-                                              basePriceUSD: usdPrice,
-                                              usTaxRate: priceParams.usTaxRate,
-                                              shippingUSD: priceParams.shippingUSD,
-                                              chileVATRate: priceParams.chileVATRate,
-                                              exchangeRate: priceParams.exchangeRate,
-                                              profitMargin: priceParams.profitMargin,
-                                              mercadoPagoFee: priceParams.mercadoPagoFee,
-                                            })
-                                            updateCardPrice(comp, calculated.finalPriceCLP, undefined)
-                                            setEditingPrice(null)
-                                            setEditingPriceValue("")
-                                          }
+                                          if (e.key === 'Enter') {
+                                            const usdPrice = parseFloat(editingPriceValue)
+                                            if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                              const calculated = calculateFinalPrice({
+                                                basePriceUSD: usdPrice,
+                                                usTaxRate: priceParams.usTaxRate,
+                                                shippingUSD: priceParams.shippingUSD,
+                                                chileVATRate: priceParams.chileVATRate,
+                                                exchangeRate: priceParams.exchangeRate,
+                                                profitMargin: priceParams.profitMargin,
+                                                mercadoPagoFee: priceParams.mercadoPagoFee,
+                                              })
+                                              updateCardPrice(comp, calculated.finalPriceCLP, undefined, usdPrice, undefined)
+                                              setEditingPrice(null)
+                                              setEditingPriceValue("")
+                                            }
                                         } else if (e.key === 'Escape') {
                                           setEditingPrice(null)
                                           setEditingPriceValue("")
@@ -1381,7 +1414,7 @@ export default function ComparePricesPage() {
                                             profitMargin: priceParams.profitMargin,
                                             mercadoPagoFee: priceParams.mercadoPagoFee,
                                           })
-                                          updateCardPrice(comp, calculated.finalPriceCLP, undefined)
+                                          updateCardPrice(comp, calculated.finalPriceCLP, undefined, usdPrice, undefined)
                                         }
                                         setEditingPrice(null)
                                         setEditingPriceValue("")
@@ -1590,7 +1623,10 @@ export default function ComparePricesPage() {
                                             profitMargin: priceParams.profitMargin,
                                             mercadoPagoFee: priceParams.mercadoPagoFee,
                                           })
-                                          updateCardPrice(comp, undefined, calculated.finalPriceCLP)
+                                          const usdPrice = parseFloat(editingPriceValue)
+                                          if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                            updateCardPrice(comp, undefined, calculated.finalPriceCLP, undefined, usdPrice)
+                                          }
                                         }
                                         setEditingPrice(null)
                                         setEditingPriceValue("")
@@ -1709,31 +1745,6 @@ export default function ComparePricesPage() {
                                       </>
                                     )}
                                   </Button>
-                                ) : null}
-                                
-                                {/* Botón para actualizar precio si hay precio sugerido (normal o foil) */}
-                                {comp.suggestedPriceCLP || comp.suggestedFoilPriceCLP ? (
-                                  <Button
-                                    onClick={() => updateCardPrice(comp)}
-                                    disabled={updatingPrices.has(comp.cardId) || fetchingPrices.has(comp.cardId) || updatingAll}
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full"
-                                  >
-                                    {updatingPrices.has(comp.cardId) ? (
-                                      <>
-                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                        Actualizando...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <RefreshCw className="h-3 w-3 mr-1" />
-                                        Actualizar
-                                      </>
-                                    )}
-                                  </Button>
-                                ) : comp.marketPriceUSD ? (
-                                  <span className="text-xs text-muted-foreground">Sin precio sugerido</span>
                                 ) : null}
                               </div>
                             </TableCell>
