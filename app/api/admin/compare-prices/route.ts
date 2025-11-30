@@ -214,7 +214,7 @@ export async function GET(request: NextRequest) {
     while (hasMore) {
       let query = supabaseAdmin
         .from("cards")
-        .select("id, name, set, number, rarity, type, price, foilPrice, normalStock, foilStock, image")
+        .select("id, name, set, number, rarity, type, price, foilPrice, normalStock, foilStock, image, marketPriceUSD, marketFoilPriceUSD")
         .eq("status", "approved")
         .range(from, from + dbPageSize - 1)
       
@@ -337,14 +337,14 @@ export async function GET(request: NextRequest) {
 
       const rarity = rarityMap[apiCard.Rarity] || "common"
       
-      // NO buscar precios de TCGPlayer automáticamente
-      // Los precios se buscarán individualmente con el botón "Buscar Precio"
-      let marketPriceUSD: number | null = null
-      let marketFoilPriceUSD: number | null = null
-      let priceSource: "tcgplayer" | "standard" = "standard"
+      // Leer precios USD guardados en la base de datos (si existen)
+      // Estos son los valores que el admin ingresó manualmente
+      let marketPriceUSD: number | null = dbCard?.marketPriceUSD ?? null
+      let marketFoilPriceUSD: number | null = dbCard?.marketFoilPriceUSD ?? null
+      let priceSource: "tcgplayer" | "standard" | "manual" = marketPriceUSD ? "manual" : "standard"
       
-      // Los precios de TCGPlayer se obtendrán individualmente desde el frontend
-      // cuando el usuario haga clic en "Buscar Precio" para cada carta
+      // Los precios USD se ingresan manualmente desde el frontend
+      // Los precios sugeridos en CLP se calculan en tiempo real, no se guardan
 
       if (dbCard) {
         // Calcular precio sugerido usando la fórmula del Excel
@@ -373,27 +373,23 @@ export async function GET(request: NextRequest) {
         let suggestedPriceCLP: number | null = null
         let suggestedFoilPriceCLP: number | null = null
 
-        // Solo calcular precio sugerido si tenemos precio REAL de TCGPlayer
-        // NO calcular si marketPriceUSD es null (no hay precio de TCGPlayer disponible)
-        if (marketPriceUSD && priceSource === "tcgplayer") {
-          // Calcular precio sugerido basado en precio REAL de TCGPlayer
+        // Calcular precio sugerido si tenemos precio USD (guardado en BD o ingresado manualmente)
+        // Los precios sugeridos se calculan en tiempo real, no se guardan en BD
+        if (marketPriceUSD) {
           const calculation = calculateFinalPrice({
             ...calcParams,
             basePriceUSD: marketPriceUSD,
           })
           suggestedPriceCLP = calculation.finalPriceCLP
+        }
 
-          // Si hay precio foil, calcular también
-          if (marketFoilPriceUSD) {
-            const foilCalculation = calculateFinalPrice({
-              ...calcParams,
-              basePriceUSD: marketFoilPriceUSD,
-            })
-            suggestedFoilPriceCLP = foilCalculation.finalPriceCLP
-          }
-        } else {
-          // Si no hay precio de TCGPlayer, no calcular precio sugerido
-          console.warn(`⚠️ No se puede calcular precio sugerido para ${dbCard.name} - No hay precio de TCGPlayer disponible`)
+        // Si hay precio foil USD, calcular también
+        if (marketFoilPriceUSD) {
+          const foilCalculation = calculateFinalPrice({
+            ...calcParams,
+            basePriceUSD: marketFoilPriceUSD,
+          })
+          suggestedFoilPriceCLP = foilCalculation.finalPriceCLP
         }
 
         // Comparar precio actual con precio sugerido

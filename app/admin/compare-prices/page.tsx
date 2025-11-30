@@ -111,27 +111,92 @@ export default function ComparePricesPage() {
     mercadoPagoFee: 0.034,
   })
 
-  // Cargar parámetros desde localStorage al inicio
+  // Cargar parámetros desde la base de datos al inicio
   useEffect(() => {
-    const saved = localStorage.getItem("priceCalculationParams")
-    if (saved) {
+    const loadPriceParams = async () => {
       try {
-        const parsed = JSON.parse(saved)
-        setPriceParams(parsed)
-      } catch (e) {
-        console.error("Error loading price params:", e)
+        const { supabase } = await import("@/lib/db")
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+
+        const response = await fetch("/api/admin/price-calculation-settings", {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success && result.data) {
+            setPriceParams(result.data)
+            // También guardar en localStorage como backup
+            localStorage.setItem("priceCalculationParams", JSON.stringify(result.data))
+            console.log("✅ Parámetros cargados desde BD:", result.data)
+          }
+        } else {
+          // Fallback a localStorage si falla la BD
+          const saved = localStorage.getItem("priceCalculationParams")
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved)
+              setPriceParams(parsed)
+              console.log("⚠️ Usando parámetros de localStorage (fallback)")
+            } catch (e) {
+              console.error("Error loading price params:", e)
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error loading price params from BD:", error)
+        // Fallback a localStorage
+        const saved = localStorage.getItem("priceCalculationParams")
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved)
+            setPriceParams(parsed)
+          } catch (e) {
+            console.error("Error loading price params:", e)
+          }
+        }
       }
     }
+
+    loadPriceParams()
   }, [])
 
-  // Guardar parámetros en localStorage cuando cambien
-  const updatePriceParam = (key: keyof typeof priceParams, value: number) => {
-    setPriceParams((prev) => {
-      const updated = { ...prev, [key]: value }
-      localStorage.setItem("priceCalculationParams", JSON.stringify(updated))
-      console.log(`📝 Parámetro actualizado: ${key} = ${value}`, updated)
-      return updated
-    })
+  // Guardar parámetros en BD y localStorage cuando cambien
+  const updatePriceParam = async (key: keyof typeof priceParams, value: number) => {
+    const updated = { ...priceParams, [key]: value }
+    setPriceParams(updated)
+    
+    // Guardar en localStorage inmediatamente (para respuesta rápida)
+    localStorage.setItem("priceCalculationParams", JSON.stringify(updated))
+    console.log(`📝 Parámetro actualizado: ${key} = ${value}`, updated)
+    
+    // Guardar en BD de forma asíncrona (sin bloquear)
+    try {
+      const { supabase } = await import("@/lib/db")
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      const response = await fetch("/api/admin/price-calculation-settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify(updated),
+      })
+
+      if (response.ok) {
+        console.log("✅ Parámetros guardados en BD")
+      } else {
+        console.warn("⚠️ Error guardando parámetros en BD, usando solo localStorage")
+      }
+    } catch (error) {
+      console.warn("⚠️ Error guardando parámetros en BD:", error)
+      // No mostrar error al usuario, ya está guardado en localStorage
+    }
   }
 
   const loadData = async (setFilter?: string) => {
@@ -618,6 +683,50 @@ export default function ComparePricesPage() {
     }
   }
 
+  // Función para guardar precio USD en la base de datos (solo USD, no los cálculos)
+  const saveMarketPriceUSD = async (cardId: string, marketPriceUSD?: number, marketFoilPriceUSD?: number) => {
+    try {
+      const { supabase } = await import("@/lib/db")
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      const updateData: any = {}
+      if (marketPriceUSD !== undefined && marketPriceUSD !== null) {
+        updateData.marketPriceUSD = marketPriceUSD
+      }
+      if (marketFoilPriceUSD !== undefined && marketFoilPriceUSD !== null) {
+        updateData.marketFoilPriceUSD = marketFoilPriceUSD
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return // No hay nada que actualizar
+      }
+
+      const response = await fetch("/api/admin/update-prices", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          cardId,
+          ...updateData,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        console.warn(`⚠️ Error guardando precio USD en BD para ${cardId}:`, result.error)
+      } else {
+        console.log(`✅ Precio USD guardado en BD para ${cardId}`)
+      }
+    } catch (error) {
+      console.warn("⚠️ Error guardando precio USD en BD:", error)
+      // No mostrar toast para no interrumpir el flujo del usuario
+    }
+  }
+
   // Función para actualizar precio de una carta individual
   const updateCardPrice = async (
     comp: ComparisonResult, 
@@ -1019,21 +1128,41 @@ export default function ComparePricesPage() {
                 </div>
                 <div className="flex gap-2">
                   <Button 
-                    onClick={() => {
+                    onClick={async () => {
                       console.log("🔄 Botón 'Recalcular Precios' clickeado")
-                      // Forzar lectura de parámetros más recientes antes de recargar
-                      const saved = localStorage.getItem("priceCalculationParams")
-                      if (saved) {
-                        try {
-                          const parsed = JSON.parse(saved)
-                          setPriceParams(parsed)
-                          console.log("📝 Parámetros actualizados desde localStorage:", parsed)
-                        } catch (e) {
-                          console.warn("⚠️ Error parseando parámetros:", e)
+                      
+                      // Guardar los parámetros actuales en la BD antes de recargar
+                      try {
+                        const { supabase } = await import("@/lib/db")
+                        const { data: { session } } = await supabase.auth.getSession()
+                        const token = session?.access_token
+
+                        const response = await fetch("/api/admin/price-calculation-settings", {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            ...(token && { Authorization: `Bearer ${token}` }),
+                          },
+                          body: JSON.stringify(priceParams),
+                        })
+
+                        if (response.ok) {
+                          const result = await response.json()
+                          if (result.success) {
+                            console.log("✅ Parámetros guardados en BD antes de recalcular")
+                            // También actualizar localStorage
+                            localStorage.setItem("priceCalculationParams", JSON.stringify(priceParams))
+                          }
+                        } else {
+                          console.warn("⚠️ Error guardando parámetros en BD, continuando con recálculo")
                         }
+                      } catch (error) {
+                        console.warn("⚠️ Error guardando parámetros en BD:", error)
+                        // Continuar con el recálculo aunque falle el guardado
                       }
-                      // Pequeño delay para asegurar que el estado se actualice
-                      setTimeout(() => loadData(), 100)
+                      
+                      // Recargar datos para recalcular precios sugeridos con los nuevos parámetros
+                      await loadData()
                     }}
                     disabled={refreshing || loading}
                     variant="outline"
@@ -1445,6 +1574,31 @@ export default function ComparePricesPage() {
                                               comparisons: updatedComparisons,
                                             })
                                           }
+                                          
+                                          // Guardar el precio USD normal en localStorage inmediatamente
+                                          const savedPrices = localStorage.getItem("searchedCardPrices")
+                                          let pricesCache: Record<string, any> = {}
+                                          
+                                          if (savedPrices) {
+                                            try {
+                                              pricesCache = JSON.parse(savedPrices)
+                                            } catch (e) {
+                                              console.warn("⚠️ Error parseando precios guardados:", e)
+                                            }
+                                          }
+
+                                          pricesCache[comp.cardId] = {
+                                            ...pricesCache[comp.cardId],
+                                            marketPriceUSD: usdPrice,
+                                            marketFoilPriceUSD: comp.marketFoilPriceUSD ?? pricesCache[comp.cardId]?.marketFoilPriceUSD,
+                                            timestamp: Date.now(),
+                                          }
+
+                                          localStorage.setItem("searchedCardPrices", JSON.stringify(pricesCache))
+                                          console.log(`💾 Precio USD normal guardado en localStorage para ${comp.cardName}: $${usdPrice} USD`)
+                                          
+                                          // Guardar también en la base de datos
+                                          saveMarketPriceUSD(comp.cardId, usdPrice, undefined)
                                         }
                                       }}
                                       className="w-20 h-8 text-right"
@@ -1635,6 +1789,31 @@ export default function ComparePricesPage() {
                                               comparisons: updatedComparisons,
                                             })
                                           }
+                                          
+                                          // Guardar el precio USD foil en localStorage inmediatamente
+                                          const savedPrices = localStorage.getItem("searchedCardPrices")
+                                          let pricesCache: Record<string, any> = {}
+                                          
+                                          if (savedPrices) {
+                                            try {
+                                              pricesCache = JSON.parse(savedPrices)
+                                            } catch (e) {
+                                              console.warn("⚠️ Error parseando precios guardados:", e)
+                                            }
+                                          }
+
+                                          pricesCache[comp.cardId] = {
+                                            ...pricesCache[comp.cardId],
+                                            marketFoilPriceUSD: usdPrice,
+                                            marketPriceUSD: comp.marketPriceUSD ?? pricesCache[comp.cardId]?.marketPriceUSD,
+                                            timestamp: Date.now(),
+                                          }
+
+                                          localStorage.setItem("searchedCardPrices", JSON.stringify(pricesCache))
+                                          console.log(`💾 Precio USD foil guardado en localStorage para ${comp.cardName}: $${usdPrice} USD`)
+                                          
+                                          // Guardar también en la base de datos
+                                          saveMarketPriceUSD(comp.cardId, undefined, usdPrice)
                                         }
                                       }}
                                       className="w-20 h-8 text-right"

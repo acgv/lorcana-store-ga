@@ -1,0 +1,127 @@
+import { NextRequest, NextResponse } from "next/server"
+import { supabaseAdmin } from "@/lib/db"
+import { verifyAdmin } from "@/lib/auth"
+
+// GET: Obtener parámetros de cálculo de precios
+export async function GET(request: NextRequest) {
+  try {
+    const adminCheck = await verifyAdmin(request)
+    if (!adminCheck.success) {
+      return NextResponse.json(
+        { success: false, error: adminCheck.error },
+        { status: adminCheck.status || 401 }
+      )
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("price_calculation_settings")
+      .select("*")
+      .eq("id", "default")
+      .single()
+
+    if (error) {
+      // Si no existe, retornar valores por defecto
+      if (error.code === "PGRST116") {
+        return NextResponse.json({
+          success: true,
+          data: {
+            usTaxRate: 0.08,
+            shippingUSD: 8,
+            chileVATRate: 0.19,
+            exchangeRate: 1000,
+            profitMargin: 0.20,
+            mercadoPagoFee: 0.034,
+          },
+        })
+      }
+      throw error
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        usTaxRate: parseFloat(data.usTaxRate) || 0.08,
+        shippingUSD: parseFloat(data.shippingUSD) || 8,
+        chileVATRate: parseFloat(data.chileVATRate) || 0.19,
+        exchangeRate: parseFloat(data.exchangeRate) || 1000,
+        profitMargin: parseFloat(data.profitMargin) || 0.20,
+        mercadoPagoFee: parseFloat(data.mercadoPagoFee) || 0.034,
+      },
+    })
+  } catch (error) {
+    console.error("Error fetching price calculation settings:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+
+// POST: Actualizar parámetros de cálculo de precios
+export async function POST(request: NextRequest) {
+  try {
+    const adminCheck = await verifyAdmin(request)
+    if (!adminCheck.success) {
+      return NextResponse.json(
+        { success: false, error: adminCheck.error },
+        { status: adminCheck.status || 401 }
+      )
+    }
+
+    const body = await request.json()
+    const { usTaxRate, shippingUSD, chileVATRate, exchangeRate, profitMargin, mercadoPagoFee } = body
+
+    const updateData: any = {}
+    if (usTaxRate !== undefined) updateData.usTaxRate = Number(usTaxRate)
+    if (shippingUSD !== undefined) updateData.shippingUSD = Number(shippingUSD)
+    if (chileVATRate !== undefined) updateData.chileVATRate = Number(chileVATRate)
+    if (exchangeRate !== undefined) updateData.exchangeRate = Number(exchangeRate)
+    if (profitMargin !== undefined) updateData.profitMargin = Number(profitMargin)
+    if (mercadoPagoFee !== undefined) updateData.mercadoPagoFee = Number(mercadoPagoFee)
+
+    // Upsert (insert or update)
+    const { data, error } = await supabaseAdmin
+      .from("price_calculation_settings")
+      .upsert(
+        {
+          id: "default",
+          ...updateData,
+        },
+        {
+          onConflict: "id",
+        }
+      )
+      .select()
+      .single()
+
+    if (error) {
+      throw error
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Parámetros de cálculo actualizados correctamente",
+      data: {
+        usTaxRate: parseFloat(data.usTaxRate),
+        shippingUSD: parseFloat(data.shippingUSD),
+        chileVATRate: parseFloat(data.chileVATRate),
+        exchangeRate: parseFloat(data.exchangeRate),
+        profitMargin: parseFloat(data.profitMargin),
+        mercadoPagoFee: parseFloat(data.mercadoPagoFee),
+      },
+    })
+  } catch (error) {
+    console.error("Error updating price calculation settings:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+

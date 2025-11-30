@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { cardId, price, foilPrice, updates } = body
+    const { cardId, price, foilPrice, marketPriceUSD, marketFoilPriceUSD, updates } = body
 
     // Si se pasa un array de updates, es actualización masiva
     if (updates && Array.isArray(updates)) {
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
       // Procesar cada actualización
       for (const update of updates) {
-        const { cardId: id, price: p, foilPrice: fp } = update
+        const { cardId: id, price: p, foilPrice: fp, marketPriceUSD: mpUSD, marketFoilPriceUSD: mfpUSD } = update
         
         if (!id) {
           results.failed++
@@ -44,6 +44,12 @@ export async function POST(request: NextRequest) {
           }
           if (fp !== undefined && fp !== null) {
             updateData.foilPrice = Math.max(0, Number(fp) || 0)
+          }
+          if (mpUSD !== undefined && mpUSD !== null) {
+            updateData.marketPriceUSD = Math.max(0, Number(mpUSD) || 0)
+          }
+          if (mfpUSD !== undefined && mfpUSD !== null) {
+            updateData.marketFoilPriceUSD = Math.max(0, Number(mfpUSD) || 0)
           }
 
           if (Object.keys(updateData).length === 0) {
@@ -93,6 +99,12 @@ export async function POST(request: NextRequest) {
     }
     if (foilPrice !== undefined && foilPrice !== null) {
       updateData.foilPrice = Math.max(0, Number(foilPrice) || 0)
+    }
+    if (marketPriceUSD !== undefined && marketPriceUSD !== null) {
+      updateData.marketPriceUSD = Math.max(0, Number(marketPriceUSD) || 0)
+    }
+    if (marketFoilPriceUSD !== undefined && marketFoilPriceUSD !== null) {
+      updateData.marketFoilPriceUSD = Math.max(0, Number(marketFoilPriceUSD) || 0)
     }
 
     if (Object.keys(updateData).length === 0) {
