@@ -112,6 +112,7 @@ export default function ComparePricesPage() {
   })
 
   // Cargar parámetros desde la base de datos al inicio
+  // SIEMPRE priorizar la BD sobre localStorage
   useEffect(() => {
     const loadPriceParams = async () => {
       try {
@@ -119,6 +120,7 @@ export default function ComparePricesPage() {
         const { data: { session } } = await supabase.auth.getSession()
         const token = session?.access_token
 
+        // Intentar cargar desde BD primero (siempre, sin importar localStorage)
         const response = await fetch("/api/admin/price-calculation-settings", {
           headers: {
             ...(token && { Authorization: `Bearer ${token}` }),
@@ -128,64 +130,103 @@ export default function ComparePricesPage() {
         if (response.ok) {
           const result = await response.json()
           if (result.success && result.data) {
+            // SIEMPRE usar los valores de la BD y sobrescribir localStorage
             setPriceParams(result.data)
-            // También guardar en localStorage como backup
             localStorage.setItem("priceCalculationParams", JSON.stringify(result.data))
-            console.log("✅ Parámetros cargados desde BD:", result.data)
+            console.log("✅ Parámetros cargados desde BD y guardados en localStorage:", result.data)
             return // Salir temprano si se cargó exitosamente desde BD
           }
         }
         
-        // Si llegamos aquí, la BD falló o no retornó datos válidos
-        console.warn("⚠️ No se pudieron cargar parámetros desde BD, intentando localStorage...")
+        // Si la BD no responde correctamente, verificar el status
+        if (response.status === 401 || response.status === 403) {
+          console.warn("⚠️ No autorizado para cargar parámetros desde BD. Verifica tu sesión.")
+          // Intentar usar localStorage como fallback temporal
+          const saved = localStorage.getItem("priceCalculationParams")
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved)
+              // Validar valores antes de usarlos
+              if (validatePriceParams(parsed)) {
+                setPriceParams(parsed)
+                console.log("⚠️ Usando parámetros de localStorage (no autorizado para BD)")
+              } else {
+                console.warn("⚠️ Valores en localStorage no son válidos. Limpiando localStorage.")
+                localStorage.removeItem("priceCalculationParams")
+              }
+            } catch (e) {
+              console.error("Error parsing price params from localStorage:", e)
+              localStorage.removeItem("priceCalculationParams")
+            }
+          }
+          return
+        }
+        
+        // Si la BD falla por otro motivo, intentar una vez más
+        console.warn("⚠️ Error al cargar desde BD, reintentando...")
+        try {
+          const retryResponse = await fetch("/api/admin/price-calculation-settings", {
+            headers: {
+              ...(token && { Authorization: `Bearer ${token}` }),
+            },
+          })
+          if (retryResponse.ok) {
+            const retryResult = await retryResponse.json()
+            if (retryResult.success && retryResult.data) {
+              setPriceParams(retryResult.data)
+              localStorage.setItem("priceCalculationParams", JSON.stringify(retryResult.data))
+              console.log("✅ Parámetros cargados desde BD en reintento:", retryResult.data)
+              return
+            }
+          }
+        } catch (retryError) {
+          console.error("Error en reintento de carga desde BD:", retryError)
+        }
+        
+        // Si todo falla, solo entonces usar localStorage (pero con advertencia)
         const saved = localStorage.getItem("priceCalculationParams")
         if (saved) {
           try {
             const parsed = JSON.parse(saved)
-            setPriceParams(parsed)
-            console.log("⚠️ Usando parámetros de localStorage (fallback)")
+            // Validar que los valores sean razonables antes de usarlos
+            if (validatePriceParams(parsed)) {
+              setPriceParams(parsed)
+              console.warn("⚠️ Usando parámetros de localStorage (BD no disponible). Estos pueden estar desactualizados.")
+            } else {
+              // Si los valores no son razonables, limpiar localStorage y usar valores por defecto
+              console.warn("⚠️ Valores en localStorage no son válidos, limpiando y usando valores por defecto.")
+              localStorage.removeItem("priceCalculationParams")
+              // Los valores hardcodeados del estado inicial se mantendrán
+            }
           } catch (e) {
             console.error("Error parsing price params from localStorage:", e)
-            // Si localStorage está corrupto, intentar cargar desde BD nuevamente
-            console.log("🔄 Intentando cargar desde BD nuevamente...")
-            // Los valores hardcodeados del estado inicial se mantendrán
+            localStorage.removeItem("priceCalculationParams") // Limpiar localStorage corrupto
+            console.warn("⚠️ Usando valores por defecto hardcodeados.")
           }
         } else {
-          // No hay localStorage, intentar cargar desde BD una vez más
-          console.log("🔄 No hay localStorage, intentando cargar desde BD nuevamente...")
-          try {
-            const retryResponse = await fetch("/api/admin/price-calculation-settings", {
-              headers: {
-                ...(token && { Authorization: `Bearer ${token}` }),
-              },
-            })
-            if (retryResponse.ok) {
-              const retryResult = await retryResponse.json()
-              if (retryResult.success && retryResult.data) {
-                setPriceParams(retryResult.data)
-                localStorage.setItem("priceCalculationParams", JSON.stringify(retryResult.data))
-                console.log("✅ Parámetros cargados desde BD en reintento:", retryResult.data)
-                return
-              }
-            }
-          } catch (retryError) {
-            console.error("Error en reintento de carga desde BD:", retryError)
-          }
-          // Si todo falla, los valores hardcodeados del estado inicial se mantendrán
-          console.warn("⚠️ Usando valores por defecto hardcodeados. Los valores de la BD no están disponibles.")
+          console.warn("⚠️ No hay localStorage ni BD disponible. Usando valores por defecto hardcodeados.")
         }
       } catch (error) {
         console.error("Error loading price params from BD:", error)
-        // Fallback a localStorage
+        // Solo usar localStorage si hay un error de red/conexión
         const saved = localStorage.getItem("priceCalculationParams")
         if (saved) {
           try {
             const parsed = JSON.parse(saved)
-            setPriceParams(parsed)
-            console.log("⚠️ Usando parámetros de localStorage (fallback por error)")
+            // Validar que los valores sean razonables antes de usarlos
+            if (validatePriceParams(parsed)) {
+              setPriceParams(parsed)
+              console.warn("⚠️ Usando parámetros de localStorage (error de conexión). Estos pueden estar desactualizados.")
+            } else {
+              // Si los valores no son razonables, limpiar localStorage y usar valores por defecto
+              console.warn("⚠️ Valores en localStorage no son válidos, limpiando y usando valores por defecto.")
+              localStorage.removeItem("priceCalculationParams")
+              // Los valores hardcodeados del estado inicial se mantendrán
+            }
           } catch (e) {
             console.error("Error parsing price params from localStorage:", e)
-            console.warn("⚠️ Usando valores por defecto hardcodeados. Los valores de la BD no están disponibles.")
+            localStorage.removeItem("priceCalculationParams") // Limpiar localStorage corrupto
+            console.warn("⚠️ Usando valores por defecto hardcodeados.")
           }
         } else {
           console.warn("⚠️ No hay localStorage ni BD disponible. Usando valores por defecto hardcodeados.")
@@ -195,6 +236,46 @@ export default function ComparePricesPage() {
 
     loadPriceParams()
   }, [])
+
+  // Función para validar si los parámetros son razonables
+  const validatePriceParams = (params: typeof priceParams): boolean => {
+    // Validar rangos razonables
+    if (params.usTaxRate < 0.01 || params.usTaxRate > 0.5) return false // Debe estar entre 1% y 50%
+    if (params.shippingUSD < 1 || params.shippingUSD > 100) return false // Debe estar entre $1 y $100
+    if (params.chileVATRate < 0.01 || params.chileVATRate > 0.5) return false // Debe estar entre 1% y 50%
+    if (params.exchangeRate < 100 || params.exchangeRate > 10000) return false // Debe estar entre 100 y 10000
+    if (params.profitMargin < 0 || params.profitMargin > 1) return false // Debe estar entre 0% y 100%
+    if (params.mercadoPagoFee < 0 || params.mercadoPagoFee > 0.1) return false // Debe estar entre 0% y 10%
+    return true
+  }
+
+  // Función para recargar parámetros desde la BD
+  const reloadPriceParamsFromDB = async () => {
+    try {
+      const { supabase } = await import("@/lib/db")
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      const response = await fetch("/api/admin/price-calculation-settings", {
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          setPriceParams(result.data)
+          localStorage.setItem("priceCalculationParams", JSON.stringify(result.data))
+          console.log("✅ Parámetros recargados desde BD:", result.data)
+          return true
+        }
+      }
+    } catch (error) {
+      console.error("Error recargando parámetros desde BD:", error)
+    }
+    return false
+  }
 
   // Guardar parámetros solo en localStorage cuando cambien
   // El guardado en BD se hace solo cuando se presiona "Recalcular Precios"
@@ -240,20 +321,37 @@ export default function ComparePricesPage() {
       }
       
       // Obtener parámetros actuales desde localStorage (siempre leer el más reciente)
+      // PERO validar que sean correctos antes de usarlos
       const savedParams = localStorage.getItem("priceCalculationParams")
       let currentParams = priceParams
       
       if (savedParams) {
         try {
           const parsed = JSON.parse(savedParams)
-          currentParams = parsed
-          // Sincronizar estado con localStorage si hay diferencia
-          if (JSON.stringify(parsed) !== JSON.stringify(priceParams)) {
-            console.log("🔄 Sincronizando parámetros desde localStorage:", parsed)
-            setPriceParams(parsed)
+          // Validar que los valores sean razonables antes de usarlos
+          if (validatePriceParams(parsed)) {
+            currentParams = parsed
+            // Sincronizar estado con localStorage si hay diferencia
+            if (JSON.stringify(parsed) !== JSON.stringify(priceParams)) {
+              console.log("🔄 Sincronizando parámetros desde localStorage:", parsed)
+              setPriceParams(parsed)
+            }
+          } else {
+            // Si los valores no son válidos, limpiar localStorage y usar el estado actual
+            console.warn("⚠️ Valores en localStorage no son válidos en loadData, limpiando y usando estado actual.")
+            localStorage.removeItem("priceCalculationParams")
+            // Intentar recargar desde BD
+            reloadPriceParamsFromDB().then((success) => {
+              if (success) {
+                console.log("✅ Parámetros recargados desde BD después de detectar valores inválidos")
+              }
+            })
+            // Usar el estado actual (priceParams) que debería tener valores válidos
+            currentParams = priceParams
           }
         } catch (e) {
           console.warn("⚠️ Error parseando parámetros desde localStorage:", e)
+          localStorage.removeItem("priceCalculationParams") // Limpiar localStorage corrupto
         }
       }
 
