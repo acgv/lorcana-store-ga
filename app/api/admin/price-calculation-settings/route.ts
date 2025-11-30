@@ -70,12 +70,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        usTaxRate: parseFloat(data.usTaxRate) || 0.08,
-        shippingUSD: parseFloat(data.shippingUSD) || 8,
-        chileVATRate: parseFloat(data.chileVATRate) || 0.19,
-        exchangeRate: parseFloat(data.exchangeRate) || 1000,
-        profitMargin: parseFloat(data.profitMargin) || 0.20,
-        mercadoPagoFee: parseFloat(data.mercadoPagoFee) || 0.034,
+        // Usar nullish coalescing (??) en lugar de || para permitir valores 0
+        usTaxRate: data.usTaxRate != null ? parseFloat(String(data.usTaxRate)) : 0.08,
+        shippingUSD: data.shippingUSD != null ? parseFloat(String(data.shippingUSD)) : 8,
+        chileVATRate: data.chileVATRate != null ? parseFloat(String(data.chileVATRate)) : 0.19,
+        exchangeRate: data.exchangeRate != null ? parseFloat(String(data.exchangeRate)) : 1000,
+        profitMargin: data.profitMargin != null ? parseFloat(String(data.profitMargin)) : 0.20,
+        mercadoPagoFee: data.mercadoPagoFee != null ? parseFloat(String(data.mercadoPagoFee)) : 0.034,
       },
     })
   } catch (error) {

@@ -25,10 +25,20 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Create update trigger (drop if exists first)
 DROP TRIGGER IF EXISTS set_price_calculation_settings_updated_at ON public.price_calculation_settings;
+
+-- Crear función específica para esta tabla que use "updatedAt" (camelCase)
+CREATE OR REPLACE FUNCTION public.set_price_calculation_settings_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW."updatedAt" = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TRIGGER set_price_calculation_settings_updated_at
 BEFORE UPDATE ON public.price_calculation_settings
 FOR EACH ROW
-EXECUTE PROCEDURE public.set_updated_at();
+EXECUTE FUNCTION public.set_price_calculation_settings_updated_at();
 
 -- Enable RLS
 ALTER TABLE public.price_calculation_settings ENABLE ROW LEVEL SECURITY;
