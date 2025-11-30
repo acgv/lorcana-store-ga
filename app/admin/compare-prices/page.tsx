@@ -1574,8 +1574,49 @@ export default function ComparePricesPage() {
                                               comparisons: updatedComparisons,
                                             })
                                           }
-                                          
-                                          // Guardar el precio USD normal en localStorage inmediatamente
+                                        }
+                                      }}
+                                      className="w-20 h-8 text-right"
+                                      autoFocus
+                                      placeholder="0.00"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === 'Escape') {
+                                          // Al presionar Enter, guardar y cerrar
+                                          const usdPrice = parseFloat(editingPriceValue)
+                                          if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                            // Guardar en localStorage
+                                            const savedPrices = localStorage.getItem("searchedCardPrices")
+                                            let pricesCache: Record<string, any> = {}
+                                            
+                                            if (savedPrices) {
+                                              try {
+                                                pricesCache = JSON.parse(savedPrices)
+                                              } catch (e) {
+                                                console.warn("⚠️ Error parseando precios guardados:", e)
+                                              }
+                                            }
+
+                                            pricesCache[comp.cardId] = {
+                                              ...pricesCache[comp.cardId],
+                                              marketPriceUSD: usdPrice,
+                                              marketFoilPriceUSD: comp.marketFoilPriceUSD ?? pricesCache[comp.cardId]?.marketFoilPriceUSD,
+                                              timestamp: Date.now(),
+                                            }
+
+                                            localStorage.setItem("searchedCardPrices", JSON.stringify(pricesCache))
+                                            
+                                            // Guardar en BD
+                                            saveMarketPriceUSD(comp.cardId, usdPrice, undefined)
+                                          }
+                                          setEditingPrice(null)
+                                          setEditingPriceValue("")
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        // Al salir del campo, guardar si hay un valor válido
+                                        const usdPrice = parseFloat(editingPriceValue)
+                                        if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                          // Guardar en localStorage
                                           const savedPrices = localStorage.getItem("searchedCardPrices")
                                           let pricesCache: Record<string, any> = {}
                                           
@@ -1595,22 +1636,10 @@ export default function ComparePricesPage() {
                                           }
 
                                           localStorage.setItem("searchedCardPrices", JSON.stringify(pricesCache))
-                                          console.log(`💾 Precio USD normal guardado en localStorage para ${comp.cardName}: $${usdPrice} USD`)
                                           
-                                          // Guardar también en la base de datos
+                                          // Guardar en BD
                                           saveMarketPriceUSD(comp.cardId, usdPrice, undefined)
                                         }
-                                      }}
-                                      className="w-20 h-8 text-right"
-                                      autoFocus
-                                      placeholder="0.00"
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === 'Escape') {
-                                          setEditingPrice(null)
-                                          setEditingPriceValue("")
-                                        }
-                                      }}
-                                      onBlur={() => {
                                         setEditingPrice(null)
                                         setEditingPriceValue("")
                                       }}
@@ -1789,8 +1818,49 @@ export default function ComparePricesPage() {
                                               comparisons: updatedComparisons,
                                             })
                                           }
-                                          
-                                          // Guardar el precio USD foil en localStorage inmediatamente
+                                        }
+                                      }}
+                                      className="w-20 h-8 text-right"
+                                      autoFocus
+                                      placeholder="0.00"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === 'Escape') {
+                                          // Al presionar Enter, guardar y cerrar
+                                          const usdPrice = parseFloat(editingPriceValue)
+                                          if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                            // Guardar en localStorage
+                                            const savedPrices = localStorage.getItem("searchedCardPrices")
+                                            let pricesCache: Record<string, any> = {}
+                                            
+                                            if (savedPrices) {
+                                              try {
+                                                pricesCache = JSON.parse(savedPrices)
+                                              } catch (e) {
+                                                console.warn("⚠️ Error parseando precios guardados:", e)
+                                              }
+                                            }
+
+                                            pricesCache[comp.cardId] = {
+                                              ...pricesCache[comp.cardId],
+                                              marketFoilPriceUSD: usdPrice,
+                                              marketPriceUSD: comp.marketPriceUSD ?? pricesCache[comp.cardId]?.marketPriceUSD,
+                                              timestamp: Date.now(),
+                                            }
+
+                                            localStorage.setItem("searchedCardPrices", JSON.stringify(pricesCache))
+                                            
+                                            // Guardar en BD
+                                            saveMarketPriceUSD(comp.cardId, undefined, usdPrice)
+                                          }
+                                          setEditingPrice(null)
+                                          setEditingPriceValue("")
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        // Al salir del campo, guardar si hay un valor válido
+                                        const usdPrice = parseFloat(editingPriceValue)
+                                        if (!isNaN(usdPrice) && usdPrice >= 0) {
+                                          // Guardar en localStorage
                                           const savedPrices = localStorage.getItem("searchedCardPrices")
                                           let pricesCache: Record<string, any> = {}
                                           
@@ -1810,22 +1880,10 @@ export default function ComparePricesPage() {
                                           }
 
                                           localStorage.setItem("searchedCardPrices", JSON.stringify(pricesCache))
-                                          console.log(`💾 Precio USD foil guardado en localStorage para ${comp.cardName}: $${usdPrice} USD`)
                                           
-                                          // Guardar también en la base de datos
+                                          // Guardar en BD
                                           saveMarketPriceUSD(comp.cardId, undefined, usdPrice)
                                         }
-                                      }}
-                                      className="w-20 h-8 text-right"
-                                      autoFocus
-                                      placeholder="0.00"
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === 'Escape') {
-                                          setEditingPrice(null)
-                                          setEditingPriceValue("")
-                                        }
-                                      }}
-                                      onBlur={() => {
                                         setEditingPrice(null)
                                         setEditingPriceValue("")
                                       }}

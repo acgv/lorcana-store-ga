@@ -13,6 +13,21 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    if (!supabaseAdmin) {
+      // Si no hay supabaseAdmin, retornar valores por defecto
+      return NextResponse.json({
+        success: true,
+        data: {
+          usTaxRate: 0.08,
+          shippingUSD: 8,
+          chileVATRate: 0.19,
+          exchangeRate: 1000,
+          profitMargin: 0.20,
+          mercadoPagoFee: 0.034,
+        },
+      })
+    }
+
     const { data, error } = await supabaseAdmin
       .from("price_calculation_settings")
       .select("*")
@@ -20,7 +35,22 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (error) {
-      // Si no existe, retornar valores por defecto
+      // Si no existe la tabla, retornar valores por defecto
+      if (error.code === "42P01" || error.message?.includes("does not exist")) {
+        console.warn("⚠️ Tabla price_calculation_settings no existe, usando valores por defecto")
+        return NextResponse.json({
+          success: true,
+          data: {
+            usTaxRate: 0.08,
+            shippingUSD: 8,
+            chileVATRate: 0.19,
+            exchangeRate: 1000,
+            profitMargin: 0.20,
+            mercadoPagoFee: 0.034,
+          },
+        })
+      }
+      // Si no existe el registro, retornar valores por defecto
       if (error.code === "PGRST116") {
         return NextResponse.json({
           success: true,
@@ -50,10 +80,30 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("Error fetching price calculation settings:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    const errorCode = (error as any)?.code
+    
+    // Si la tabla no existe, retornar valores por defecto en lugar de error
+    if (errorCode === "42P01" || errorMessage.includes("does not exist")) {
+      console.warn("⚠️ Tabla price_calculation_settings no existe, retornando valores por defecto")
+      return NextResponse.json({
+        success: true,
+        data: {
+          usTaxRate: 0.08,
+          shippingUSD: 8,
+          chileVATRate: 0.19,
+          exchangeRate: 1000,
+          profitMargin: 0.20,
+          mercadoPagoFee: 0.034,
+        },
+      })
+    }
+    
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
+        code: errorCode,
       },
       { status: 500 }
     )
@@ -83,6 +133,11 @@ export async function POST(request: NextRequest) {
     if (mercadoPagoFee !== undefined) updateData.mercadoPagoFee = Number(mercadoPagoFee)
 
     // Upsert (insert or update)
+    // Verificar que la tabla existe, si no, retornar error más descriptivo
+    if (!supabaseAdmin) {
+      throw new Error("Supabase admin client not configured")
+    }
+
     const { data, error } = await supabaseAdmin
       .from("price_calculation_settings")
       .upsert(
@@ -98,6 +153,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
+      // Si la tabla no existe, dar un mensaje más claro
+      if (error.code === "42P01" || error.message?.includes("does not exist")) {
+        console.error("❌ Tabla price_calculation_settings no existe. Ejecuta la migración primero.")
+        throw new Error("La tabla de configuración no existe. Por favor ejecuta la migración: scripts/migrations/create-price-calculation-settings-table.sql")
+      }
+      console.error("❌ Error en upsert de price_calculation_settings:", error)
       throw error
     }
 
@@ -115,10 +176,26 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("Error updating price calculation settings:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    const errorCode = (error as any)?.code
+    
+    // Si la tabla no existe, dar un mensaje más claro
+    if (errorCode === "42P01" || errorMessage.includes("does not exist")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "La tabla price_calculation_settings no existe. Por favor ejecuta la migración: scripts/migrations/create-price-calculation-settings-table.sql",
+          code: errorCode,
+        },
+        { status: 500 }
+      )
+    }
+    
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
+        code: errorCode,
       },
       { status: 500 }
     )
