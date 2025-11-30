@@ -37,40 +37,23 @@ ALTER TABLE public.price_calculation_settings ENABLE ROW LEVEL SECURITY;
 -- Primero eliminar la política si existe
 DROP POLICY IF EXISTS "Admins can manage price calculation settings" ON public.price_calculation_settings;
 
--- Crear política: verificar si la función is_admin() existe, si no, usar verificación directa
-DO $$
-BEGIN
-  -- Intentar usar la función is_admin() si existe
-  IF EXISTS (
-    SELECT 1 FROM pg_proc 
-    WHERE proname = 'is_admin' 
-    AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
-  ) THEN
-    -- Usar la función helper is_admin()
-    EXECUTE 'CREATE POLICY "Admins can manage price calculation settings"
-      ON public.price_calculation_settings
-      FOR ALL
-      USING (public.is_admin())
-      WITH CHECK (public.is_admin())';
-  ELSE
-    -- Si no existe, usar verificación directa en user_roles
-    EXECUTE 'CREATE POLICY "Admins can manage price calculation settings"
-      ON public.price_calculation_settings
-      FOR ALL
-      USING (
-        EXISTS (
-          SELECT 1 FROM public.user_roles
-          WHERE user_roles.user_id = auth.uid()
-          AND user_roles.role = ''admin''
-        )
-      )
-      WITH CHECK (
-        EXISTS (
-          SELECT 1 FROM public.user_roles
-          WHERE user_roles.user_id = auth.uid()
-          AND user_roles.role = ''admin''
-        )
-      )';
-  END IF;
-END $$;
+-- Crear política usando verificación directa en user_roles
+-- (más confiable que depender de is_admin() que puede no existir)
+CREATE POLICY "Admins can manage price calculation settings"
+ON public.price_calculation_settings
+FOR ALL
+USING (
+  EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_roles.user_id = auth.uid()
+    AND user_roles.role = 'admin'
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_roles.user_id = auth.uid()
+    AND user_roles.role = 'admin'
+  )
+);
 
