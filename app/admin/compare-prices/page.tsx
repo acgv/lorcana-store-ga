@@ -284,34 +284,90 @@ export default function ComparePricesPage() {
         }
       }
 
-      // Fusionar precios guardados con los datos cargados
+      // Fusionar precios guardados con los datos cargados y recalcular precios sugeridos
       const mergedComparisons = allComparisons.map((comp) => {
         const savedPrice = pricesCache[comp.cardId]
+        let updatedComp = { ...comp }
         
         // Si hay precio guardado y tiene menos de 24 horas, usarlo
         if (savedPrice && savedPrice.timestamp) {
           const ageInHours = (Date.now() - savedPrice.timestamp) / (1000 * 60 * 60)
           if (ageInHours < 24) {
             console.log(`🔄 Restaurando precio guardado para ${comp.cardName} (edad: ${ageInHours.toFixed(1)} horas)`)
-            return {
+            updatedComp = {
               ...comp,
               marketPriceUSD: savedPrice.marketPriceUSD,
               marketFoilPriceUSD: savedPrice.marketFoilPriceUSD,
               priceSource: savedPrice.priceSource || comp.priceSource,
-              suggestedPriceCLP: savedPrice.suggestedPriceCLP,
-              suggestedFoilPriceCLP: savedPrice.suggestedFoilPriceCLP,
-              priceDifference: savedPrice.priceDifference ?? comp.priceDifference,
-              foilPriceDifference: savedPrice.foilPriceDifference ?? comp.foilPriceDifference,
-              priceDifferencePercent: savedPrice.priceDifferencePercent ?? comp.priceDifferencePercent,
-              foilPriceDifferencePercent: savedPrice.foilPriceDifferencePercent ?? comp.foilPriceDifferencePercent,
-              needsPriceUpdate: savedPrice.needsPriceUpdate ?? comp.needsPriceUpdate,
             }
           } else {
             console.log(`⏰ Precio guardado para ${comp.cardName} es muy antiguo (${ageInHours.toFixed(1)} horas), ignorando`)
           }
         }
         
-        return comp
+        // Recalcular precios sugeridos si hay marketPriceUSD (usando parámetros actuales)
+        if (updatedComp.marketPriceUSD !== null && updatedComp.marketPriceUSD !== undefined) {
+          try {
+            const calculation = calculateFinalPrice({
+              basePriceUSD: updatedComp.marketPriceUSD,
+              usTaxRate: priceParams.usTaxRate,
+              shippingUSD: priceParams.shippingUSD,
+              chileVATRate: priceParams.chileVATRate,
+              exchangeRate: priceParams.exchangeRate,
+              profitMargin: priceParams.profitMargin,
+              mercadoPagoFee: priceParams.mercadoPagoFee,
+            })
+            updatedComp.suggestedPriceCLP = calculation.finalPriceCLP
+            
+            // Calcular diferencia y porcentaje
+            const priceDiff = updatedComp.suggestedPriceCLP - (comp.currentPrice || 0)
+            const priceDiffPercent = comp.currentPrice 
+              ? (priceDiff / comp.currentPrice) * 100 
+              : 0
+            updatedComp.priceDifference = priceDiff
+            updatedComp.priceDifferencePercent = priceDiffPercent
+            updatedComp.needsPriceUpdate = Math.abs(priceDiffPercent) > 5
+            
+            console.log(`💰 Recalculado precio sugerido para ${comp.cardName}: $${updatedComp.suggestedPriceCLP.toLocaleString()} CLP (desde $${updatedComp.marketPriceUSD} USD)`)
+          } catch (error) {
+            console.warn(`⚠️ Error calculando precio sugerido para ${comp.cardName}:`, error)
+          }
+        }
+        
+        // Recalcular precio foil sugerido si hay marketFoilPriceUSD
+        if (updatedComp.marketFoilPriceUSD !== null && updatedComp.marketFoilPriceUSD !== undefined) {
+          try {
+            const foilCalculation = calculateFinalPrice({
+              basePriceUSD: updatedComp.marketFoilPriceUSD,
+              usTaxRate: priceParams.usTaxRate,
+              shippingUSD: priceParams.shippingUSD,
+              chileVATRate: priceParams.chileVATRate,
+              exchangeRate: priceParams.exchangeRate,
+              profitMargin: priceParams.profitMargin,
+              mercadoPagoFee: priceParams.mercadoPagoFee,
+            })
+            updatedComp.suggestedFoilPriceCLP = foilCalculation.finalPriceCLP
+            
+            // Calcular diferencia y porcentaje para foil
+            const foilDiff = updatedComp.suggestedFoilPriceCLP - (comp.currentFoilPrice || 0)
+            const foilDiffPercent = comp.currentFoilPrice 
+              ? (foilDiff / comp.currentFoilPrice) * 100 
+              : 0
+            updatedComp.foilPriceDifference = foilDiff
+            updatedComp.foilPriceDifferencePercent = foilDiffPercent
+            
+            // Si no hay precio normal pero sí foil, también considerar needsPriceUpdate
+            if (!updatedComp.needsPriceUpdate) {
+              updatedComp.needsPriceUpdate = Math.abs(foilDiffPercent) > 5
+            }
+            
+            console.log(`💰 Recalculado precio foil sugerido para ${comp.cardName}: $${updatedComp.suggestedFoilPriceCLP.toLocaleString()} CLP (desde $${updatedComp.marketFoilPriceUSD} USD)`)
+          } catch (error) {
+            console.warn(`⚠️ Error calculando precio foil sugerido para ${comp.cardName}:`, error)
+          }
+        }
+        
+        return updatedComp
       })
 
       // Recalcular estadísticas con los datos fusionados
@@ -636,9 +692,13 @@ export default function ComparePricesPage() {
         throw new Error(result.error || "Error al actualizar precio")
       }
 
+      const priceMsg = priceToUpdate ? `Normal: $${Math.round(priceToUpdate).toLocaleString()} CLP` : ""
+      const foilMsg = foilPriceToUpdate ? `Foil: $${Math.round(foilPriceToUpdate).toLocaleString()} CLP` : ""
+      const pricesMsg = [priceMsg, foilMsg].filter(Boolean).join(" | ")
+      
       toast({
         title: "✅ Precio actualizado",
-        description: `Precio de ${comp.cardName} actualizado correctamente`,
+        description: `${comp.cardName} - ${pricesMsg}`,
       })
 
       // Recargar datos para reflejar los cambios
@@ -1346,7 +1406,7 @@ export default function ComparePricesPage() {
                                       value={editingPriceValue}
                                       onChange={(e) => {
                                         setEditingPriceValue(e.target.value)
-                                        // Calcular automáticamente el precio en CLP
+                                        // Calcular automáticamente el precio en CLP y actualizar en tiempo real
                                         const usdPrice = parseFloat(e.target.value)
                                         if (!isNaN(usdPrice) && usdPrice >= 0) {
                                           const calculated = calculateFinalPrice({
@@ -1358,7 +1418,14 @@ export default function ComparePricesPage() {
                                             profitMargin: priceParams.profitMargin,
                                             mercadoPagoFee: priceParams.mercadoPagoFee,
                                           })
-                                          // Actualizar el estado local para mostrar el precio calculado
+                                          
+                                          // Calcular diferencia y porcentaje
+                                          const priceDiff = calculated.finalPriceCLP - (comp.currentPrice || 0)
+                                          const priceDiffPercent = comp.currentPrice 
+                                            ? (priceDiff / comp.currentPrice) * 100 
+                                            : 0
+                                          
+                                          // Actualizar el estado local para mostrar el precio calculado y diferencia
                                           if (data) {
                                             const updatedComparisons = data.comparisons.map((c) => {
                                               if (c.cardId === comp.cardId) {
@@ -1366,6 +1433,9 @@ export default function ComparePricesPage() {
                                                   ...c,
                                                   marketPriceUSD: usdPrice,
                                                   suggestedPriceCLP: calculated.finalPriceCLP,
+                                                  priceDifference: priceDiff,
+                                                  priceDifferencePercent: priceDiffPercent,
+                                                  needsPriceUpdate: Math.abs(priceDiffPercent) > 5,
                                                 }
                                               }
                                               return c
@@ -1381,41 +1451,12 @@ export default function ComparePricesPage() {
                                       autoFocus
                                       placeholder="0.00"
                                       onKeyDown={(e) => {
-                                          if (e.key === 'Enter') {
-                                            const usdPrice = parseFloat(editingPriceValue)
-                                            if (!isNaN(usdPrice) && usdPrice >= 0) {
-                                              const calculated = calculateFinalPrice({
-                                                basePriceUSD: usdPrice,
-                                                usTaxRate: priceParams.usTaxRate,
-                                                shippingUSD: priceParams.shippingUSD,
-                                                chileVATRate: priceParams.chileVATRate,
-                                                exchangeRate: priceParams.exchangeRate,
-                                                profitMargin: priceParams.profitMargin,
-                                                mercadoPagoFee: priceParams.mercadoPagoFee,
-                                              })
-                                              updateCardPrice(comp, calculated.finalPriceCLP, undefined, usdPrice, undefined)
-                                              setEditingPrice(null)
-                                              setEditingPriceValue("")
-                                            }
-                                        } else if (e.key === 'Escape') {
+                                        if (e.key === 'Enter' || e.key === 'Escape') {
                                           setEditingPrice(null)
                                           setEditingPriceValue("")
                                         }
                                       }}
                                       onBlur={() => {
-                                        const usdPrice = parseFloat(editingPriceValue)
-                                        if (!isNaN(usdPrice) && usdPrice >= 0) {
-                                          const calculated = calculateFinalPrice({
-                                            basePriceUSD: usdPrice,
-                                            usTaxRate: priceParams.usTaxRate,
-                                            shippingUSD: priceParams.shippingUSD,
-                                            chileVATRate: priceParams.chileVATRate,
-                                            exchangeRate: priceParams.exchangeRate,
-                                            profitMargin: priceParams.profitMargin,
-                                            mercadoPagoFee: priceParams.mercadoPagoFee,
-                                          })
-                                          updateCardPrice(comp, calculated.finalPriceCLP, undefined, usdPrice, undefined)
-                                        }
                                         setEditingPrice(null)
                                         setEditingPriceValue("")
                                       }}
@@ -1555,7 +1596,7 @@ export default function ComparePricesPage() {
                                       value={editingPriceValue}
                                       onChange={(e) => {
                                         setEditingPriceValue(e.target.value)
-                                        // Calcular automáticamente el precio en CLP
+                                        // Calcular automáticamente el precio en CLP y actualizar en tiempo real
                                         const usdPrice = parseFloat(e.target.value)
                                         if (!isNaN(usdPrice) && usdPrice >= 0) {
                                           const calculated = calculateFinalPrice({
@@ -1567,7 +1608,14 @@ export default function ComparePricesPage() {
                                             profitMargin: priceParams.profitMargin,
                                             mercadoPagoFee: priceParams.mercadoPagoFee,
                                           })
-                                          // Actualizar el estado local para mostrar el precio calculado
+                                          
+                                          // Calcular diferencia y porcentaje para foil
+                                          const foilDiff = calculated.finalPriceCLP - (comp.currentFoilPrice || 0)
+                                          const foilDiffPercent = comp.currentFoilPrice 
+                                            ? (foilDiff / comp.currentFoilPrice) * 100 
+                                            : 0
+                                          
+                                          // Actualizar el estado local para mostrar el precio calculado y diferencia
                                           if (data) {
                                             const updatedComparisons = data.comparisons.map((c) => {
                                               if (c.cardId === comp.cardId) {
@@ -1575,6 +1623,9 @@ export default function ComparePricesPage() {
                                                   ...c,
                                                   marketFoilPriceUSD: usdPrice,
                                                   suggestedFoilPriceCLP: calculated.finalPriceCLP,
+                                                  foilPriceDifference: foilDiff,
+                                                  foilPriceDifferencePercent: foilDiffPercent,
+                                                  needsPriceUpdate: Math.abs(foilDiffPercent) > 5 || (c.needsPriceUpdate ?? false),
                                                 }
                                               }
                                               return c
@@ -1590,44 +1641,12 @@ export default function ComparePricesPage() {
                                       autoFocus
                                       placeholder="0.00"
                                       onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          const usdPrice = parseFloat(editingPriceValue)
-                                          if (!isNaN(usdPrice) && usdPrice >= 0) {
-                                            const calculated = calculateFinalPrice({
-                                              basePriceUSD: usdPrice,
-                                              usTaxRate: priceParams.usTaxRate,
-                                              shippingUSD: priceParams.shippingUSD,
-                                              chileVATRate: priceParams.chileVATRate,
-                                              exchangeRate: priceParams.exchangeRate,
-                                              profitMargin: priceParams.profitMargin,
-                                              mercadoPagoFee: priceParams.mercadoPagoFee,
-                                            })
-                                            updateCardPrice(comp, undefined, calculated.finalPriceCLP)
-                                            setEditingPrice(null)
-                                            setEditingPriceValue("")
-                                          }
-                                        } else if (e.key === 'Escape') {
+                                        if (e.key === 'Enter' || e.key === 'Escape') {
                                           setEditingPrice(null)
                                           setEditingPriceValue("")
                                         }
                                       }}
                                       onBlur={() => {
-                                        const usdPrice = parseFloat(editingPriceValue)
-                                        if (!isNaN(usdPrice) && usdPrice >= 0) {
-                                          const calculated = calculateFinalPrice({
-                                            basePriceUSD: usdPrice,
-                                            usTaxRate: priceParams.usTaxRate,
-                                            shippingUSD: priceParams.shippingUSD,
-                                            chileVATRate: priceParams.chileVATRate,
-                                            exchangeRate: priceParams.exchangeRate,
-                                            profitMargin: priceParams.profitMargin,
-                                            mercadoPagoFee: priceParams.mercadoPagoFee,
-                                          })
-                                          const usdPrice = parseFloat(editingPriceValue)
-                                          if (!isNaN(usdPrice) && usdPrice >= 0) {
-                                            updateCardPrice(comp, undefined, calculated.finalPriceCLP, undefined, usdPrice)
-                                          }
-                                        }
                                         setEditingPrice(null)
                                         setEditingPriceValue("")
                                       }}
@@ -1742,6 +1761,29 @@ export default function ComparePricesPage() {
                                       <>
                                         <Search className="h-3 w-3 mr-1" />
                                         Buscar Precio
+                                      </>
+                                    )}
+                                  </Button>
+                                ) : null}
+                                
+                                {/* Botón para actualizar precio si hay precio sugerido (normal o foil) */}
+                                {(comp.suggestedPriceCLP || comp.suggestedFoilPriceCLP) ? (
+                                  <Button
+                                    onClick={() => updateCardPrice(comp)}
+                                    disabled={updatingPrices.has(comp.cardId) || fetchingPrices.has(comp.cardId) || updatingAll}
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full mt-1"
+                                  >
+                                    {updatingPrices.has(comp.cardId) ? (
+                                      <>
+                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                        Actualizando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <RefreshCw className="h-3 w-3 mr-1" />
+                                        Actualizar
                                       </>
                                     )}
                                   </Button>
