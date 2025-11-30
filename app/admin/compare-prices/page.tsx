@@ -132,19 +132,47 @@ export default function ComparePricesPage() {
             // También guardar en localStorage como backup
             localStorage.setItem("priceCalculationParams", JSON.stringify(result.data))
             console.log("✅ Parámetros cargados desde BD:", result.data)
+            return // Salir temprano si se cargó exitosamente desde BD
+          }
+        }
+        
+        // Si llegamos aquí, la BD falló o no retornó datos válidos
+        console.warn("⚠️ No se pudieron cargar parámetros desde BD, intentando localStorage...")
+        const saved = localStorage.getItem("priceCalculationParams")
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved)
+            setPriceParams(parsed)
+            console.log("⚠️ Usando parámetros de localStorage (fallback)")
+          } catch (e) {
+            console.error("Error parsing price params from localStorage:", e)
+            // Si localStorage está corrupto, intentar cargar desde BD nuevamente
+            console.log("🔄 Intentando cargar desde BD nuevamente...")
+            // Los valores hardcodeados del estado inicial se mantendrán
           }
         } else {
-          // Fallback a localStorage si falla la BD
-          const saved = localStorage.getItem("priceCalculationParams")
-          if (saved) {
-            try {
-              const parsed = JSON.parse(saved)
-              setPriceParams(parsed)
-              console.log("⚠️ Usando parámetros de localStorage (fallback)")
-            } catch (e) {
-              console.error("Error loading price params:", e)
+          // No hay localStorage, intentar cargar desde BD una vez más
+          console.log("🔄 No hay localStorage, intentando cargar desde BD nuevamente...")
+          try {
+            const retryResponse = await fetch("/api/admin/price-calculation-settings", {
+              headers: {
+                ...(token && { Authorization: `Bearer ${token}` }),
+              },
+            })
+            if (retryResponse.ok) {
+              const retryResult = await retryResponse.json()
+              if (retryResult.success && retryResult.data) {
+                setPriceParams(retryResult.data)
+                localStorage.setItem("priceCalculationParams", JSON.stringify(retryResult.data))
+                console.log("✅ Parámetros cargados desde BD en reintento:", retryResult.data)
+                return
+              }
             }
+          } catch (retryError) {
+            console.error("Error en reintento de carga desde BD:", retryError)
           }
+          // Si todo falla, los valores hardcodeados del estado inicial se mantendrán
+          console.warn("⚠️ Usando valores por defecto hardcodeados. Los valores de la BD no están disponibles.")
         }
       } catch (error) {
         console.error("Error loading price params from BD:", error)
@@ -154,9 +182,13 @@ export default function ComparePricesPage() {
           try {
             const parsed = JSON.parse(saved)
             setPriceParams(parsed)
+            console.log("⚠️ Usando parámetros de localStorage (fallback por error)")
           } catch (e) {
-            console.error("Error loading price params:", e)
+            console.error("Error parsing price params from localStorage:", e)
+            console.warn("⚠️ Usando valores por defecto hardcodeados. Los valores de la BD no están disponibles.")
           }
+        } else {
+          console.warn("⚠️ No hay localStorage ni BD disponible. Usando valores por defecto hardcodeados.")
         }
       }
     }
