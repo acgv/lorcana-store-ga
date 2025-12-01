@@ -1781,7 +1781,7 @@ export default function ComparePricesPage() {
                                   }}
                                   title="Click para ingresar precio en USD (se calculará automáticamente en CLP)"
                                 >
-                                  {comp.marketPriceUSD ? `$${comp.marketPriceUSD.toFixed(2)} USD` : "Click para ingresar"}
+                                  {comp.marketPriceUSD ? `$${comp.marketPriceUSD.toFixed(2)} USD` : "Click"}
                                 </div>
                               )}
                             </TableCell>
