@@ -1584,7 +1584,6 @@ export default function ComparePricesPage() {
                         <TableRow>
                           <TableHead className="w-[80px]">Imagen</TableHead>
                           <TableHead className="w-[180px] min-w-[180px]">Carta</TableHead>
-                          <TableHead className="w-[100px]">Set</TableHead>
                           <TableHead className="w-[90px]">Rareza</TableHead>
                           <TableHead className="text-right w-[110px]">Precio Actual</TableHead>
                           <TableHead className="text-right w-[130px]">Precio Normal (USD)</TableHead>
@@ -1614,9 +1613,6 @@ export default function ComparePricesPage() {
                               <div className="line-clamp-2 text-sm leading-tight break-words max-w-[180px]">
                                 {comp.cardName}
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-xs">{comp.set}</Badge>
                             </TableCell>
                             <TableCell>
                               <Badge variant="secondary" className="text-xs">{comp.rarity}</Badge>
