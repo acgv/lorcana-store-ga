@@ -272,27 +272,37 @@ export async function POST(request: NextRequest) {
         success: true,
         message: "Parámetros de cálculo actualizados correctamente (valores por defecto aplicados)",
         data: {
-          usTaxRate: updateData.usTaxRate ?? 0.08,
-          shippingUSD: updateData.shippingUSD ?? 8,
-          chileVATRate: updateData.chileVATRate ?? 0.19,
-          exchangeRate: updateData.exchangeRate ?? 1000,
-          profitMargin: updateData.profitMargin ?? 0.20,
-          mercadoPagoFee: updateData.mercadoPagoFee ?? 0.034,
+          usTaxRate: usTaxRate !== undefined ? Number(usTaxRate) : 0.08,
+          shippingUSD: shippingUSD !== undefined ? Number(shippingUSD) : 8,
+          chileVATRate: chileVATRate !== undefined ? Number(chileVATRate) : 0.19,
+          exchangeRate: exchangeRate !== undefined ? Number(exchangeRate) : 1000,
+          profitMargin: profitMargin !== undefined ? Number(profitMargin) : 0.20,
+          mercadoPagoFee: mercadoPagoFee !== undefined ? Number(mercadoPagoFee) : 0.034,
         },
       })
     }
+    
+    console.log("🔧 Settings returned from RPC:", settings)
 
     // Map the new column names (result_*) to the expected format
+    // Use nullish coalescing (??) instead of || to handle 0 values correctly
+    const result_usTaxRate = (settings as any).result_usTaxRate ?? settings.usTaxRate
+    const result_shippingUSD = (settings as any).result_shippingUSD ?? settings.shippingUSD
+    const result_chileVATRate = (settings as any).result_chileVATRate ?? settings.chileVATRate
+    const result_exchangeRate = (settings as any).result_exchangeRate ?? settings.exchangeRate
+    const result_profitMargin = (settings as any).result_profitMargin ?? settings.profitMargin
+    const result_mercadoPagoFee = (settings as any).result_mercadoPagoFee ?? settings.mercadoPagoFee
+    
     return NextResponse.json({
       success: true,
       message: "Parámetros de cálculo actualizados correctamente",
       data: {
-        usTaxRate: parseFloat(String((settings as any).result_usTaxRate || settings.usTaxRate || "0.08")),
-        shippingUSD: parseFloat(String((settings as any).result_shippingUSD || settings.shippingUSD || "8")),
-        chileVATRate: parseFloat(String((settings as any).result_chileVATRate || settings.chileVATRate || "0.19")),
-        exchangeRate: parseFloat(String((settings as any).result_exchangeRate || settings.exchangeRate || "1000")),
-        profitMargin: parseFloat(String((settings as any).result_profitMargin || settings.profitMargin || "0.20")),
-        mercadoPagoFee: parseFloat(String((settings as any).result_mercadoPagoFee || settings.mercadoPagoFee || "0.034")),
+        usTaxRate: result_usTaxRate != null ? parseFloat(String(result_usTaxRate)) : 0.08,
+        shippingUSD: result_shippingUSD != null ? parseFloat(String(result_shippingUSD)) : 8,
+        chileVATRate: result_chileVATRate != null ? parseFloat(String(result_chileVATRate)) : 0.19,
+        exchangeRate: result_exchangeRate != null ? parseFloat(String(result_exchangeRate)) : 1000,
+        profitMargin: result_profitMargin != null ? parseFloat(String(result_profitMargin)) : 0.20,
+        mercadoPagoFee: result_mercadoPagoFee != null ? parseFloat(String(result_mercadoPagoFee)) : 0.034,
       },
     })
   } catch (error) {
