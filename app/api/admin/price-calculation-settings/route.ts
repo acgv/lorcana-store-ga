@@ -282,27 +282,58 @@ export async function POST(request: NextRequest) {
       })
     }
     
-    console.log("🔧 Settings returned from RPC:", settings)
+    console.log("🔧 Settings returned from RPC:", JSON.stringify(settings, null, 2))
+    console.log("🔧 Settings type:", typeof settings, Array.isArray(settings))
+    console.log("🔧 Settings keys:", settings ? Object.keys(settings as any) : 'null')
 
     // Map the new column names (result_*) to the expected format
-    // Use nullish coalescing (??) instead of || to handle 0 values correctly
-    const result_usTaxRate = (settings as any).result_usTaxRate ?? settings.usTaxRate
-    const result_shippingUSD = (settings as any).result_shippingUSD ?? settings.shippingUSD
-    const result_chileVATRate = (settings as any).result_chileVATRate ?? settings.chileVATRate
-    const result_exchangeRate = (settings as any).result_exchangeRate ?? settings.exchangeRate
-    const result_profitMargin = (settings as any).result_profitMargin ?? settings.profitMargin
-    const result_mercadoPagoFee = (settings as any).result_mercadoPagoFee ?? settings.mercadoPagoFee
+    // The RPC function returns an array, get first result
+    const settingsObj = Array.isArray(settings) ? (settings.length > 0 ? settings[0] : null) : settings
+    
+    if (!settingsObj) {
+      console.error("❌ No settings returned from RPC")
+      return NextResponse.json({
+        success: false,
+        error: "No se recibieron datos de la función SQL",
+      }, { status: 500 })
+    }
+    
+    console.log("🔧 Settings object after processing:", JSON.stringify(settingsObj, null, 2))
+    
+    // Extract values - handle both result_* format and direct format
+    // IMPORTANT: Check for undefined specifically, not just null, to handle 0 correctly
+    const getValue = (obj: any, key: string, altKey?: string): number | null => {
+      const value = obj?.[key] ?? obj?.[altKey]
+      // If value is explicitly undefined, return null; otherwise return the value (even if 0)
+      return value === undefined ? null : (value != null ? Number(value) : null)
+    }
+    
+    const result_usTaxRate = getValue(settingsObj, 'result_usTaxRate', 'usTaxRate')
+    const result_shippingUSD = getValue(settingsObj, 'result_shippingUSD', 'shippingUSD')
+    const result_chileVATRate = getValue(settingsObj, 'result_chileVATRate', 'chileVATRate')
+    const result_exchangeRate = getValue(settingsObj, 'result_exchangeRate', 'exchangeRate')
+    const result_profitMargin = getValue(settingsObj, 'result_profitMargin', 'profitMargin')
+    const result_mercadoPagoFee = getValue(settingsObj, 'result_mercadoPagoFee', 'mercadoPagoFee')
+    
+    console.log("🔧 Extracted values:", {
+      usTaxRate: result_usTaxRate,
+      shippingUSD: result_shippingUSD,
+      chileVATRate: result_chileVATRate,
+      exchangeRate: result_exchangeRate,
+      profitMargin: result_profitMargin,
+      mercadoPagoFee: result_mercadoPagoFee,
+    })
     
     return NextResponse.json({
       success: true,
       message: "Parámetros de cálculo actualizados correctamente",
       data: {
-        usTaxRate: result_usTaxRate != null ? parseFloat(String(result_usTaxRate)) : 0.08,
-        shippingUSD: result_shippingUSD != null ? parseFloat(String(result_shippingUSD)) : 8,
-        chileVATRate: result_chileVATRate != null ? parseFloat(String(result_chileVATRate)) : 0.19,
-        exchangeRate: result_exchangeRate != null ? parseFloat(String(result_exchangeRate)) : 1000,
-        profitMargin: result_profitMargin != null ? parseFloat(String(result_profitMargin)) : 0.20,
-        mercadoPagoFee: result_mercadoPagoFee != null ? parseFloat(String(result_mercadoPagoFee)) : 0.034,
+        usTaxRate: result_usTaxRate !== null ? result_usTaxRate : 0.08,
+        shippingUSD: result_shippingUSD !== null ? result_shippingUSD : 8,
+        chileVATRate: result_chileVATRate !== null ? result_chileVATRate : 0.19,
+        exchangeRate: result_exchangeRate !== null ? result_exchangeRate : 1000,
+        profitMargin: result_profitMargin !== null ? result_profitMargin : 0.20,
+        mercadoPagoFee: result_mercadoPagoFee !== null ? result_mercadoPagoFee : 0.034,
       },
     })
   } catch (error) {
