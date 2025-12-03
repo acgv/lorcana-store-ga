@@ -43,14 +43,48 @@ export async function GET(request: NextRequest) {
       console.error("Error fetching users:", usersError)
     }
 
-    // Obtener métricas de colecciones
-    const { data: collections, error: collectionsError } = await supabaseAdmin
-      .from("user_collections")
-      .select("id, user_id, card_id, status, version, quantity")
+    // Obtener métricas de colecciones (con paginación para obtener todos los registros)
+    let allCollections: any[] = []
+    let page = 0
+    const pageSize = 1000
+    let hasMore = true
 
-    if (collectionsError) {
-      console.error("Error fetching collections:", collectionsError)
+    while (hasMore) {
+      const from = page * pageSize
+      const to = from + pageSize - 1
+
+      const { data, error } = await supabaseAdmin
+        .from("user_collections")
+        .select("id, user_id, card_id, status, version, quantity")
+        .range(from, to)
+
+      if (error) {
+        console.error("Error fetching collections page:", error)
+        break
+      }
+
+      if (data && data.length > 0) {
+        allCollections = [...allCollections, ...data]
+        console.log(`📊 Analytics collections pagination - Page ${page + 1}: loaded ${data.length} items, total so far: ${allCollections.length}`)
+      }
+
+      // Continuar si obtuvimos exactamente pageSize items
+      hasMore = data && data.length === pageSize
+      
+      if (!hasMore && data) {
+        console.log(`✅ Analytics collections pagination complete: loaded ${allCollections.length} items (last page had ${data.length} items)`)
+      }
+
+      page++
+
+      // Safety limit: no más de 50 páginas (50,000 items máximo)
+      if (page >= 50) {
+        console.log(`⚠️ Reached safety limit of 50 pages (50,000 items). Loaded ${allCollections.length} items.`)
+        break
+      }
     }
+
+    const collections = allCollections
 
     // Obtener logs recientes para actividad
     const { data: logs, error: logsError } = await supabaseAdmin
