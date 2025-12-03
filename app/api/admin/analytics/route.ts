@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
 
       const { data: cardsData, error: cardsError } = await supabaseAdmin
         .from("cards")
-        .select("id, normalStock, foilStock")
+        .select("id, normalStock, foilStock, stock")
         .eq("status", "approved")
         .range(from, to)
 
@@ -138,10 +138,20 @@ export async function GET(request: NextRequest) {
       if (cardsPage >= 50) break
     }
 
-    // Contar cartas con stock disponible (normal o foil)
-    const cardsWithStock = allCardsWithStock.filter(card => 
-      (card.normalStock && card.normalStock > 0) || (card.foilStock && card.foilStock > 0)
-    ).length
+    // Calcular total de unidades disponibles (suma de normalStock + foilStock)
+    let totalUnitsInStock = 0
+    let cardsWithStockCount = 0
+
+    allCardsWithStock.forEach(card => {
+      const normalStock = Number(card.normalStock || card.stock || 0)
+      const foilStock = Number(card.foilStock || 0)
+      const totalStock = normalStock + foilStock
+      
+      if (totalStock > 0) {
+        cardsWithStockCount++
+        totalUnitsInStock += totalStock
+      }
+    })
 
     // Métricas de colección
     const totalCollectionItems = collections?.length || 0
@@ -216,7 +226,8 @@ export async function GET(request: NextRequest) {
         },
         // Métricas de inventario
         inventory: {
-          cardsWithStock,
+          cardsWithStock: cardsWithStockCount, // Cartas únicas con stock
+          totalUnitsInStock, // Total de unidades disponibles (normalStock + foilStock)
           totalCards: allCardsWithStock.length,
         },
         // Actividad reciente

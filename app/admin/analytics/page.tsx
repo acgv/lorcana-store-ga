@@ -44,6 +44,7 @@ interface AnalyticsData {
   }
   inventory: {
     cardsWithStock: number
+    totalUnitsInStock: number
     totalCards: number
   }
   activity: {
@@ -262,15 +263,15 @@ export default function AnalyticsPage() {
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Cartas con Stock</CardTitle>
+                    <CardTitle className="text-sm font-medium">Unidades con Stock</CardTitle>
                     <Package className="h-4 w-4 text-blue-500" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-blue-600">
-                      {formatNumber(data.inventory?.cardsWithStock || 0)}
+                      {formatNumber(data.inventory?.totalUnitsInStock || 0)}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {data.inventory?.totalCards ? `de ${formatNumber(data.inventory.totalCards)} total` : "Disponibles para venta"}
+                      {data.inventory?.cardsWithStock ? `${formatNumber(data.inventory.cardsWithStock)} cartas con stock` : "Unidades disponibles"}
                     </p>
                   </CardContent>
                 </Card>
