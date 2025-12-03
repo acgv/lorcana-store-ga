@@ -43,10 +43,22 @@ export async function GET() {
             allInventory = [...allInventory, ...cards]
           }
           
-          hasMore = data && data.length === pageSize && (count === null || allInventory.length < count)
+          // Verificar si hay más páginas
+          // Si count está disponible, usarlo; si no, verificar si obtuvimos una página completa
+          if (count !== null && count !== undefined) {
+            hasMore = allInventory.length < count
+          } else {
+            // Si no tenemos count, asumir que hay más si obtuvimos exactamente pageSize items
+            hasMore = data && data.length === pageSize
+          }
+          
           page++
           
-          if (page >= 10) break
+          // Safety limit: no más de 50 páginas (50,000 cartas máximo)
+          if (page >= 50) {
+            console.log(`⚠️ Reached safety limit of 50 pages (50,000 cards). Loaded ${allInventory.length} cards.`)
+            break
+          }
         }
 
         // 2. Obtener todos los productos (boosters, playmats, etc.)

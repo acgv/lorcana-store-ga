@@ -58,13 +58,24 @@ export async function GET(request: NextRequest) {
             allCards = [...allCards, ...data]
           }
           
+          // Log para debugging
+          if (page === 0) {
+            console.log(`📊 Cards pagination - Page ${page + 1}: loaded ${data?.length || 0} cards, total so far: ${allCards.length}, count from DB: ${count}`)
+          }
+          
           // Verificar si hay más páginas
           // Si count está disponible, usarlo; si no, verificar si obtuvimos una página completa
           if (count !== null && count !== undefined) {
             hasMore = allCards.length < count
+            if (!hasMore) {
+              console.log(`✅ Cards pagination complete: loaded all ${allCards.length} cards (count: ${count})`)
+            }
           } else {
             // Si no tenemos count, asumir que hay más si obtuvimos exactamente pageSize items
             hasMore = data && data.length === pageSize
+            if (!hasMore && data) {
+              console.log(`✅ Cards pagination complete: loaded ${allCards.length} cards (no count available, last page had ${data.length} cards)`)
+            }
           }
           
           page++

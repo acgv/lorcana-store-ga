@@ -49,12 +49,33 @@ export async function GET(request: NextRequest) {
         allData = [...allData, ...data]
       }
 
+      // Log para debugging
+      if (page === 0) {
+        console.log(`📊 Collection pagination - Page ${page + 1}: loaded ${data?.length || 0} items, total so far: ${allData.length}, count from DB: ${count}`)
+      }
+
       // Verificar si hay más páginas
-      hasMore = data && data.length === pageSize && (count === null || allData.length < count)
+      // Si count está disponible, usarlo; si no, verificar si obtuvimos una página completa
+      if (count !== null && count !== undefined) {
+        hasMore = allData.length < count
+        if (!hasMore) {
+          console.log(`✅ Collection pagination complete: loaded all ${allData.length} items (count: ${count})`)
+        }
+      } else {
+        // Si no tenemos count, asumir que hay más si obtuvimos exactamente pageSize items
+        hasMore = data && data.length === pageSize
+        if (!hasMore && data) {
+          console.log(`✅ Collection pagination complete: loaded ${allData.length} items (no count available, last page had ${data.length} items)`)
+        }
+      }
+      
       page++
 
-      // Safety limit: no más de 10 páginas (10,000 items máximo)
-      if (page >= 10) break
+      // Safety limit: no más de 50 páginas (50,000 items máximo)
+      if (page >= 50) {
+        console.log(`⚠️ Reached safety limit of 50 pages (50,000 items). Loaded ${allData.length} items.`)
+        break
+      }
     }
 
     const data = allData
