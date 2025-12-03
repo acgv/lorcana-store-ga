@@ -248,16 +248,17 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Map the new column names (result_*) to the expected format
     return NextResponse.json({
       success: true,
       message: "Parámetros de cálculo actualizados correctamente",
       data: {
-        usTaxRate: parseFloat(String(settings.usTaxRate || "0.08")),
-        shippingUSD: parseFloat(String(settings.shippingUSD || "8")),
-        chileVATRate: parseFloat(String(settings.chileVATRate || "0.19")),
-        exchangeRate: parseFloat(String(settings.exchangeRate || "1000")),
-        profitMargin: parseFloat(String(settings.profitMargin || "0.20")),
-        mercadoPagoFee: parseFloat(String(settings.mercadoPagoFee || "0.034")),
+        usTaxRate: parseFloat(String((settings as any).result_usTaxRate || settings.usTaxRate || "0.08")),
+        shippingUSD: parseFloat(String((settings as any).result_shippingUSD || settings.shippingUSD || "8")),
+        chileVATRate: parseFloat(String((settings as any).result_chileVATRate || settings.chileVATRate || "0.19")),
+        exchangeRate: parseFloat(String((settings as any).result_exchangeRate || settings.exchangeRate || "1000")),
+        profitMargin: parseFloat(String((settings as any).result_profitMargin || settings.profitMargin || "0.20")),
+        mercadoPagoFee: parseFloat(String((settings as any).result_mercadoPagoFee || settings.mercadoPagoFee || "0.034")),
       },
     })
   } catch (error) {

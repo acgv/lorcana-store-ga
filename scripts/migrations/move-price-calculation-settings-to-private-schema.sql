@@ -73,7 +73,10 @@ GRANT ALL ON admin.price_calculation_settings TO service_role;
 -- This allows the Supabase JS client to access the table through PostgREST
 
 -- Function to get price calculation settings
-CREATE OR REPLACE FUNCTION public.get_price_calculation_settings()
+-- Drop existing function first if it exists (for consistency)
+DROP FUNCTION IF EXISTS public.get_price_calculation_settings();
+
+CREATE FUNCTION public.get_price_calculation_settings()
 RETURNS TABLE (
   id text,
   "usTaxRate" DECIMAL(5, 4),
@@ -87,7 +90,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = admin, public
+SET search_path = public
 AS $$
 BEGIN
   -- Service role automatically bypasses RLS, so we trust that only service role can call this
@@ -96,17 +99,17 @@ BEGIN
   
   RETURN QUERY
   SELECT 
-    pcs.id,
-    pcs."usTaxRate",
-    pcs."shippingUSD",
-    pcs."chileVATRate",
-    pcs."exchangeRate",
-    pcs."profitMargin",
-    pcs."mercadoPagoFee",
-    pcs."updatedAt",
-    pcs."updatedBy"
-  FROM admin.price_calculation_settings pcs
-  WHERE pcs.id = 'default';
+    admin.price_calculation_settings.id,
+    admin.price_calculation_settings."usTaxRate",
+    admin.price_calculation_settings."shippingUSD",
+    admin.price_calculation_settings."chileVATRate",
+    admin.price_calculation_settings."exchangeRate",
+    admin.price_calculation_settings."profitMargin",
+    admin.price_calculation_settings."mercadoPagoFee",
+    admin.price_calculation_settings."updatedAt",
+    admin.price_calculation_settings."updatedBy"
+  FROM admin.price_calculation_settings
+  WHERE admin.price_calculation_settings.id = 'default';
   
   -- If no rows returned, return default values
   IF NOT FOUND THEN
@@ -126,52 +129,103 @@ $$;
 
 -- Function to upsert price calculation settings
 -- Using JSON parameter for better PostgREST compatibility
-CREATE OR REPLACE FUNCTION public.upsert_price_calculation_settings(
+-- Drop existing function first if it exists (needed when changing return type)
+DROP FUNCTION IF EXISTS public.upsert_price_calculation_settings(JSONB);
+
+CREATE FUNCTION public.upsert_price_calculation_settings(
   p_settings JSONB DEFAULT NULL
 )
 RETURNS TABLE (
-  id text,
-  "usTaxRate" DECIMAL(5, 4),
-  "shippingUSD" DECIMAL(10, 2),
-  "chileVATRate" DECIMAL(5, 4),
-  "exchangeRate" DECIMAL(10, 2),
-  "profitMargin" DECIMAL(5, 4),
-  "mercadoPagoFee" DECIMAL(5, 4),
-  "updatedAt" timestamptz,
-  "updatedBy" text
+  result_id text,
+  result_usTaxRate DECIMAL(5, 4),
+  result_shippingUSD DECIMAL(10, 2),
+  result_chileVATRate DECIMAL(5, 4),
+  result_exchangeRate DECIMAL(10, 2),
+  result_profitMargin DECIMAL(5, 4),
+  result_mercadoPagoFee DECIMAL(5, 4),
+  result_updatedAt timestamptz,
+  result_updatedBy text
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = admin, public
+SET search_path = public
 AS $$
 DECLARE
-  v_existing admin.price_calculation_settings%ROWTYPE;
   v_usTaxRate DECIMAL(5, 4);
   v_shippingUSD DECIMAL(10, 2);
   v_chileVATRate DECIMAL(5, 4);
   v_exchangeRate DECIMAL(10, 2);
   v_profitMargin DECIMAL(5, 4);
   v_mercadoPagoFee DECIMAL(5, 4);
+  v_existing_usTaxRate DECIMAL(5, 4);
+  v_existing_shippingUSD DECIMAL(10, 2);
+  v_existing_chileVATRate DECIMAL(5, 4);
+  v_existing_exchangeRate DECIMAL(10, 2);
+  v_existing_profitMargin DECIMAL(5, 4);
+  v_existing_mercadoPagoFee DECIMAL(5, 4);
 BEGIN
   -- Service role automatically bypasses RLS, so we trust that only service role can call this
   -- The function is in public schema but accesses admin schema, which is not exposed to PostgREST
   -- Only backend code with service role key can access this
   
-  -- Get existing record if it exists
-  SELECT * INTO v_existing
-  FROM admin.price_calculation_settings pcs
-  WHERE pcs.id = 'default'
+  -- Get existing values using fully qualified table name
+  SELECT 
+    admin.price_calculation_settings."usTaxRate",
+    admin.price_calculation_settings."shippingUSD",
+    admin.price_calculation_settings."chileVATRate",
+    admin.price_calculation_settings."exchangeRate",
+    admin.price_calculation_settings."profitMargin",
+    admin.price_calculation_settings."mercadoPagoFee"
+  INTO 
+    v_existing_usTaxRate,
+    v_existing_shippingUSD,
+    v_existing_chileVATRate,
+    v_existing_exchangeRate,
+    v_existing_profitMargin,
+    v_existing_mercadoPagoFee
+  FROM admin.price_calculation_settings
+  WHERE admin.price_calculation_settings.id = 'default'
   LIMIT 1;
   
   -- Extract values from JSON, use existing values or defaults if not provided
-  v_usTaxRate := COALESCE((p_settings->>'p_usTaxRate')::DECIMAL(5, 4), (p_settings->>'usTaxRate')::DECIMAL(5, 4), v_existing."usTaxRate", 0.08);
-  v_shippingUSD := COALESCE((p_settings->>'p_shippingUSD')::DECIMAL(10, 2), (p_settings->>'shippingUSD')::DECIMAL(10, 2), v_existing."shippingUSD", 8.00);
-  v_chileVATRate := COALESCE((p_settings->>'p_chileVATRate')::DECIMAL(5, 4), (p_settings->>'chileVATRate')::DECIMAL(5, 4), v_existing."chileVATRate", 0.19);
-  v_exchangeRate := COALESCE((p_settings->>'p_exchangeRate')::DECIMAL(10, 2), (p_settings->>'exchangeRate')::DECIMAL(10, 2), v_existing."exchangeRate", 1000.00);
-  v_profitMargin := COALESCE((p_settings->>'p_profitMargin')::DECIMAL(5, 4), (p_settings->>'profitMargin')::DECIMAL(5, 4), v_existing."profitMargin", 0.20);
-  v_mercadoPagoFee := COALESCE((p_settings->>'p_mercadoPagoFee')::DECIMAL(5, 4), (p_settings->>'mercadoPagoFee')::DECIMAL(5, 4), v_existing."mercadoPagoFee", 0.034);
+  v_usTaxRate := COALESCE(
+    (p_settings->>'p_usTaxRate')::DECIMAL(5, 4), 
+    (p_settings->>'usTaxRate')::DECIMAL(5, 4),
+    v_existing_usTaxRate,
+    0.08
+  );
+  v_shippingUSD := COALESCE(
+    (p_settings->>'p_shippingUSD')::DECIMAL(10, 2), 
+    (p_settings->>'shippingUSD')::DECIMAL(10, 2),
+    v_existing_shippingUSD,
+    8.00
+  );
+  v_chileVATRate := COALESCE(
+    (p_settings->>'p_chileVATRate')::DECIMAL(5, 4), 
+    (p_settings->>'chileVATRate')::DECIMAL(5, 4),
+    v_existing_chileVATRate,
+    0.19
+  );
+  v_exchangeRate := COALESCE(
+    (p_settings->>'p_exchangeRate')::DECIMAL(10, 2), 
+    (p_settings->>'exchangeRate')::DECIMAL(10, 2),
+    v_existing_exchangeRate,
+    1000.00
+  );
+  v_profitMargin := COALESCE(
+    (p_settings->>'p_profitMargin')::DECIMAL(5, 4), 
+    (p_settings->>'profitMargin')::DECIMAL(5, 4),
+    v_existing_profitMargin,
+    0.20
+  );
+  v_mercadoPagoFee := COALESCE(
+    (p_settings->>'p_mercadoPagoFee')::DECIMAL(5, 4), 
+    (p_settings->>'mercadoPagoFee')::DECIMAL(5, 4),
+    v_existing_mercadoPagoFee,
+    0.034
+  );
   
-  -- Upsert logic
+  -- Upsert logic using INSERT ... ON CONFLICT
   INSERT INTO admin.price_calculation_settings (
     id,
     "usTaxRate",
@@ -191,27 +245,27 @@ BEGIN
     v_mercadoPagoFee
   )
   ON CONFLICT (id) DO UPDATE SET
-    "usTaxRate" = COALESCE(v_usTaxRate, price_calculation_settings."usTaxRate"),
-    "shippingUSD" = COALESCE(v_shippingUSD, price_calculation_settings."shippingUSD"),
-    "chileVATRate" = COALESCE(v_chileVATRate, price_calculation_settings."chileVATRate"),
-    "exchangeRate" = COALESCE(v_exchangeRate, price_calculation_settings."exchangeRate"),
-    "profitMargin" = COALESCE(v_profitMargin, price_calculation_settings."profitMargin"),
-    "mercadoPagoFee" = COALESCE(v_mercadoPagoFee, price_calculation_settings."mercadoPagoFee");
+    "usTaxRate" = EXCLUDED."usTaxRate",
+    "shippingUSD" = EXCLUDED."shippingUSD",
+    "chileVATRate" = EXCLUDED."chileVATRate",
+    "exchangeRate" = EXCLUDED."exchangeRate",
+    "profitMargin" = EXCLUDED."profitMargin",
+    "mercadoPagoFee" = EXCLUDED."mercadoPagoFee";
   
-  -- Return the updated/inserted record
+  -- Return the updated/inserted record with different column names to avoid ambiguity
   RETURN QUERY 
   SELECT 
-    pcs.id,
-    pcs."usTaxRate",
-    pcs."shippingUSD",
-    pcs."chileVATRate",
-    pcs."exchangeRate",
-    pcs."profitMargin",
-    pcs."mercadoPagoFee",
-    pcs."updatedAt",
-    pcs."updatedBy"
-  FROM admin.price_calculation_settings pcs
-  WHERE pcs.id = 'default';
+    admin.price_calculation_settings.id AS result_id,
+    admin.price_calculation_settings."usTaxRate" AS result_usTaxRate,
+    admin.price_calculation_settings."shippingUSD" AS result_shippingUSD,
+    admin.price_calculation_settings."chileVATRate" AS result_chileVATRate,
+    admin.price_calculation_settings."exchangeRate" AS result_exchangeRate,
+    admin.price_calculation_settings."profitMargin" AS result_profitMargin,
+    admin.price_calculation_settings."mercadoPagoFee" AS result_mercadoPagoFee,
+    admin.price_calculation_settings."updatedAt" AS result_updatedAt,
+    admin.price_calculation_settings."updatedBy" AS result_updatedBy
+  FROM admin.price_calculation_settings
+  WHERE admin.price_calculation_settings.id = 'default';
 END;
 $$;
 
