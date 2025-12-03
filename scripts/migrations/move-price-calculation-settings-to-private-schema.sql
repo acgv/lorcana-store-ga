@@ -207,15 +207,49 @@ $$;
 
 -- Grant execute permissions to service role and anon (for PostgREST)
 -- PostgREST needs execute permission to expose the function
-GRANT EXECUTE ON FUNCTION public.get_price_calculation_settings() TO service_role, anon;
-GRANT EXECUTE ON FUNCTION public.upsert_price_calculation_settings(DECIMAL(5, 4), DECIMAL(10, 2), DECIMAL(5, 4), DECIMAL(10, 2), DECIMAL(5, 4), DECIMAL(5, 4)) TO service_role, anon;
+GRANT EXECUTE ON FUNCTION public.get_price_calculation_settings() TO service_role, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_price_calculation_settings(DECIMAL(5, 4), DECIMAL(10, 2), DECIMAL(5, 4), DECIMAL(10, 2), DECIMAL(5, 4), DECIMAL(5, 4)) TO service_role, anon, authenticated;
+
+-- Verify functions exist and are accessible
+DO $$
+BEGIN
+  -- Check if functions exist
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc 
+    WHERE proname = 'get_price_calculation_settings' 
+    AND pronamespace = 'public'::regnamespace
+  ) THEN
+    RAISE EXCEPTION 'Function get_price_calculation_settings does not exist';
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc 
+    WHERE proname = 'upsert_price_calculation_settings' 
+    AND pronamespace = 'public'::regnamespace
+  ) THEN
+    RAISE EXCEPTION 'Function upsert_price_calculation_settings does not exist';
+  END IF;
+  
+  RAISE NOTICE '✅ Functions created successfully';
+END $$;
 
 -- Note: The table is in a private schema (admin) not exposed to PostgREST
 -- Access is only through these helper functions, which require service role
 -- This solves the Supabase Security Advisor warning without needing RLS
 --
--- IMPORTANT: After running this migration, you may need to:
--- 1. Refresh PostgREST schema cache (restart Supabase or wait a few minutes)
--- 2. Verify the functions are accessible: SELECT * FROM pg_proc WHERE proname LIKE '%price_calculation%';
--- 3. Test the functions work: SELECT * FROM get_price_calculation_settings();
+-- IMPORTANT: After running this migration:
+-- 1. Wait 1-2 minutes for PostgREST to refresh its schema cache automatically
+-- 2. OR force refresh by running: NOTIFY pgrst, 'reload schema';
+-- 3. Verify the functions exist:
+--    SELECT proname, pronamespace::regnamespace 
+--    FROM pg_proc 
+--    WHERE proname LIKE '%price_calculation%';
+-- 4. Test the functions work:
+--    SELECT * FROM get_price_calculation_settings();
+--    SELECT * FROM upsert_price_calculation_settings(0.08, 8, 0.19, 1000, 0.20, 0.034);
+--
+-- If PostgREST still can't find the functions (PGRST202 error):
+-- - Check that functions are in public schema: SELECT pronamespace::regnamespace FROM pg_proc WHERE proname = 'upsert_price_calculation_settings';
+-- - Verify permissions: SELECT routine_name, grantee FROM information_schema.routine_privileges WHERE routine_name LIKE '%price_calculation%';
+-- - Try restarting your Supabase project (Settings > Database > Restart)
 

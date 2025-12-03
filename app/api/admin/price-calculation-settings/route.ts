@@ -187,21 +187,39 @@ export async function POST(request: NextRequest) {
         hint: error.hint,
       })
       
-      // Si la función no existe (migración no ejecutada), dar un mensaje más claro
+      // Si la función no existe (migración no ejecutada) o PostgREST no la encuentra
       if (
         error.code === "42P01" || // table does not exist
         error.code === "42883" || // function does not exist
-        error.code === "PGRST202" || // function not found by PostgREST
+        error.code === "PGRST202" || // function not found by PostgREST schema cache
         error.message?.includes("does not exist") ||
+        error.message?.includes("Could not find the function") ||
         (error.message?.includes("function") && error.message?.includes("does not exist"))
       ) {
-        console.error("❌ Función upsert_price_calculation_settings no existe o no es accesible. Ejecuta la migración primero.")
+        console.error("❌ Función upsert_price_calculation_settings no existe o PostgREST no la encuentra:", {
+          code: error.code,
+          message: error.message,
+        })
+        
+        let errorMessage = "La función de configuración no es accesible."
+        let instructions = []
+        
+        if (error.code === "PGRST202") {
+          instructions.push("1. Ejecuta la migración: scripts/migrations/move-price-calculation-settings-to-private-schema.sql")
+          instructions.push("2. Espera 2-3 minutos para que PostgREST refresque su schema cache automáticamente")
+          instructions.push("3. O ejecuta: scripts/migrations/verify-and-refresh-price-calculation-functions.sql")
+          instructions.push("4. Si persiste, reinicia tu proyecto de Supabase (Settings > Database > Restart)")
+        } else {
+          instructions.push("Ejecuta la migración: scripts/migrations/move-price-calculation-settings-to-private-schema.sql")
+        }
+        
         return NextResponse.json(
           {
             success: false,
-            error: "La función de configuración no existe o no es accesible. Por favor ejecuta la migración: scripts/migrations/move-price-calculation-settings-to-private-schema.sql. Si ya la ejecutaste, verifica que PostgREST tenga permisos para ejecutar la función.",
+            error: errorMessage,
             code: error.code,
             details: error.message,
+            instructions: instructions,
           },
           { status: 500 }
         )
