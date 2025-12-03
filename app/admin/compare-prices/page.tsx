@@ -114,9 +114,17 @@ export default function ComparePricesPage() {
 
   // Función para validar si los parámetros son razonables
   const validatePriceParams = (params: typeof priceParams): boolean => {
-    // Validar rangos razonables
-    if (params.usTaxRate < 0.01 || params.usTaxRate > 0.5) return false // Debe estar entre 1% y 50%
-    if (params.shippingUSD < 1 || params.shippingUSD > 100) return false // Debe estar entre $1 y $100
+    // Validar que todos los campos existan y sean números
+    if (typeof params.usTaxRate !== 'number' || isNaN(params.usTaxRate)) return false
+    if (typeof params.shippingUSD !== 'number' || isNaN(params.shippingUSD)) return false
+    if (typeof params.chileVATRate !== 'number' || isNaN(params.chileVATRate)) return false
+    if (typeof params.exchangeRate !== 'number' || isNaN(params.exchangeRate)) return false
+    if (typeof params.profitMargin !== 'number' || isNaN(params.profitMargin)) return false
+    if (typeof params.mercadoPagoFee !== 'number' || isNaN(params.mercadoPagoFee)) return false
+    
+    // Validar rangos razonables (permitir 0 para usTaxRate y shippingUSD)
+    if (params.usTaxRate < 0 || params.usTaxRate > 0.5) return false // Debe estar entre 0% y 50%
+    if (params.shippingUSD < 0 || params.shippingUSD > 100) return false // Debe estar entre $0 y $100
     if (params.chileVATRate < 0.01 || params.chileVATRate > 0.5) return false // Debe estar entre 1% y 50%
     if (params.exchangeRate < 100 || params.exchangeRate > 10000) return false // Debe estar entre 100 y 10000
     if (params.profitMargin < 0 || params.profitMargin > 1) return false // Debe estar entre 0% y 100%

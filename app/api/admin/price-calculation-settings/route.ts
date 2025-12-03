@@ -88,16 +88,26 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Map the new column names (result_*) to the expected format
+    // Support both new format (result_*) and old format for backward compatibility
+    const mappedSettings = settings as any;
+    const usTaxRate = mappedSettings.result_usTaxRate ?? mappedSettings.usTaxRate;
+    const shippingUSD = mappedSettings.result_shippingUSD ?? mappedSettings.shippingUSD;
+    const chileVATRate = mappedSettings.result_chileVATRate ?? mappedSettings.chileVATRate;
+    const exchangeRate = mappedSettings.result_exchangeRate ?? mappedSettings.exchangeRate;
+    const profitMargin = mappedSettings.result_profitMargin ?? mappedSettings.profitMargin;
+    const mercadoPagoFee = mappedSettings.result_mercadoPagoFee ?? mappedSettings.mercadoPagoFee;
+
     return NextResponse.json({
       success: true,
       data: {
         // Usar nullish coalescing (??) en lugar de || para permitir valores 0
-        usTaxRate: settings?.usTaxRate != null ? parseFloat(String(settings.usTaxRate)) : 0.08,
-        shippingUSD: settings?.shippingUSD != null ? parseFloat(String(settings.shippingUSD)) : 8,
-        chileVATRate: settings?.chileVATRate != null ? parseFloat(String(settings.chileVATRate)) : 0.19,
-        exchangeRate: settings?.exchangeRate != null ? parseFloat(String(settings.exchangeRate)) : 1000,
-        profitMargin: settings?.profitMargin != null ? parseFloat(String(settings.profitMargin)) : 0.20,
-        mercadoPagoFee: settings?.mercadoPagoFee != null ? parseFloat(String(settings.mercadoPagoFee)) : 0.034,
+        usTaxRate: usTaxRate != null ? parseFloat(String(usTaxRate)) : 0.08,
+        shippingUSD: shippingUSD != null ? parseFloat(String(shippingUSD)) : 8,
+        chileVATRate: chileVATRate != null ? parseFloat(String(chileVATRate)) : 0.19,
+        exchangeRate: exchangeRate != null ? parseFloat(String(exchangeRate)) : 1000,
+        profitMargin: profitMargin != null ? parseFloat(String(profitMargin)) : 0.20,
+        mercadoPagoFee: mercadoPagoFee != null ? parseFloat(String(mercadoPagoFee)) : 0.034,
       },
     })
   } catch (error) {
