@@ -130,6 +130,7 @@ export async function GET(request: NextRequest) {
 
       if (cardsData && cardsData.length > 0) {
         allCardsWithStock = [...allCardsWithStock, ...cardsData]
+        console.log(`📊 Analytics cards pagination - Page ${cardsPage + 1}: loaded ${cardsData.length} cards, total so far: ${allCardsWithStock.length}`)
       }
 
       cardsHasMore = cardsData && cardsData.length === cardsPageSize
@@ -138,13 +139,26 @@ export async function GET(request: NextRequest) {
       if (cardsPage >= 50) break
     }
 
+    console.log(`📊 Total cards loaded for stock calculation: ${allCardsWithStock.length}`)
+
     // Calcular total de unidades disponibles (suma de normalStock + foilStock)
     let totalUnitsInStock = 0
     let cardsWithStockCount = 0
 
     allCardsWithStock.forEach(card => {
-      const normalStock = Number(card.normalStock || card.stock || 0)
-      const foilStock = Number(card.foilStock || 0)
+      // Manejar diferentes formatos de stock - convertir null/undefined a 0
+      let normalStock = 0
+      if (card.normalStock !== null && card.normalStock !== undefined) {
+        normalStock = Number(card.normalStock) || 0
+      } else if (card.stock !== null && card.stock !== undefined) {
+        normalStock = Number(card.stock) || 0
+      }
+      
+      let foilStock = 0
+      if (card.foilStock !== null && card.foilStock !== undefined) {
+        foilStock = Number(card.foilStock) || 0
+      }
+      
       const totalStock = normalStock + foilStock
       
       if (totalStock > 0) {
@@ -152,6 +166,21 @@ export async function GET(request: NextRequest) {
         totalUnitsInStock += totalStock
       }
     })
+
+    // Log detallado para debugging
+    if (allCardsWithStock.length > 0) {
+      const sampleCard = allCardsWithStock[0]
+      console.log(`📊 Sample card stock values:`, {
+        id: sampleCard.id,
+        normalStock: sampleCard.normalStock,
+        foilStock: sampleCard.foilStock,
+        stock: sampleCard.stock,
+        normalStockType: typeof sampleCard.normalStock,
+        foilStockType: typeof sampleCard.foilStock,
+      })
+    }
+    
+    console.log(`📊 Stock calculation: ${cardsWithStockCount} cards with stock, ${totalUnitsInStock} total units`)
 
     // Métricas de colección
     const totalCollectionItems = collections?.length || 0
