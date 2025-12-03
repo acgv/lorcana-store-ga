@@ -156,13 +156,33 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { usTaxRate, shippingUSD, chileVATRate, exchangeRate, profitMargin, mercadoPagoFee } = body
 
-    const updateData: any = {}
-    if (usTaxRate !== undefined) updateData.usTaxRate = Number(usTaxRate)
-    if (shippingUSD !== undefined) updateData.shippingUSD = Number(shippingUSD)
-    if (chileVATRate !== undefined) updateData.chileVATRate = Number(chileVATRate)
-    if (exchangeRate !== undefined) updateData.exchangeRate = Number(exchangeRate)
-    if (profitMargin !== undefined) updateData.profitMargin = Number(profitMargin)
-    if (mercadoPagoFee !== undefined) updateData.mercadoPagoFee = Number(mercadoPagoFee)
+    // Build the settings object - include all values that are provided (even if 0)
+    // This ensures the SQL function knows which fields to update
+    const settingsObj: any = {}
+    if (usTaxRate !== undefined) {
+      settingsObj.usTaxRate = Number(usTaxRate)
+      settingsObj.p_usTaxRate = Number(usTaxRate) // Include both formats for compatibility
+    }
+    if (shippingUSD !== undefined) {
+      settingsObj.shippingUSD = Number(shippingUSD)
+      settingsObj.p_shippingUSD = Number(shippingUSD)
+    }
+    if (chileVATRate !== undefined) {
+      settingsObj.chileVATRate = Number(chileVATRate)
+      settingsObj.p_chileVATRate = Number(chileVATRate)
+    }
+    if (exchangeRate !== undefined) {
+      settingsObj.exchangeRate = Number(exchangeRate)
+      settingsObj.p_exchangeRate = Number(exchangeRate)
+    }
+    if (profitMargin !== undefined) {
+      settingsObj.profitMargin = Number(profitMargin)
+      settingsObj.p_profitMargin = Number(profitMargin)
+    }
+    if (mercadoPagoFee !== undefined) {
+      settingsObj.mercadoPagoFee = Number(mercadoPagoFee)
+      settingsObj.p_mercadoPagoFee = Number(mercadoPagoFee)
+    }
 
     // Upsert (insert or update)
     // Verificar que la tabla existe, si no, retornar error más descriptivo
@@ -174,20 +194,24 @@ export async function POST(request: NextRequest) {
     // The table is in admin schema, not exposed to PostgREST, only accessible via service role
     // Using JSON parameter for better PostgREST compatibility
     const rpcParams = {
-      p_settings: {
-        p_usTaxRate: updateData.usTaxRate,
-        p_shippingUSD: updateData.shippingUSD,
-        p_chileVATRate: updateData.chileVATRate,
-        p_exchangeRate: updateData.exchangeRate,
-        p_profitMargin: updateData.profitMargin,
-        p_mercadoPagoFee: updateData.mercadoPagoFee,
-      }
+      p_settings: settingsObj
     }
 
-    console.log("🔧 Calling upsert_price_calculation_settings with params:", rpcParams)
+    console.log("🔧 Calling upsert_price_calculation_settings with params:", JSON.stringify(rpcParams, null, 2))
+    console.log("🔧 Settings object keys:", Object.keys(settingsObj))
+    console.log("🔧 Settings values:", {
+      usTaxRate: settingsObj.usTaxRate,
+      shippingUSD: settingsObj.shippingUSD,
+      chileVATRate: settingsObj.chileVATRate,
+      exchangeRate: settingsObj.exchangeRate,
+      profitMargin: settingsObj.profitMargin,
+      mercadoPagoFee: settingsObj.mercadoPagoFee,
+    })
     
     const { data, error } = await supabaseAdmin
       .rpc("upsert_price_calculation_settings", rpcParams)
+    
+    console.log("🔧 RPC response:", { data, error: error ? { code: error.code, message: error.message } : null })
 
     // Ya no hay problemas de RLS porque la tabla está en un schema privado
 

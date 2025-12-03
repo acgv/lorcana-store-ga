@@ -187,43 +187,83 @@ BEGIN
   WHERE admin.price_calculation_settings.id = 'default'
   LIMIT 1;
   
-  -- Extract values from JSON, use existing values or defaults if not provided
-  v_usTaxRate := COALESCE(
-    (p_settings->>'p_usTaxRate')::DECIMAL(5, 4), 
-    (p_settings->>'usTaxRate')::DECIMAL(5, 4),
-    v_existing_usTaxRate,
-    0.08
-  );
-  v_shippingUSD := COALESCE(
-    (p_settings->>'p_shippingUSD')::DECIMAL(10, 2), 
-    (p_settings->>'shippingUSD')::DECIMAL(10, 2),
-    v_existing_shippingUSD,
-    8.00
-  );
-  v_chileVATRate := COALESCE(
-    (p_settings->>'p_chileVATRate')::DECIMAL(5, 4), 
-    (p_settings->>'chileVATRate')::DECIMAL(5, 4),
-    v_existing_chileVATRate,
-    0.19
-  );
-  v_exchangeRate := COALESCE(
-    (p_settings->>'p_exchangeRate')::DECIMAL(10, 2), 
-    (p_settings->>'exchangeRate')::DECIMAL(10, 2),
-    v_existing_exchangeRate,
-    1000.00
-  );
-  v_profitMargin := COALESCE(
-    (p_settings->>'p_profitMargin')::DECIMAL(5, 4), 
-    (p_settings->>'profitMargin')::DECIMAL(5, 4),
-    v_existing_profitMargin,
-    0.20
-  );
-  v_mercadoPagoFee := COALESCE(
-    (p_settings->>'p_mercadoPagoFee')::DECIMAL(5, 4), 
-    (p_settings->>'mercadoPagoFee')::DECIMAL(5, 4),
-    v_existing_mercadoPagoFee,
-    0.034
-  );
+  -- Extract values from JSON
+  -- If key exists in JSON (even if value is 0), use it; otherwise use existing value or default
+  -- Use -> operator to get JSONB, convert to numeric directly (handles 0 correctly)
+  IF p_settings IS NOT NULL AND (p_settings ? 'p_usTaxRate' OR p_settings ? 'usTaxRate') THEN
+    -- Key exists, use the value from JSON (even if it's 0)
+    -- Try p_* format first, then regular format
+    IF p_settings ? 'p_usTaxRate' THEN
+      v_usTaxRate := (p_settings->'p_usTaxRate')::numeric::DECIMAL(5, 4);
+    ELSIF p_settings ? 'usTaxRate' THEN
+      v_usTaxRate := (p_settings->'usTaxRate')::numeric::DECIMAL(5, 4);
+    ELSE
+      v_usTaxRate := 0.08;
+    END IF;
+  ELSE
+    -- Key doesn't exist, use existing value
+    v_usTaxRate := COALESCE(v_existing_usTaxRate, 0.08);
+  END IF;
+  
+  IF p_settings IS NOT NULL AND (p_settings ? 'p_shippingUSD' OR p_settings ? 'shippingUSD') THEN
+    IF p_settings ? 'p_shippingUSD' THEN
+      v_shippingUSD := (p_settings->'p_shippingUSD')::numeric::DECIMAL(10, 2);
+    ELSIF p_settings ? 'shippingUSD' THEN
+      v_shippingUSD := (p_settings->'shippingUSD')::numeric::DECIMAL(10, 2);
+    ELSE
+      v_shippingUSD := 8.00;
+    END IF;
+  ELSE
+    v_shippingUSD := COALESCE(v_existing_shippingUSD, 8.00);
+  END IF;
+  
+  IF p_settings IS NOT NULL AND (p_settings ? 'p_chileVATRate' OR p_settings ? 'chileVATRate') THEN
+    IF p_settings ? 'p_chileVATRate' THEN
+      v_chileVATRate := (p_settings->'p_chileVATRate')::numeric::DECIMAL(5, 4);
+    ELSIF p_settings ? 'chileVATRate' THEN
+      v_chileVATRate := (p_settings->'chileVATRate')::numeric::DECIMAL(5, 4);
+    ELSE
+      v_chileVATRate := 0.19;
+    END IF;
+  ELSE
+    v_chileVATRate := COALESCE(v_existing_chileVATRate, 0.19);
+  END IF;
+  
+  IF p_settings IS NOT NULL AND (p_settings ? 'p_exchangeRate' OR p_settings ? 'exchangeRate') THEN
+    IF p_settings ? 'p_exchangeRate' THEN
+      v_exchangeRate := (p_settings->'p_exchangeRate')::numeric::DECIMAL(10, 2);
+    ELSIF p_settings ? 'exchangeRate' THEN
+      v_exchangeRate := (p_settings->'exchangeRate')::numeric::DECIMAL(10, 2);
+    ELSE
+      v_exchangeRate := 1000.00;
+    END IF;
+  ELSE
+    v_exchangeRate := COALESCE(v_existing_exchangeRate, 1000.00);
+  END IF;
+  
+  IF p_settings IS NOT NULL AND (p_settings ? 'p_profitMargin' OR p_settings ? 'profitMargin') THEN
+    IF p_settings ? 'p_profitMargin' THEN
+      v_profitMargin := (p_settings->'p_profitMargin')::numeric::DECIMAL(5, 4);
+    ELSIF p_settings ? 'profitMargin' THEN
+      v_profitMargin := (p_settings->'profitMargin')::numeric::DECIMAL(5, 4);
+    ELSE
+      v_profitMargin := 0.20;
+    END IF;
+  ELSE
+    v_profitMargin := COALESCE(v_existing_profitMargin, 0.20);
+  END IF;
+  
+  IF p_settings IS NOT NULL AND (p_settings ? 'p_mercadoPagoFee' OR p_settings ? 'mercadoPagoFee') THEN
+    IF p_settings ? 'p_mercadoPagoFee' THEN
+      v_mercadoPagoFee := (p_settings->'p_mercadoPagoFee')::numeric::DECIMAL(5, 4);
+    ELSIF p_settings ? 'mercadoPagoFee' THEN
+      v_mercadoPagoFee := (p_settings->'mercadoPagoFee')::numeric::DECIMAL(5, 4);
+    ELSE
+      v_mercadoPagoFee := 0.034;
+    END IF;
+  ELSE
+    v_mercadoPagoFee := COALESCE(v_existing_mercadoPagoFee, 0.034);
+  END IF;
   
   -- Upsert logic using INSERT ... ON CONFLICT
   INSERT INTO admin.price_calculation_settings (
