@@ -301,19 +301,24 @@ export async function POST(request: NextRequest) {
     console.log("🔧 Settings object after processing:", JSON.stringify(settingsResponse, null, 2))
     
     // Extract values - handle both result_* format and direct format
-    // IMPORTANT: Check for undefined specifically, not just null, to handle 0 correctly
-    const getValue = (obj: any, key: string, altKey?: string): number | null => {
-      const value = obj?.[key] ?? obj?.[altKey]
-      // If value is explicitly undefined, return null; otherwise return the value (even if 0)
-      return value === undefined ? null : (value != null ? Number(value) : null)
+    // Direct extraction: if key exists, use it (even if 0); if not, use null
+    const extractValue = (obj: any, primaryKey: string, altKey?: string): number | null => {
+      // Try primary key first (result_* format), then alt key, then null
+      if (primaryKey in obj && obj[primaryKey] !== undefined && obj[primaryKey] !== null) {
+        return Number(obj[primaryKey])
+      }
+      if (altKey && altKey in obj && obj[altKey] !== undefined && obj[altKey] !== null) {
+        return Number(obj[altKey])
+      }
+      return null
     }
     
-    const result_usTaxRate = getValue(settingsResponse, 'result_usTaxRate', 'usTaxRate')
-    const result_shippingUSD = getValue(settingsResponse, 'result_shippingUSD', 'shippingUSD')
-    const result_chileVATRate = getValue(settingsResponse, 'result_chileVATRate', 'chileVATRate')
-    const result_exchangeRate = getValue(settingsResponse, 'result_exchangeRate', 'exchangeRate')
-    const result_profitMargin = getValue(settingsResponse, 'result_profitMargin', 'profitMargin')
-    const result_mercadoPagoFee = getValue(settingsResponse, 'result_mercadoPagoFee', 'mercadoPagoFee')
+    const result_usTaxRate = extractValue(settingsResponse, 'result_usTaxRate', 'usTaxRate')
+    const result_shippingUSD = extractValue(settingsResponse, 'result_shippingUSD', 'shippingUSD')
+    const result_chileVATRate = extractValue(settingsResponse, 'result_chileVATRate', 'chileVATRate')
+    const result_exchangeRate = extractValue(settingsResponse, 'result_exchangeRate', 'exchangeRate')
+    const result_profitMargin = extractValue(settingsResponse, 'result_profitMargin', 'profitMargin')
+    const result_mercadoPagoFee = extractValue(settingsResponse, 'result_mercadoPagoFee', 'mercadoPagoFee')
     
     console.log("🔧 Extracted values:", {
       usTaxRate: result_usTaxRate,
@@ -323,17 +328,31 @@ export async function POST(request: NextRequest) {
       profitMargin: result_profitMargin,
       mercadoPagoFee: result_mercadoPagoFee,
     })
+    console.log("🔧 Raw settingsResponse keys:", Object.keys(settingsResponse))
+    console.log("🔧 Raw result_usTaxRate value:", settingsResponse.result_usTaxRate, "type:", typeof settingsResponse.result_usTaxRate)
+    console.log("🔧 Raw result_shippingUSD value:", settingsResponse.result_shippingUSD, "type:", typeof settingsResponse.result_shippingUSD)
+    console.log("🔧 Request values:", {
+      usTaxRate,
+      shippingUSD,
+      chileVATRate,
+      exchangeRate,
+      profitMargin,
+      mercadoPagoFee,
+    })
     
+    // Use extracted values from SQL if available, otherwise use request values, otherwise use defaults
+    // This ensures we return what was actually saved, or what was requested if SQL didn't return it
     return NextResponse.json({
       success: true,
       message: "Parámetros de cálculo actualizados correctamente",
       data: {
-        usTaxRate: result_usTaxRate !== null ? result_usTaxRate : 0.08,
-        shippingUSD: result_shippingUSD !== null ? result_shippingUSD : 8,
-        chileVATRate: result_chileVATRate !== null ? result_chileVATRate : 0.19,
-        exchangeRate: result_exchangeRate !== null ? result_exchangeRate : 1000,
-        profitMargin: result_profitMargin !== null ? result_profitMargin : 0.20,
-        mercadoPagoFee: result_mercadoPagoFee !== null ? result_mercadoPagoFee : 0.034,
+        // Priority: SQL result > Request value > Default
+        usTaxRate: result_usTaxRate !== null ? result_usTaxRate : (usTaxRate !== undefined ? Number(usTaxRate) : 0.08),
+        shippingUSD: result_shippingUSD !== null ? result_shippingUSD : (shippingUSD !== undefined ? Number(shippingUSD) : 8),
+        chileVATRate: result_chileVATRate !== null ? result_chileVATRate : (chileVATRate !== undefined ? Number(chileVATRate) : 0.19),
+        exchangeRate: result_exchangeRate !== null ? result_exchangeRate : (exchangeRate !== undefined ? Number(exchangeRate) : 1000),
+        profitMargin: result_profitMargin !== null ? result_profitMargin : (profitMargin !== undefined ? Number(profitMargin) : 0.20),
+        mercadoPagoFee: result_mercadoPagoFee !== null ? result_mercadoPagoFee : (mercadoPagoFee !== undefined ? Number(mercadoPagoFee) : 0.034),
       },
     })
   } catch (error) {

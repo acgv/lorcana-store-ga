@@ -190,60 +190,85 @@ BEGIN
   
   -- Extract values from JSON
   -- Direct approach: if key exists, use its value (even if 0); otherwise use existing/default
+  -- Wrap each extraction in BEGIN/EXCEPTION to handle conversion errors gracefully
   IF p_settings IS NOT NULL THEN
     -- usTaxRate: if key exists, use it (even if 0); otherwise use existing
-    IF p_settings ? 'p_usTaxRate' THEN
-      v_usTaxRate := (p_settings->>'p_usTaxRate')::numeric::DECIMAL(5, 4);
-    ELSIF p_settings ? 'usTaxRate' THEN
-      v_usTaxRate := (p_settings->>'usTaxRate')::numeric::DECIMAL(5, 4);
-    ELSE
+    BEGIN
+      IF p_settings ? 'p_usTaxRate' THEN
+        v_usTaxRate := (p_settings->>'p_usTaxRate')::numeric::DECIMAL(5, 4);
+      ELSIF p_settings ? 'usTaxRate' THEN
+        v_usTaxRate := (p_settings->>'usTaxRate')::numeric::DECIMAL(5, 4);
+      ELSE
+        v_usTaxRate := COALESCE(v_existing_usTaxRate, 0.08);
+      END IF;
+    EXCEPTION WHEN OTHERS THEN
       v_usTaxRate := COALESCE(v_existing_usTaxRate, 0.08);
-    END IF;
+    END;
     
     -- shippingUSD: if key exists, use it (even if 0); otherwise use existing
-    IF p_settings ? 'p_shippingUSD' THEN
-      v_shippingUSD := (p_settings->>'p_shippingUSD')::numeric::DECIMAL(10, 2);
-    ELSIF p_settings ? 'shippingUSD' THEN
-      v_shippingUSD := (p_settings->>'shippingUSD')::numeric::DECIMAL(10, 2);
-    ELSE
+    BEGIN
+      IF p_settings ? 'p_shippingUSD' THEN
+        v_shippingUSD := (p_settings->>'p_shippingUSD')::numeric::DECIMAL(10, 2);
+      ELSIF p_settings ? 'shippingUSD' THEN
+        v_shippingUSD := (p_settings->>'shippingUSD')::numeric::DECIMAL(10, 2);
+      ELSE
+        v_shippingUSD := COALESCE(v_existing_shippingUSD, 8.00);
+      END IF;
+    EXCEPTION WHEN OTHERS THEN
       v_shippingUSD := COALESCE(v_existing_shippingUSD, 8.00);
-    END IF;
+    END;
     
     -- chileVATRate: if key exists, use it (even if 0); otherwise use existing
-    IF p_settings ? 'p_chileVATRate' THEN
-      v_chileVATRate := (p_settings->>'p_chileVATRate')::numeric::DECIMAL(5, 4);
-    ELSIF p_settings ? 'chileVATRate' THEN
-      v_chileVATRate := (p_settings->>'chileVATRate')::numeric::DECIMAL(5, 4);
-    ELSE
+    BEGIN
+      IF p_settings ? 'p_chileVATRate' THEN
+        v_chileVATRate := (p_settings->>'p_chileVATRate')::numeric::DECIMAL(5, 4);
+      ELSIF p_settings ? 'chileVATRate' THEN
+        v_chileVATRate := (p_settings->>'chileVATRate')::numeric::DECIMAL(5, 4);
+      ELSE
+        v_chileVATRate := COALESCE(v_existing_chileVATRate, 0.19);
+      END IF;
+    EXCEPTION WHEN OTHERS THEN
       v_chileVATRate := COALESCE(v_existing_chileVATRate, 0.19);
-    END IF;
+    END;
     
     -- exchangeRate: if key exists, use it (even if 0); otherwise use existing
-    IF p_settings ? 'p_exchangeRate' THEN
-      v_exchangeRate := (p_settings->>'p_exchangeRate')::numeric::DECIMAL(10, 2);
-    ELSIF p_settings ? 'exchangeRate' THEN
-      v_exchangeRate := (p_settings->>'exchangeRate')::numeric::DECIMAL(10, 2);
-    ELSE
+    BEGIN
+      IF p_settings ? 'p_exchangeRate' THEN
+        v_exchangeRate := (p_settings->>'p_exchangeRate')::numeric::DECIMAL(10, 2);
+      ELSIF p_settings ? 'exchangeRate' THEN
+        v_exchangeRate := (p_settings->>'exchangeRate')::numeric::DECIMAL(10, 2);
+      ELSE
+        v_exchangeRate := COALESCE(v_existing_exchangeRate, 1000.00);
+      END IF;
+    EXCEPTION WHEN OTHERS THEN
       v_exchangeRate := COALESCE(v_existing_exchangeRate, 1000.00);
-    END IF;
+    END;
     
     -- profitMargin: if key exists, use it (even if 0); otherwise use existing
-    IF p_settings ? 'p_profitMargin' THEN
-      v_profitMargin := (p_settings->>'p_profitMargin')::numeric::DECIMAL(5, 4);
-    ELSIF p_settings ? 'profitMargin' THEN
-      v_profitMargin := (p_settings->>'profitMargin')::numeric::DECIMAL(5, 4);
-    ELSE
+    BEGIN
+      IF p_settings ? 'p_profitMargin' THEN
+        v_profitMargin := (p_settings->>'p_profitMargin')::numeric::DECIMAL(5, 4);
+      ELSIF p_settings ? 'profitMargin' THEN
+        v_profitMargin := (p_settings->>'profitMargin')::numeric::DECIMAL(5, 4);
+      ELSE
+        v_profitMargin := COALESCE(v_existing_profitMargin, 0.20);
+      END IF;
+    EXCEPTION WHEN OTHERS THEN
       v_profitMargin := COALESCE(v_existing_profitMargin, 0.20);
-    END IF;
+    END;
     
     -- mercadoPagoFee: if key exists, use it (even if 0); otherwise use existing
-    IF p_settings ? 'p_mercadoPagoFee' THEN
-      v_mercadoPagoFee := (p_settings->>'p_mercadoPagoFee')::numeric::DECIMAL(5, 4);
-    ELSIF p_settings ? 'mercadoPagoFee' THEN
-      v_mercadoPagoFee := (p_settings->>'mercadoPagoFee')::numeric::DECIMAL(5, 4);
-    ELSE
+    BEGIN
+      IF p_settings ? 'p_mercadoPagoFee' THEN
+        v_mercadoPagoFee := (p_settings->>'p_mercadoPagoFee')::numeric::DECIMAL(5, 4);
+      ELSIF p_settings ? 'mercadoPagoFee' THEN
+        v_mercadoPagoFee := (p_settings->>'mercadoPagoFee')::numeric::DECIMAL(5, 4);
+      ELSE
+        v_mercadoPagoFee := COALESCE(v_existing_mercadoPagoFee, 0.034);
+      END IF;
+    EXCEPTION WHEN OTHERS THEN
       v_mercadoPagoFee := COALESCE(v_existing_mercadoPagoFee, 0.034);
-    END IF;
+    END;
   ELSE
     -- No JSON provided, use existing values
     v_usTaxRate := COALESCE(v_existing_usTaxRate, 0.08);
