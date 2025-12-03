@@ -25,20 +25,26 @@ export async function GET(request: NextRequest) {
     const pageSize = 1000
     let hasMore = true
 
+    // Obtener el count total PRIMERO (sin range) para saber cuántos items hay
+    const { count: totalCount } = await supabaseAdmin
+      .from("user_collections")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "owned")
+
+    console.log(`📊 Total items in collection: ${totalCount || "unknown"}`)
+
     while (hasMore) {
       const from = page * pageSize
       const to = from + pageSize - 1
 
-      let query = supabaseAdmin
+      const { data, error } = await supabaseAdmin
         .from("user_collections")
-        .select("*", { count: "exact" })
+        .select("*")
         .eq("user_id", userId)
+        .eq("status", "owned")
+        .order("added_at", { ascending: false })
         .range(from, to)
-
-      // Solo obtener items con status "owned"
-      query = query.eq("status", "owned")
-
-      const { data, error, count } = await query.order("added_at", { ascending: false })
 
       if (error) {
         console.error("Error fetching collection page:", error)
@@ -50,16 +56,13 @@ export async function GET(request: NextRequest) {
       }
 
       // Log para debugging
-      if (page === 0) {
-        console.log(`📊 Collection pagination - Page ${page + 1}: loaded ${data?.length || 0} items, total so far: ${allData.length}, count from DB: ${count}`)
-      }
+      console.log(`📊 Collection pagination - Page ${page + 1}: loaded ${data?.length || 0} items, total so far: ${allData.length}${totalCount ? ` / ${totalCount} total` : ""}`)
 
       // Verificar si hay más páginas
-      // Si count está disponible, usarlo; si no, verificar si obtuvimos una página completa
-      if (count !== null && count !== undefined) {
-        hasMore = allData.length < count
+      if (totalCount !== null && totalCount !== undefined) {
+        hasMore = allData.length < totalCount
         if (!hasMore) {
-          console.log(`✅ Collection pagination complete: loaded all ${allData.length} items (count: ${count})`)
+          console.log(`✅ Collection pagination complete: loaded all ${allData.length} items (total: ${totalCount})`)
         }
       } else {
         // Si no tenemos count, asumir que hay más si obtuvimos exactamente pageSize items
