@@ -107,6 +107,42 @@ export async function GET(request: NextRequest) {
     const totalUsers = users?.users?.length || 0
     const authenticatedUsers = users?.users?.filter(u => u.email_confirmed_at)?.length || 0
 
+    // Obtener métricas de cartas con stock (con paginación)
+    let allCardsWithStock: any[] = []
+    let cardsPage = 0
+    const cardsPageSize = 1000
+    let cardsHasMore = true
+
+    while (cardsHasMore) {
+      const from = cardsPage * cardsPageSize
+      const to = from + cardsPageSize - 1
+
+      const { data: cardsData, error: cardsError } = await supabaseAdmin
+        .from("cards")
+        .select("id, normalStock, foilStock")
+        .eq("status", "approved")
+        .range(from, to)
+
+      if (cardsError) {
+        console.error("Error fetching cards page:", cardsError)
+        break
+      }
+
+      if (cardsData && cardsData.length > 0) {
+        allCardsWithStock = [...allCardsWithStock, ...cardsData]
+      }
+
+      cardsHasMore = cardsData && cardsData.length === cardsPageSize
+      cardsPage++
+
+      if (cardsPage >= 50) break
+    }
+
+    // Contar cartas con stock disponible (normal o foil)
+    const cardsWithStock = allCardsWithStock.filter(card => 
+      (card.normalStock && card.normalStock > 0) || (card.foilStock && card.foilStock > 0)
+    ).length
+
     // Métricas de colección
     const totalCollectionItems = collections?.length || 0
     const uniqueUsersWithCollection = new Set(collections?.map(c => c.user_id) || []).size
@@ -177,6 +213,11 @@ export async function GET(request: NextRequest) {
           averageItemsPerUser: uniqueUsersWithCollection > 0 
             ? totalCollectionItems / uniqueUsersWithCollection 
             : 0,
+        },
+        // Métricas de inventario
+        inventory: {
+          cardsWithStock,
+          totalCards: allCardsWithStock.length,
         },
         // Actividad reciente
         activity: {
