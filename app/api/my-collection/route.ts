@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/db"
 
-// GET - Get user's collection (owned and wanted cards)
+// GET - Get user's collection (owned cards only)
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const userId = searchParams.get("userId")
-    const status = searchParams.get("status") // 'owned' or 'wanted' or null (both)
+    const status = searchParams.get("status") // 'owned' or null (both)
 
     if (!userId) {
       return NextResponse.json(
@@ -35,9 +35,8 @@ export async function GET(request: NextRequest) {
         .eq("user_id", userId)
         .range(from, to)
 
-      if (status) {
-        query = query.eq("status", status)
-      }
+      // Solo obtener items con status "owned"
+      query = query.eq("status", "owned")
 
       const { data, error, count } = await query.order("added_at", { ascending: false })
 
@@ -106,11 +105,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!["owned", "wanted"].includes(status)) {
+    if (status !== "owned") {
       return NextResponse.json(
         {
           success: false,
-          error: "status must be 'owned' or 'wanted'",
+          error: "status must be 'owned'",
         },
         { status: 400 }
       )

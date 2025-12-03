@@ -77,7 +77,6 @@ export async function GET(request: NextRequest) {
     const totalCollectionItems = collections?.length || 0
     const uniqueUsersWithCollection = new Set(collections?.map(c => c.user_id) || []).size
     const ownedItems = collections?.filter(c => c.status === "owned")?.length || 0
-    const wantedItems = collections?.filter(c => c.status === "wanted")?.length || 0
 
     // Actividad reciente (últimas 24 horas)
     const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000)
@@ -141,7 +140,6 @@ export async function GET(request: NextRequest) {
           totalItems: totalCollectionItems,
           uniqueUsers: uniqueUsersWithCollection,
           ownedItems,
-          wantedItems,
           averageItemsPerUser: uniqueUsersWithCollection > 0 
             ? totalCollectionItems / uniqueUsersWithCollection 
             : 0,

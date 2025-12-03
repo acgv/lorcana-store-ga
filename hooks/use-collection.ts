@@ -6,7 +6,7 @@ import { useUser } from "@/hooks/use-user"
 interface CollectionItem {
   id: string
   card_id: string
-  status: "owned" | "wanted"
+  status: "owned"
   version: "normal" | "foil"
   quantity: number
 }
@@ -32,7 +32,7 @@ export function useCollection() {
       const data = await response.json()
 
       if (data.success) {
-        const items = data.data || []
+        const items = (data.data || []).filter((item: any) => item.status === "owned")
         setCollection(items)
         lastUserIdRef.current = user.id // Marcar como cargado
         
@@ -74,7 +74,7 @@ export function useCollection() {
 
   const isInCollection = (
     cardId: string, 
-    status: "owned" | "wanted", 
+    status: "owned", 
     version: "normal" | "foil"
   ): boolean => {
     if (!cardId || !collection || collection.length === 0) return false
@@ -92,7 +92,7 @@ export function useCollection() {
 
   const addToCollection = async (
     cardId: string, 
-    status: "owned" | "wanted",
+    status: "owned",
     version: "normal" | "foil" = "normal",
     quantity: number = 1
   ) => {
@@ -128,7 +128,7 @@ export function useCollection() {
 
   const removeFromCollection = async (
     cardId: string, 
-    status: "owned" | "wanted",
+    status: "owned",
     version: "normal" | "foil" = "normal"
   ) => {
     if (!user) return { success: false, error: "Not logged in" }

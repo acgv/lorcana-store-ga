@@ -59,11 +59,21 @@ export async function GET(request: NextRequest) {
           }
           
           // Verificar si hay más páginas
-          hasMore = data && data.length === pageSize && (count === null || allCards.length < count)
+          // Si count está disponible, usarlo; si no, verificar si obtuvimos una página completa
+          if (count !== null && count !== undefined) {
+            hasMore = allCards.length < count
+          } else {
+            // Si no tenemos count, asumir que hay más si obtuvimos exactamente pageSize items
+            hasMore = data && data.length === pageSize
+          }
+          
           page++
           
-          // Safety limit: no más de 10 páginas (10,000 cartas máximo)
-          if (page >= 10) break
+          // Safety limit: no más de 50 páginas (50,000 cartas máximo)
+          if (page >= 50) {
+            console.log(`⚠️ Reached safety limit of 50 pages (50,000 cards). Loaded ${allCards.length} cards.`)
+            break
+          }
         }
 
         if (allCards.length > 0) {

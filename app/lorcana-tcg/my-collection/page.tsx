@@ -29,7 +29,7 @@ import { trackCollectionView, trackCollectionCardAdd, trackCollectionCardRemove,
 interface CollectionItem {
   id: string
   card_id: string
-  status: "owned" | "wanted"
+  status: "owned"
   version: "normal" | "foil"
   quantity: number
   added_at: string
@@ -54,8 +54,8 @@ function MyCollectionContent() {
   const [loadingCards, setLoadingCards] = useState(true)
   
   // Leer tab y filtros desde URL o usar defaults
-  const tabFromUrl = searchParams.get("tab") as "all" | "owned" | "missing" | null
-  const [activeTab, setActiveTab] = useState<"all" | "owned" | "missing">(tabFromUrl || "all")
+  const tabFromUrl = searchParams.get("tab") as "all" | "owned" | null
+  const [activeTab, setActiveTab] = useState<"all" | "owned">(tabFromUrl || "all")
   const [filters, setFilters] = useState({
     type: searchParams.get("type") || "all",
     set: searchParams.get("set") || "all",
@@ -115,12 +115,6 @@ function MyCollectionContent() {
       
       // Agregar tab a la URL
       if (activeTab !== "all") params.set("tab", activeTab)
-      
-      // Si el tab es "wanted", redirigir a "missing"
-      if (activeTab === "wanted") {
-        setActiveTab("missing")
-        return
-      }
       
       // Agregar filtros a la URL
       if (filters.type !== "all") params.set("type", filters.type)
@@ -201,7 +195,7 @@ function MyCollectionContent() {
   }
 
   // Get collection items with card data
-  const getCollectionWithCards = (status: "owned" | "wanted"): CollectionItem[] => {
+  const getCollectionWithCards = (status: "owned"): CollectionItem[] => {
     return collection
       .filter((item) => item.status === status)
       .map((item) => ({
@@ -294,49 +288,9 @@ function MyCollectionContent() {
   })
 
 
-  // Calcular cartas faltantes: todas las cartas con información de qué versión falta y disponibilidad
-  const missingCards = allCards.map((card) => {
-    const hasNormalOwned = collection.some(
-      (item) => item.card_id === card.id && item.status === "owned" && item.version === "normal"
-    )
-    const hasFoilOwned = collection.some(
-      (item) => item.card_id === card.id && item.status === "owned" && item.version === "foil"
-    )
-    
-    // Determinar qué versiones faltan
-    const missingNormal = !hasNormalOwned
-    const missingFoil = !hasFoilOwned
-    
-    // Verificar disponibilidad en stock
-    const normalStock = card.normalStock || card.stock || 0
-    const foilStock = card.foilStock || 0
-    const hasNormalStock = normalStock > 0
-    const hasFoilStock = foilStock > 0
-    
-    // Determinar qué versiones faltantes están disponibles
-    const missingNormalAvailable = missingNormal && hasNormalStock
-    const missingFoilAvailable = missingFoil && hasFoilStock
-    
-    return {
-      card,
-      missingNormal,
-      missingFoil,
-      missingNormalAvailable,
-      missingFoilAvailable,
-      // Una carta está "faltante" si le falta al menos una versión
-      isMissing: missingNormal || missingFoil
-    }
-  }).filter(item => item.isMissing) // Solo mostrar cartas que faltan
-
-
   // Calculate stats
   const totalOwned = ownedItems.reduce((sum, item) => sum + item.quantity, 0)
   const totalOwnedCards = groupedOwnedItems.length // Cartas únicas (agrupadas)
-  const totalMissing = missingCards.length
-  // Contar cuántas cartas faltantes están disponibles en stock
-  const missingAvailable = missingCards.filter(item => 
-    item.missingNormalAvailable || item.missingFoilAvailable
-  ).length
   const collectionValue = ownedItems.reduce((sum, item) => {
     const price = item.version === "foil" 
       ? (item.card?.foilPrice || 0) 
@@ -344,37 +298,6 @@ function MyCollectionContent() {
     return sum + (price * item.quantity)
   }, 0)
 
-
-  // Filter cards for "Missing Cards" tab
-  const filteredMissingCards = missingCards.filter((item) => {
-    const card = item.card
-    // Type filter
-    if (filters.type && filters.type !== "all" && card.type !== filters.type) return false
-    
-    // Set filter
-    if (filters.set && filters.set !== "all" && card.set !== filters.set) return false
-    
-    // Rarity filter
-    if (filters.rarity && filters.rarity !== "all" && card.rarity !== filters.rarity) return false
-    
-    // Price range filter
-    const cardPrice = Number(card.price) || 0
-    const minPrice = Number(filters.minPrice) || 0
-    const maxPrice = Number(filters.maxPrice) || 100000
-    if (cardPrice < minPrice || cardPrice > maxPrice) return false
-    
-    // Search filter
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase()
-      if (!card.name.toLowerCase().includes(searchLower) && 
-          !card.id.toLowerCase().includes(searchLower) &&
-          !card.number.toString().includes(searchLower)) {
-        return false
-      }
-    }
-    
-    return true
-  })
 
   // Filter cards for "All Cards" tab
   // NOTE: NO filtramos por stock/version porque esto es para crear colección personal
@@ -418,29 +341,6 @@ function MyCollectionContent() {
     }
     
     return true
-  })
-
-  // Sort filtered missing cards
-  const sortedMissingCards = [...filteredMissingCards].sort((a, b) => {
-    switch (sortBy) {
-      case "nameAZ":
-        return a.card.name.localeCompare(b.card.name)
-      case "nameZA":
-        return b.card.name.localeCompare(a.card.name)
-      case "priceLowHigh":
-        return (a.card.price || 0) - (b.card.price || 0)
-      case "priceHighLow":
-        return (b.card.price || 0) - (a.card.price || 0)
-      case "raritySort":
-        const rarityOrder = ["common", "uncommon", "rare", "superRare", "legendary", "enchanted"]
-        return rarityOrder.indexOf(a.card.rarity) - rarityOrder.indexOf(b.card.rarity)
-      case "cardNumberLowHigh":
-        return (Number(a.card.number) || 0) - (Number(b.card.number) || 0)
-      case "cardNumberHighLow":
-        return (Number(b.card.number) || 0) - (Number(a.card.number) || 0)
-      default:
-        return (Number(a.card.number) || 0) - (Number(b.card.number) || 0)
-    }
   })
 
   // Sort filtered cards
@@ -574,19 +474,6 @@ function MyCollectionContent() {
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{t("totalMissing")}</CardTitle>
-                  <AlertCircle className="h-4 w-4 text-orange-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-orange-500">{totalMissing}</div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("missingCardsDesc")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">{t("collectionValue")}</CardTitle>
                   <TrendingUp className="h-4 w-4 text-primary" />
                 </CardHeader>
@@ -604,7 +491,7 @@ function MyCollectionContent() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-            <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-3 mb-8">
+            <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-2 mb-8">
               <TabsTrigger value="all" className="gap-2">
                 <List className="h-4 w-4" />
                 {t("allCards")}
@@ -612,10 +499,6 @@ function MyCollectionContent() {
               <TabsTrigger value="owned" className="gap-2">
                 <Package className="h-4 w-4" />
                 {t("owned")} ({totalOwnedCards})
-              </TabsTrigger>
-              <TabsTrigger value="missing" className="gap-2">
-                <AlertCircle className="h-4 w-4" />
-                {t("missingCards")} ({totalMissing})
               </TabsTrigger>
             </TabsList>
 
@@ -789,99 +672,6 @@ function MyCollectionContent() {
               </div>
             </TabsContent>
 
-            {/* Tab 3: Missing Cards */}
-            <TabsContent value="missing">
-              {/* Filters - Mobile Sheet */}
-              <div className="lg:hidden mb-6">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" className="w-full">
-                      <SlidersHorizontal className="mr-2 h-4 w-4" />
-                      {t("filtersAndSort")}
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-80 overflow-y-auto">
-                    <SheetHeader>
-                      <SheetTitle>{t("filtersAndSort")}</SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-6">
-                      <CardFilters
-                        filters={filters}
-                        setFilters={setFilters}
-                        sortBy={sortBy}
-                        setSortBy={setSortBy}
-                        viewMode={viewMode}
-                        setViewMode={setViewMode}
-                      />
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              </div>
-
-              <div className="grid lg:grid-cols-[280px_1fr] gap-6">
-                {/* Filters - Desktop Sidebar */}
-                <aside className="hidden lg:block">
-                  <div className="sticky top-4">
-                    <CardFilters
-                      filters={filters}
-                      setFilters={setFilters}
-                      sortBy={sortBy}
-                      setSortBy={setSortBy}
-                      viewMode={viewMode}
-                      setViewMode={setViewMode}
-                    />
-                  </div>
-                </aside>
-
-                {/* Cards Grid */}
-                <div>
-                  {/* Results count */}
-                  <div className="mb-4 text-sm text-muted-foreground">
-                    {sortedMissingCards.length} {sortedMissingCards.length === 1 ? t("cardFound") : t("cardsFound")}
-                  </div>
-
-                  {loadingCards ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : sortedMissingCards.length === 0 ? (
-                    <Card className="border-dashed">
-                      <CardContent className="flex flex-col items-center justify-center py-12">
-                        <AlertCircle className="h-16 w-16 text-muted-foreground/50 mb-4" />
-                        <h3 className="text-xl font-semibold mb-2">{t("noMissingCards")}</h3>
-                        <p className="text-muted-foreground text-center mb-6">
-                          {t("missingCardsDesc")}
-                        </p>
-                        <Button onClick={() => setActiveTab("all")}>
-                          {t("allCards")}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                      {sortedMissingCards.map((item) => (
-                        <AllCardsCard 
-                          key={item.card.id} 
-                          card={item.card} 
-                          t={t} 
-                          user={user}
-                          collection={collection}
-                          isInCollection={isInCollection}
-                          addToCollection={addToCollection}
-                          removeFromCollection={removeFromCollection}
-                          refresh={refresh}
-                          missingNormal={item.missingNormal}
-                          missingFoil={item.missingFoil}
-                          missingNormalAvailable={item.missingNormalAvailable}
-                          missingFoilAvailable={item.missingFoilAvailable}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
-
           </Tabs>
         </div>
       </main>
@@ -913,10 +703,6 @@ function AllCardsCard({
   addToCollection,
   removeFromCollection,
   refresh,
-  missingNormal,
-  missingFoil,
-  missingNormalAvailable,
-  missingFoilAvailable,
   ownedNormal,
   ownedFoil,
   ownedNormalQuantity,
@@ -926,14 +712,10 @@ function AllCardsCard({
   t: (key: string) => string
   user: any
   collection: any[]
-  isInCollection: (cardId: string, status: "owned" | "wanted", version: "normal" | "foil") => boolean
-  addToCollection: (cardId: string, status: "owned" | "wanted", version: "normal" | "foil", quantity: number) => Promise<any>
-  removeFromCollection: (cardId: string, status: "owned" | "wanted", version: "normal" | "foil") => Promise<any>
+  isInCollection: (cardId: string, status: "owned", version: "normal" | "foil") => boolean
+  addToCollection: (cardId: string, status: "owned", version: "normal" | "foil", quantity: number) => Promise<any>
+  removeFromCollection: (cardId: string, status: "owned", version: "normal" | "foil") => Promise<any>
   refresh: () => void
-  missingNormal?: boolean
-  missingFoil?: boolean
-  missingNormalAvailable?: boolean
-  missingFoilAvailable?: boolean
   ownedNormal?: boolean
   ownedFoil?: boolean
   ownedNormalQuantity?: number
@@ -944,14 +726,14 @@ function AllCardsCard({
   const [updating, setUpdating] = useState<string | null>(null)
 
   // Get quantities from collection
-  const getQuantity = (status: "owned" | "wanted", version: "normal" | "foil") => {
+  const getQuantity = (status: "owned", version: "normal" | "foil") => {
     const item = collection.find(
       (i) => i.card_id === card.id && i.status === status && i.version === version
     )
     return item?.quantity || 0
   }
 
-  const handleAdd = async (status: "owned" | "wanted", version: "normal" | "foil") => {
+  const handleAdd = async (status: "owned", version: "normal" | "foil") => {
     setUpdating(`add-${status}-${version}`)
     
     const result = await addToCollection(card.id, status, version, 1)
@@ -970,7 +752,7 @@ function AllCardsCard({
       
       toast({
         title: t("success"),
-        description: status === "owned" ? t("addedToCollection") : t("addedToWishlist"),
+        description: t("addedToCollection"),
       })
     } else if (result.code === "DUPLICATE") {
       // If already exists, increment quantity
@@ -984,7 +766,7 @@ function AllCardsCard({
     }
   }
 
-  const handleIncrement = async (status: "owned" | "wanted", version: "normal" | "foil") => {
+  const handleIncrement = async (status: "owned", version: "normal" | "foil") => {
     setUpdating(`inc-${status}-${version}`)
     const currentQty = getQuantity(status, version)
     
@@ -993,7 +775,7 @@ function AllCardsCard({
     setUpdating(null)
   }
 
-  const handleDecrement = async (status: "owned" | "wanted", version: "normal" | "foil") => {
+  const handleDecrement = async (status: "owned", version: "normal" | "foil") => {
     const currentQty = getQuantity(status, version)
     if (currentQty <= 1) {
       // Remove if quantity would be 0
@@ -1019,7 +801,7 @@ function AllCardsCard({
     }
   }
 
-  const updateQuantity = async (status: "owned" | "wanted", version: "normal" | "foil", newQty: number) => {
+  const updateQuantity = async (status: "owned", version: "normal" | "foil", newQty: number) => {
     try {
       const response = await fetch("/api/my-collection", {
         method: "PUT",
@@ -1070,56 +852,18 @@ function AllCardsCard({
           className="object-cover"
         />
         <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {/* En la pestaña de faltantes, solo mostrar lo que falta */}
-          {missingNormal !== undefined && missingFoil !== undefined ? (
-            <>
-              {missingNormal && (
-                <Badge variant="outline" className={`${missingNormalAvailable ? 'bg-green-500/90' : 'bg-orange-500/90'} text-white border-orange-400`}>
-                  {missingNormalAvailable ? (
-                    <>
-                      <ShoppingCart className="h-3 w-3 mr-1" />
-                      Falta {t("normal")} ✓
-                    </>
-                  ) : (
-                    <>
-                      <AlertCircle className="h-3 w-3 mr-1" />
-                      Falta {t("normal")}
-                    </>
-                  )}
-                </Badge>
-              )}
-              {missingFoil && (
-                <Badge variant="outline" className={`${missingFoilAvailable ? 'bg-green-500/90' : 'bg-orange-500/90'} text-white border-orange-400`}>
-                  {missingFoilAvailable ? (
-                    <>
-                      <ShoppingCart className="h-3 w-3 mr-1" />
-                      Falta {t("foil")} ✓
-                    </>
-                  ) : (
-                    <>
-                      <AlertCircle className="h-3 w-3 mr-1" />
-                      Falta {t("foil")}
-                    </>
-                  )}
-                </Badge>
-              )}
-            </>
-          ) : (
-            <>
-              {/* En otras pestañas, mostrar lo que tienes */}
-              {hasNormalOwned && (
-                <Badge className="bg-green-500/90">
-                  <Check className="h-3 w-3 mr-1" />
-                  {t("normal")}
-                </Badge>
-              )}
-              {hasFoilOwned && (
-                <Badge className="bg-green-500/90">
-                  <Check className="h-3 w-3 mr-1" />
-                  {t("foil")}
-                </Badge>
-              )}
-            </>
+          {/* Mostrar lo que tienes */}
+          {hasNormalOwned && (
+            <Badge className="bg-green-500/90">
+              <Check className="h-3 w-3 mr-1" />
+              {t("normal")}
+            </Badge>
+          )}
+          {hasFoilOwned && (
+            <Badge className="bg-green-500/90">
+              <Check className="h-3 w-3 mr-1" />
+              {t("foil")}
+            </Badge>
           )}
         </div>
       </div>
@@ -1213,79 +957,6 @@ function AllCardsCard({
             </Button>
           )}
 
-          {/* Botones para agregar al carrito si está disponible en faltantes */}
-          {missingNormal !== undefined && missingFoil !== undefined && (
-            <>
-              {missingNormalAvailable && (
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="w-full bg-green-600 hover:bg-green-700 mb-2"
-                  onClick={() => {
-                    const normalStock = card.normalStock || card.stock || 0
-                    const result = addToCart({
-                      id: card.id,
-                      name: card.name,
-                      image: card.image,
-                      price: card.price || 0,
-                      version: "normal",
-                    }, normalStock)
-                    
-                    if (!result.success) {
-                      toast({
-                        variant: "destructive",
-                        title: t("error"),
-                        description: result.error || `${t("maxStockReached")} (${normalStock} ${t("available")})`,
-                      })
-                      return
-                    }
-                    
-                    toast({
-                      title: t("success"),
-                      description: `${card.name} (${t("normal")}) ${t("addedToCart")}`,
-                    })
-                  }}
-                >
-                  <ShoppingCart className="h-3 w-3 mr-1" />
-                  Agregar {t("normal")} al Carrito
-                </Button>
-              )}
-              {missingFoilAvailable && (
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  onClick={() => {
-                    const foilStock = card.foilStock || 0
-                    const result = addToCart({
-                      id: card.id,
-                      name: card.name,
-                      image: card.image,
-                      price: card.foilPrice || card.price || 0,
-                      version: "foil",
-                    }, foilStock)
-                    
-                    if (!result.success) {
-                      toast({
-                        variant: "destructive",
-                        title: t("error"),
-                        description: result.error || `${t("maxStockReached")} (${foilStock} ${t("available")})`,
-                      })
-                      return
-                    }
-                    
-                    toast({
-                      title: t("success"),
-                      description: `${card.name} (${t("foil")}) ${t("addedToCart")}`,
-                    })
-                  }}
-                >
-                  <ShoppingCart className="h-3 w-3 mr-1" />
-                  Agregar {t("foil")} al Carrito
-                </Button>
-              )}
-            </>
-          )}
         </div>
 
         <div className="text-xs text-muted-foreground text-center">
@@ -1296,7 +967,7 @@ function AllCardsCard({
   )
 }
 
-// Component for cards in "Owned" and "Wanted" tabs
+// Component for cards in "Owned" tab
 function CollectionCard({
   item,
   onRemove,
