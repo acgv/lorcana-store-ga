@@ -30,21 +30,8 @@ export async function GET(request: NextRequest) {
         const pageSize = 1000
         let hasMore = true
 
-        // Obtener el count total PRIMERO (sin range) para saber cuántas cartas hay
-        let countQuery = supabase
-          .from("cards")
-          .select("*", { count: "exact", head: true })
-          .eq("status", filters.status)
-
-        if (filters.type) countQuery = countQuery.eq("type", filters.type)
-        if (filters.set) countQuery = countQuery.eq("set", filters.set)
-        if (filters.rarity) countQuery = countQuery.eq("rarity", filters.rarity)
-        if (filters.language) countQuery = countQuery.eq("language", filters.language)
-
-        const { count: totalCount } = await countQuery
-        console.log(`📊 Total cards in database: ${totalCount || "unknown"}`)
-
         // Obtener todas las cartas usando paginación
+        // Continuar hasta obtener menos de pageSize items (más robusto que depender del count)
         while (hasMore) {
           const from = page * pageSize
           const to = from + pageSize - 1
@@ -70,22 +57,18 @@ export async function GET(request: NextRequest) {
           
           if (data && data.length > 0) {
             allCards = [...allCards, ...data]
+            console.log(`📊 Cards pagination - Page ${page + 1}: loaded ${data.length} cards, total so far: ${allCards.length}`)
           }
           
-          // Log para debugging
-          console.log(`📊 Cards pagination - Page ${page + 1}: loaded ${data?.length || 0} cards, total so far: ${allCards.length}${totalCount ? ` / ${totalCount} total` : ""}`)
+          // Continuar si obtuvimos exactamente pageSize items (probablemente hay más)
+          // Detener si obtuvimos menos (última página) o si no hay datos
+          hasMore = data && data.length === pageSize
           
-          // Verificar si hay más páginas
-          if (totalCount !== null && totalCount !== undefined) {
-            hasMore = allCards.length < totalCount
-            if (!hasMore) {
-              console.log(`✅ Cards pagination complete: loaded all ${allCards.length} cards (total: ${totalCount})`)
-            }
-          } else {
-            // Si no tenemos count, asumir que hay más si obtuvimos exactamente pageSize items
-            hasMore = data && data.length === pageSize
-            if (!hasMore && data) {
-              console.log(`✅ Cards pagination complete: loaded ${allCards.length} cards (no count available, last page had ${data.length} cards)`)
+          if (!hasMore) {
+            if (data && data.length > 0) {
+              console.log(`✅ Cards pagination complete: loaded ${allCards.length} cards (last page had ${data.length} items)`)
+            } else {
+              console.log(`✅ Cards pagination complete: loaded ${allCards.length} cards (no more data)`)
             }
           }
           

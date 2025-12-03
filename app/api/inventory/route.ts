@@ -15,18 +15,11 @@ export async function GET() {
         let allInventory: any[] = []
         
         // 1. Obtener todas las cartas (productType = 'card' o null)
-        // Obtener el count total PRIMERO (sin range)
-        const { count: totalCount } = await supabase
-          .from("cards")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "approved")
-        
-        console.log(`📊 Total cards in inventory: ${totalCount || "unknown"}`)
-
         let page = 0
         const pageSize = 1000
         let hasMore = true
 
+        // Continuar paginando hasta obtener menos de pageSize items
         while (hasMore) {
           const from = page * pageSize
           const to = from + pageSize - 1
@@ -49,22 +42,18 @@ export async function GET() {
               productType: card.productType || "card",
             }))
             allInventory = [...allInventory, ...cards]
+            console.log(`📊 Inventory pagination - Page ${page + 1}: loaded ${data.length} cards, total so far: ${allInventory.length}`)
           }
           
-          // Log para debugging
-          console.log(`📊 Inventory pagination - Page ${page + 1}: loaded ${data?.length || 0} cards, total so far: ${allInventory.length}${totalCount ? ` / ${totalCount} total` : ""}`)
+          // Continuar si obtuvimos exactamente pageSize items (probablemente hay más)
+          // Detener si obtuvimos menos (última página) o si no hay datos
+          hasMore = data && data.length === pageSize
           
-          // Verificar si hay más páginas
-          if (totalCount !== null && totalCount !== undefined) {
-            hasMore = allInventory.length < totalCount
-            if (!hasMore) {
-              console.log(`✅ Inventory pagination complete: loaded all ${allInventory.length} cards (total: ${totalCount})`)
-            }
-          } else {
-            // Si no tenemos count, asumir que hay más si obtuvimos exactamente pageSize items
-            hasMore = data && data.length === pageSize
-            if (!hasMore && data) {
-              console.log(`✅ Inventory pagination complete: loaded ${allInventory.length} cards (no count available, last page had ${data.length} cards)`)
+          if (!hasMore) {
+            if (data && data.length > 0) {
+              console.log(`✅ Inventory pagination complete: loaded ${allInventory.length} cards (last page had ${data.length} items)`)
+            } else {
+              console.log(`✅ Inventory pagination complete: loaded ${allInventory.length} cards (no more data)`)
             }
           }
           
