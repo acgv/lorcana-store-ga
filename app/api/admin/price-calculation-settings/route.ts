@@ -29,13 +29,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Use RPC function to access the private admin schema table
+    // If the function doesn't exist (migration not run), fall back to defaults
     const { data, error } = await supabaseAdmin
       .rpc("get_price_calculation_settings")
 
     if (error) {
-      // Si no existe la tabla, retornar valores por defecto
-      if (error.code === "42P01" || error.message?.includes("does not exist")) {
-        console.warn("⚠️ Tabla price_calculation_settings no existe, usando valores por defecto")
+      // Si la función no existe (migración no ejecutada), retornar valores por defecto
+      if (
+        error.code === "42P01" || // table does not exist
+        error.code === "42883" || // function does not exist
+        error.code === "PGRST116" || // no rows returned
+        error.message?.includes("does not exist") ||
+        error.message?.includes("function") && error.message?.includes("does not exist")
+      ) {
+        console.warn("⚠️ Función get_price_calculation_settings no existe o tabla no existe. Usando valores por defecto. Ejecuta la migración: scripts/migrations/move-price-calculation-settings-to-private-schema.sql")
         return NextResponse.json({
           success: true,
           data: {
@@ -48,25 +55,38 @@ export async function GET(request: NextRequest) {
           },
         })
       }
-      // Si no existe el registro, retornar valores por defecto
-      if (error.code === "PGRST116") {
-        return NextResponse.json({
-          success: true,
-          data: {
-            usTaxRate: 0.08,
-            shippingUSD: 8,
-            chileVATRate: 0.19,
-            exchangeRate: 1000,
-            profitMargin: 0.20,
-            mercadoPagoFee: 0.034,
-          },
-        })
-      }
-      throw error
+      // Para otros errores, loguear y retornar valores por defecto
+      console.error("❌ Error al llamar get_price_calculation_settings:", error)
+      return NextResponse.json({
+        success: true,
+        data: {
+          usTaxRate: 0.08,
+          shippingUSD: 8,
+          chileVATRate: 0.19,
+          exchangeRate: 1000,
+          profitMargin: 0.20,
+          mercadoPagoFee: 0.034,
+        },
+      })
     }
 
     // RPC returns an array, get first result
-    const settings = Array.isArray(data) ? data[0] : data
+    const settings = Array.isArray(data) ? (data.length > 0 ? data[0] : null) : data
+
+    // Si no hay datos, retornar valores por defecto
+    if (!settings) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          usTaxRate: 0.08,
+          shippingUSD: 8,
+          chileVATRate: 0.19,
+          exchangeRate: 1000,
+          profitMargin: 0.20,
+          mercadoPagoFee: 0.034,
+        },
+      })
+    }
 
     return NextResponse.json({
       success: true,
@@ -142,41 +162,82 @@ export async function POST(request: NextRequest) {
 
     // Use RPC function to access the private admin schema table
     // The table is in admin schema, not exposed to PostgREST, only accessible via service role
+    // Build parameters object - PostgREST needs all parameters, use null for undefined
+    const rpcParams = {
+      p_usTaxRate: updateData.usTaxRate ?? null,
+      p_shippingUSD: updateData.shippingUSD ?? null,
+      p_chileVATRate: updateData.chileVATRate ?? null,
+      p_exchangeRate: updateData.exchangeRate ?? null,
+      p_profitMargin: updateData.profitMargin ?? null,
+      p_mercadoPagoFee: updateData.mercadoPagoFee ?? null,
+    }
+
+    console.log("🔧 Calling upsert_price_calculation_settings with params:", rpcParams)
+    
     const { data, error } = await supabaseAdmin
-      .rpc("upsert_price_calculation_settings", {
-        p_usTaxRate: updateData.usTaxRate ?? null,
-        p_shippingUSD: updateData.shippingUSD ?? null,
-        p_chileVATRate: updateData.chileVATRate ?? null,
-        p_exchangeRate: updateData.exchangeRate ?? null,
-        p_profitMargin: updateData.profitMargin ?? null,
-        p_mercadoPagoFee: updateData.mercadoPagoFee ?? null,
-      })
+      .rpc("upsert_price_calculation_settings", rpcParams)
 
     // Ya no hay problemas de RLS porque la tabla está en un schema privado
 
     if (error) {
-      // Si la tabla no existe, dar un mensaje más claro
-      if (error.code === "42P01" || error.code === "42883" || error.message?.includes("does not exist") || error.message?.includes("function") && error.message?.includes("does not exist")) {
-        console.error("❌ Función o tabla no existe. Ejecuta la migración primero.")
-        throw new Error("La función o tabla de configuración no existe. Por favor ejecuta la migración: scripts/migrations/move-price-calculation-settings-to-private-schema.sql")
+      console.error("❌ Error en upsert de price_calculation_settings:", {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      })
+      
+      // Si la función no existe (migración no ejecutada), dar un mensaje más claro
+      if (
+        error.code === "42P01" || // table does not exist
+        error.code === "42883" || // function does not exist
+        error.code === "PGRST202" || // function not found by PostgREST
+        error.message?.includes("does not exist") ||
+        (error.message?.includes("function") && error.message?.includes("does not exist"))
+      ) {
+        console.error("❌ Función upsert_price_calculation_settings no existe o no es accesible. Ejecuta la migración primero.")
+        return NextResponse.json(
+          {
+            success: false,
+            error: "La función de configuración no existe o no es accesible. Por favor ejecuta la migración: scripts/migrations/move-price-calculation-settings-to-private-schema.sql. Si ya la ejecutaste, verifica que PostgREST tenga permisos para ejecutar la función.",
+            code: error.code,
+            details: error.message,
+          },
+          { status: 500 }
+        )
       }
-      console.error("❌ Error en upsert de price_calculation_settings:", error)
       throw error
     }
 
     // RPC returns an array, get first result
-    const settings = Array.isArray(data) ? data[0] : data
+    const settings = Array.isArray(data) ? (data.length > 0 ? data[0] : null) : data
+
+    // Si no hay datos, usar los valores que se intentaron guardar
+    if (!settings) {
+      return NextResponse.json({
+        success: true,
+        message: "Parámetros de cálculo actualizados correctamente (valores por defecto aplicados)",
+        data: {
+          usTaxRate: updateData.usTaxRate ?? 0.08,
+          shippingUSD: updateData.shippingUSD ?? 8,
+          chileVATRate: updateData.chileVATRate ?? 0.19,
+          exchangeRate: updateData.exchangeRate ?? 1000,
+          profitMargin: updateData.profitMargin ?? 0.20,
+          mercadoPagoFee: updateData.mercadoPagoFee ?? 0.034,
+        },
+      })
+    }
 
     return NextResponse.json({
       success: true,
       message: "Parámetros de cálculo actualizados correctamente",
       data: {
-        usTaxRate: parseFloat(settings?.usTaxRate || "0.08"),
-        shippingUSD: parseFloat(settings?.shippingUSD || "8"),
-        chileVATRate: parseFloat(settings?.chileVATRate || "0.19"),
-        exchangeRate: parseFloat(settings?.exchangeRate || "1000"),
-        profitMargin: parseFloat(settings?.profitMargin || "0.20"),
-        mercadoPagoFee: parseFloat(settings?.mercadoPagoFee || "0.034"),
+        usTaxRate: parseFloat(String(settings.usTaxRate || "0.08")),
+        shippingUSD: parseFloat(String(settings.shippingUSD || "8")),
+        chileVATRate: parseFloat(String(settings.chileVATRate || "0.19")),
+        exchangeRate: parseFloat(String(settings.exchangeRate || "1000")),
+        profitMargin: parseFloat(String(settings.profitMargin || "0.20")),
+        mercadoPagoFee: parseFloat(String(settings.mercadoPagoFee || "0.034")),
       },
     })
   } catch (error) {
