@@ -288,9 +288,9 @@ export async function POST(request: NextRequest) {
 
     // Map the new column names (result_*) to the expected format
     // The RPC function returns an array, get first result
-    const settingsObj = Array.isArray(settings) ? (settings.length > 0 ? settings[0] : null) : settings
+    const settingsResponse = Array.isArray(settings) ? (settings.length > 0 ? settings[0] : null) : settings
     
-    if (!settingsObj) {
+    if (!settingsResponse) {
       console.error("❌ No settings returned from RPC")
       return NextResponse.json({
         success: false,
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
     
-    console.log("🔧 Settings object after processing:", JSON.stringify(settingsObj, null, 2))
+    console.log("🔧 Settings object after processing:", JSON.stringify(settingsResponse, null, 2))
     
     // Extract values - handle both result_* format and direct format
     // IMPORTANT: Check for undefined specifically, not just null, to handle 0 correctly
@@ -308,12 +308,12 @@ export async function POST(request: NextRequest) {
       return value === undefined ? null : (value != null ? Number(value) : null)
     }
     
-    const result_usTaxRate = getValue(settingsObj, 'result_usTaxRate', 'usTaxRate')
-    const result_shippingUSD = getValue(settingsObj, 'result_shippingUSD', 'shippingUSD')
-    const result_chileVATRate = getValue(settingsObj, 'result_chileVATRate', 'chileVATRate')
-    const result_exchangeRate = getValue(settingsObj, 'result_exchangeRate', 'exchangeRate')
-    const result_profitMargin = getValue(settingsObj, 'result_profitMargin', 'profitMargin')
-    const result_mercadoPagoFee = getValue(settingsObj, 'result_mercadoPagoFee', 'mercadoPagoFee')
+    const result_usTaxRate = getValue(settingsResponse, 'result_usTaxRate', 'usTaxRate')
+    const result_shippingUSD = getValue(settingsResponse, 'result_shippingUSD', 'shippingUSD')
+    const result_chileVATRate = getValue(settingsResponse, 'result_chileVATRate', 'chileVATRate')
+    const result_exchangeRate = getValue(settingsResponse, 'result_exchangeRate', 'exchangeRate')
+    const result_profitMargin = getValue(settingsResponse, 'result_profitMargin', 'profitMargin')
+    const result_mercadoPagoFee = getValue(settingsResponse, 'result_mercadoPagoFee', 'mercadoPagoFee')
     
     console.log("🔧 Extracted values:", {
       usTaxRate: result_usTaxRate,
