@@ -11,6 +11,8 @@ import Image from "next/image"
 import { Sparkles, Star, AlertCircle, Package, ShoppingCart, Eye, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useAnalytics } from "@/hooks/use-analytics"
+import { trackCartAdd, trackCardView } from "@/lib/analytics"
 
 interface CardItemProps {
   card: Card
@@ -23,6 +25,7 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
   const { addToCart, items } = useCart()
   const { toast } = useToast()
   const { isInCollection, collection } = useCollection()
+  const { track, isAuthenticated } = useAnalytics()
   const [adding, setAdding] = useState<string | null>(null)
 
   // Detectar si es un producto (no carta)
@@ -114,6 +117,15 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
       return
     }
 
+    // Trackear agregar al carrito
+    trackCartAdd(
+      card.id,
+      card.name,
+      version === "foil" ? (card.foilPrice || card.price) : card.price,
+      version,
+      isAuthenticated
+    )
+
     toast({
       title: t("success"),
       description: `${card.name} (${version === "foil" ? t("foil") : t("normal")}) ${t("addedToCart")}`,
@@ -121,10 +133,15 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
 
     setTimeout(() => setAdding(null), 500)
   }
+  
+  // Trackear vista de carta cuando se hace click
+  const handleCardClick = () => {
+    trackCardView(card.id, card.name, card.set, card.rarity)
+  }
 
   if (viewMode === "list") {
     return (
-      <Link href={detailUrl}>
+      <Link href={detailUrl} onClick={handleCardClick}>
         <div className="flex gap-4 p-4 rounded-lg bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
           <div className="relative h-32 w-24 flex-shrink-0 rounded overflow-hidden foil-effect bg-muted">
             <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className={isProduct ? "object-contain" : "object-cover"} priority={priority} />
@@ -214,7 +231,7 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
   return (
     <div className="group rounded-lg bg-card border border-border overflow-hidden hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
       {/* Image - clickeable para ver detalle */}
-      <Link href={detailUrl} className="block">
+      <Link href={detailUrl} className="block" onClick={handleCardClick}>
         <div className={`relative aspect-[3/4] overflow-hidden ${isProduct ? "" : "foil-effect"} bg-muted`}>
           <Image
             src={card.image || "/placeholder.svg"}
@@ -253,7 +270,7 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
       </Link>
 
       <div className="p-4">
-        <Link href={detailUrl}>
+        <Link href={detailUrl} onClick={handleCardClick}>
           <h3 className="font-display font-bold mb-1 truncate text-balance tracking-wide hover:text-primary transition-colors">{card.name}</h3>
         </Link>
         
@@ -373,7 +390,7 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
             )}
 
             {/* Ver Detalles */}
-            <Link href={detailUrl}>
+            <Link href={detailUrl} onClick={handleCardClick}>
               <Button
                 size="sm"
                 variant="ghost"

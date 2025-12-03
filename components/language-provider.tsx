@@ -1642,11 +1642,28 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Wrapper para setLanguage que trackea cambios
+  const setLanguageWithTracking = (newLang: Language) => {
+    if (newLang !== language) {
+      // Solo trackear si realmente cambió
+      if (typeof window !== "undefined") {
+        // Importar dinámicamente para evitar problemas de SSR
+        import("@/lib/analytics").then(({ trackEvent }) => {
+          trackEvent("language_changed", {
+            fromLanguage: language,
+            toLanguage: newLang,
+          })
+        })
+      }
+    }
+    setLanguage(newLang)
+  }
+
   const t = (key: string): string => {
     return translations[language][key] || key
   }
 
-  return <LanguageContext.Provider value={{ language, setLanguage, t }}>{children}</LanguageContext.Provider>
+  return <LanguageContext.Provider value={{ language, setLanguage: setLanguageWithTracking, t }}>{children}</LanguageContext.Provider>
 }
 
 export function useLanguage() {

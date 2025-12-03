@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLanguage } from "@/components/language-provider"
 import { Grid, List } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useAnalytics } from "@/hooks/use-analytics"
+import { trackEvent } from "@/lib/analytics"
 
 interface CardFiltersProps {
   filters: {
@@ -28,6 +30,23 @@ interface CardFiltersProps {
 }
 
 export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, setViewMode, hideCardOption = false }: CardFiltersProps) {
+  const { track } = useAnalytics()
+  
+  // Trackear cambios de sort
+  const handleSortChange = (newSort: string) => {
+    setSortBy(newSort)
+    trackEvent("sort_applied", {
+      sortBy: newSort,
+    })
+  }
+  
+  // Trackear cambios de view mode
+  const handleViewModeChange = (newMode: "grid" | "list") => {
+    setViewMode(newMode)
+    trackEvent("view_mode_changed", {
+      viewMode: newMode,
+    })
+  }
   const { t } = useLanguage()
 
   return (
@@ -172,7 +191,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
       {/* Sort */}
       <div className="space-y-3">
         <Label className="text-sm font-semibold text-foreground/90">{t("sortBy")}</Label>
-        <Select value={sortBy} onValueChange={setSortBy}>
+        <Select value={sortBy} onValueChange={handleSortChange}>
           <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
             <SelectValue />
           </SelectTrigger>
@@ -195,7 +214,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
           <Button
             variant={viewMode === "grid" ? "default" : "outline"}
             size="sm"
-            onClick={() => setViewMode("grid")}
+            onClick={() => handleViewModeChange("grid")}
             className="transition-all justify-start w-full"
           >
             <Grid className="h-4 w-4 mr-2" />
@@ -204,7 +223,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
           <Button
             variant={viewMode === "list" ? "default" : "outline"}
             size="sm"
-            onClick={() => setViewMode("list")}
+            onClick={() => handleViewModeChange("list")}
             className="transition-all justify-start w-full"
           >
             <List className="h-4 w-4 mr-2" />

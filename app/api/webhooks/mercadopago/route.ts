@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/db'
 import { processConfirmedPayment, type PaymentItem } from '@/lib/payment-processor'
 import { getClient } from '@/lib/mercadopago'
 import { rateLimitApi, RateLimitPresets } from '@/lib/rate-limit'
+import { trackEvent } from '@/lib/analytics'
 
 /**
  * Webhook de Mercado Pago
@@ -132,6 +133,18 @@ export async function POST(request: Request) {
             const savePhone = metadata.save_phone === 'true'
             const phone = metadata.phone || undefined
 
+            // Obtener userId del email para tracking
+            let userId: string | undefined
+            if (payment.payer?.email && supabaseAdmin) {
+              try {
+                const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers()
+                const user = authUsers?.users.find(u => u.email === payment.payer?.email)
+                userId = user?.id
+              } catch (err) {
+                console.warn('Error fetching user for tracking:', err)
+              }
+            }
+
             const result = await processConfirmedPayment({
               paymentId: String(paymentId),
               externalReference: externalRef,
@@ -153,6 +166,19 @@ export async function POST(request: Request) {
             })
 
             console.log('📦 Stock update result:', result)
+
+            // Trackear checkout completo si fue exitoso
+            if (result.success && userId) {
+              const cartItems = paymentItems.reduce((sum, item) => sum + item.quantity, 0)
+              trackEvent('checkout_complete', {
+                orderId: externalRef,
+                cartValue: totalPaidAmount,
+                cartItems,
+                userId,
+                isAuthenticated: true,
+              })
+              console.log('📊 Checkout complete tracked:', { orderId: externalRef, userId, totalPaidAmount })
+            }
           } else {
             console.log('⚠️ No items found in payment')
           }

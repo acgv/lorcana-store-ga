@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { useUser } from "@/hooks/use-user"
 import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
-import { LogOut, User, Users, Package, ShoppingBag, FileText, Activity, Wrench, Tag, Truck, TrendingUp } from "lucide-react"
+import { LogOut, User, Users, Package, ShoppingBag, FileText, Activity, Wrench, Tag, Truck, TrendingUp, BarChart3 } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import {
   DropdownMenu,
@@ -78,6 +78,7 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
     { href: "/admin/submissions", labelKey: "products", icon: FileText },
     { href: "/admin/users", labelKey: "allUsers", icon: Users },
     { href: "/admin/logs", labelKey: "actions", icon: Activity },
+    { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
     { href: "/admin/promotions", labelKey: "promotions", icon: Tag },
     { href: "/admin/shipping", labelKey: "shipping", icon: Truck },
   ]
@@ -144,7 +145,7 @@ export function AdminHeader({ title = "Lorcana Admin" }: AdminHeaderProps) {
                   className="gap-2 whitespace-nowrap"
                 >
                   <Icon className="h-4 w-4" />
-                  {t(item.labelKey)}
+                  {(item as any).label || t(item.labelKey)}
                 </Button>
               </Link>
             )

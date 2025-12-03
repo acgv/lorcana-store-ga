@@ -11,12 +11,15 @@ import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { SlidersHorizontal } from "lucide-react"
+import { useAnalytics } from "@/hooks/use-analytics"
+import { trackSearch, trackFilterApplied } from "@/lib/analytics"
 
 function CatalogContent() {
   const { t } = useLanguage()
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+  const { trackSection } = useAnalytics()
   
   const [cards, setCards] = useState<any[]>([])
   const [allCards, setAllCards] = useState<any[]>([]) // Todas las cartas para filtrado
@@ -184,6 +187,37 @@ function CatalogContent() {
       }
     }
   }, []) // Solo cargar una vez al montar
+  
+  // Trackear sección de catálogo
+  useEffect(() => {
+    trackSection("catalog", {
+      cardsCount: cards.length,
+    })
+  }, [cards.length, trackSection])
+  
+  // Trackear búsqueda cuando cambie (después de que filteredCards esté definido)
+  useEffect(() => {
+    if (filters.search && filters.search.trim()) {
+      // Usar cards.length como fallback, filteredCards se calculará después
+      trackSearch(filters.search.trim())
+    }
+  }, [filters.search])
+  
+  // Trackear filtros cuando cambien (excepto búsqueda que ya se trackea arriba)
+  useEffect(() => {
+    if (filters.type !== "all") {
+      trackFilterApplied("type", filters.type)
+    }
+    if (filters.set !== "all") {
+      trackFilterApplied("set", filters.set)
+    }
+    if (filters.rarity !== "all") {
+      trackFilterApplied("rarity", filters.rarity)
+    }
+    if (filters.version !== "all") {
+      trackFilterApplied("version", filters.version)
+    }
+  }, [filters.type, filters.set, filters.rarity, filters.version])
   
   // Ref para almacenar el timeout y poder cancelarlo
   const urlUpdateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
