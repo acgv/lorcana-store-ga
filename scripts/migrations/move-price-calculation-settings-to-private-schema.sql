@@ -26,12 +26,12 @@ BEGIN
     -- Table doesn't exist, create it directly in admin schema
     CREATE TABLE IF NOT EXISTS admin.price_calculation_settings (
       id text PRIMARY KEY DEFAULT 'default',
-      "usTaxRate" DECIMAL(5, 4) NOT NULL DEFAULT 0.08,
-      "shippingUSD" DECIMAL(10, 2) NOT NULL DEFAULT 8.00,
+      "usTaxRate" DECIMAL(5, 4) NOT NULL DEFAULT 0,
+      "shippingUSD" DECIMAL(10, 2) NOT NULL DEFAULT 0.5,
       "chileVATRate" DECIMAL(5, 4) NOT NULL DEFAULT 0.19,
       "exchangeRate" DECIMAL(10, 2) NOT NULL DEFAULT 1000.00,
       "profitMargin" DECIMAL(5, 4) NOT NULL DEFAULT 0.20,
-      "mercadoPagoFee" DECIMAL(5, 4) NOT NULL DEFAULT 0.034,
+      "mercadoPagoFee" DECIMAL(5, 4) NOT NULL DEFAULT 0.04,
       "updatedAt" timestamptz DEFAULT now(),
       "updatedBy" text
     );
@@ -125,13 +125,9 @@ END;
 $$;
 
 -- Function to upsert price calculation settings
+-- Using JSON parameter for better PostgREST compatibility
 CREATE OR REPLACE FUNCTION public.upsert_price_calculation_settings(
-  p_usTaxRate DECIMAL(5, 4) DEFAULT NULL,
-  p_shippingUSD DECIMAL(10, 2) DEFAULT NULL,
-  p_chileVATRate DECIMAL(5, 4) DEFAULT NULL,
-  p_exchangeRate DECIMAL(10, 2) DEFAULT NULL,
-  p_profitMargin DECIMAL(5, 4) DEFAULT NULL,
-  p_mercadoPagoFee DECIMAL(5, 4) DEFAULT NULL
+  p_settings JSONB DEFAULT NULL
 )
 RETURNS TABLE (
   id text,
@@ -150,6 +146,12 @@ SET search_path = admin, public
 AS $$
 DECLARE
   v_existing admin.price_calculation_settings%ROWTYPE;
+  v_usTaxRate DECIMAL(5, 4);
+  v_shippingUSD DECIMAL(10, 2);
+  v_chileVATRate DECIMAL(5, 4);
+  v_exchangeRate DECIMAL(10, 2);
+  v_profitMargin DECIMAL(5, 4);
+  v_mercadoPagoFee DECIMAL(5, 4);
 BEGIN
   -- Service role automatically bypasses RLS, so we trust that only service role can call this
   -- The function is in public schema but accesses admin schema, which is not exposed to PostgREST
@@ -160,6 +162,14 @@ BEGIN
   FROM admin.price_calculation_settings pcs
   WHERE pcs.id = 'default'
   LIMIT 1;
+  
+  -- Extract values from JSON, use existing values or defaults if not provided
+  v_usTaxRate := COALESCE((p_settings->>'p_usTaxRate')::DECIMAL(5, 4), (p_settings->>'usTaxRate')::DECIMAL(5, 4), v_existing."usTaxRate", 0.08);
+  v_shippingUSD := COALESCE((p_settings->>'p_shippingUSD')::DECIMAL(10, 2), (p_settings->>'shippingUSD')::DECIMAL(10, 2), v_existing."shippingUSD", 8.00);
+  v_chileVATRate := COALESCE((p_settings->>'p_chileVATRate')::DECIMAL(5, 4), (p_settings->>'chileVATRate')::DECIMAL(5, 4), v_existing."chileVATRate", 0.19);
+  v_exchangeRate := COALESCE((p_settings->>'p_exchangeRate')::DECIMAL(10, 2), (p_settings->>'exchangeRate')::DECIMAL(10, 2), v_existing."exchangeRate", 1000.00);
+  v_profitMargin := COALESCE((p_settings->>'p_profitMargin')::DECIMAL(5, 4), (p_settings->>'profitMargin')::DECIMAL(5, 4), v_existing."profitMargin", 0.20);
+  v_mercadoPagoFee := COALESCE((p_settings->>'p_mercadoPagoFee')::DECIMAL(5, 4), (p_settings->>'mercadoPagoFee')::DECIMAL(5, 4), v_existing."mercadoPagoFee", 0.034);
   
   -- Upsert logic
   INSERT INTO admin.price_calculation_settings (
@@ -173,20 +183,20 @@ BEGIN
   )
   VALUES (
     'default',
-    COALESCE(p_usTaxRate, v_existing."usTaxRate", 0.08),
-    COALESCE(p_shippingUSD, v_existing."shippingUSD", 8.00),
-    COALESCE(p_chileVATRate, v_existing."chileVATRate", 0.19),
-    COALESCE(p_exchangeRate, v_existing."exchangeRate", 1000.00),
-    COALESCE(p_profitMargin, v_existing."profitMargin", 0.20),
-    COALESCE(p_mercadoPagoFee, v_existing."mercadoPagoFee", 0.034)
+    v_usTaxRate,
+    v_shippingUSD,
+    v_chileVATRate,
+    v_exchangeRate,
+    v_profitMargin,
+    v_mercadoPagoFee
   )
   ON CONFLICT (id) DO UPDATE SET
-    "usTaxRate" = COALESCE(p_usTaxRate, price_calculation_settings."usTaxRate"),
-    "shippingUSD" = COALESCE(p_shippingUSD, price_calculation_settings."shippingUSD"),
-    "chileVATRate" = COALESCE(p_chileVATRate, price_calculation_settings."chileVATRate"),
-    "exchangeRate" = COALESCE(p_exchangeRate, price_calculation_settings."exchangeRate"),
-    "profitMargin" = COALESCE(p_profitMargin, price_calculation_settings."profitMargin"),
-    "mercadoPagoFee" = COALESCE(p_mercadoPagoFee, price_calculation_settings."mercadoPagoFee");
+    "usTaxRate" = COALESCE(v_usTaxRate, price_calculation_settings."usTaxRate"),
+    "shippingUSD" = COALESCE(v_shippingUSD, price_calculation_settings."shippingUSD"),
+    "chileVATRate" = COALESCE(v_chileVATRate, price_calculation_settings."chileVATRate"),
+    "exchangeRate" = COALESCE(v_exchangeRate, price_calculation_settings."exchangeRate"),
+    "profitMargin" = COALESCE(v_profitMargin, price_calculation_settings."profitMargin"),
+    "mercadoPagoFee" = COALESCE(v_mercadoPagoFee, price_calculation_settings."mercadoPagoFee");
   
   -- Return the updated/inserted record
   RETURN QUERY 
@@ -208,7 +218,7 @@ $$;
 -- Grant execute permissions to service role and anon (for PostgREST)
 -- PostgREST needs execute permission to expose the function
 GRANT EXECUTE ON FUNCTION public.get_price_calculation_settings() TO service_role, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.upsert_price_calculation_settings(DECIMAL(5, 4), DECIMAL(10, 2), DECIMAL(5, 4), DECIMAL(10, 2), DECIMAL(5, 4), DECIMAL(5, 4)) TO service_role, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_price_calculation_settings(JSONB) TO service_role, anon, authenticated;
 
 -- Verify functions exist and are accessible
 DO $$

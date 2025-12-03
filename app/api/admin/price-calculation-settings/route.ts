@@ -162,14 +162,16 @@ export async function POST(request: NextRequest) {
 
     // Use RPC function to access the private admin schema table
     // The table is in admin schema, not exposed to PostgREST, only accessible via service role
-    // Build parameters object - PostgREST needs all parameters, use null for undefined
+    // Using JSON parameter for better PostgREST compatibility
     const rpcParams = {
-      p_usTaxRate: updateData.usTaxRate ?? null,
-      p_shippingUSD: updateData.shippingUSD ?? null,
-      p_chileVATRate: updateData.chileVATRate ?? null,
-      p_exchangeRate: updateData.exchangeRate ?? null,
-      p_profitMargin: updateData.profitMargin ?? null,
-      p_mercadoPagoFee: updateData.mercadoPagoFee ?? null,
+      p_settings: {
+        p_usTaxRate: updateData.usTaxRate,
+        p_shippingUSD: updateData.shippingUSD,
+        p_chileVATRate: updateData.chileVATRate,
+        p_exchangeRate: updateData.exchangeRate,
+        p_profitMargin: updateData.profitMargin,
+        p_mercadoPagoFee: updateData.mercadoPagoFee,
+      }
     }
 
     console.log("🔧 Calling upsert_price_calculation_settings with params:", rpcParams)
