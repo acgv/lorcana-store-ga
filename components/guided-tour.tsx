@@ -47,42 +47,25 @@ export function GuidedTour() {
     setIsMounted(true)
   }, [])
 
-  // Verificar si el usuario ya completó el tour e iniciar automáticamente
+  // Iniciar el tour automáticamente siempre (sin guardar en localStorage)
   useEffect(() => {
-    console.log("🔍 Tour: useEffect principal ejecutado", { isMounted, isAdmin, runTour })
-    
     if (!isMounted || typeof window === "undefined") {
-      console.log("⏸️ Tour: Esperando montaje")
       return
     }
     
     // No mostrar tour a admins
     if (isAdmin) {
-      console.log("🚫 Tour: Usuario es admin")
       setRunTour(false)
       return
     }
 
-    // Verificar si ya completó el tour
-    const tourCompleted = localStorage.getItem(TOUR_STORAGE_KEY)
-    console.log("🔍 Tour: Estado completado en localStorage:", tourCompleted)
+    // Iniciar el tour después de 2 segundos siempre
+    const timer = setTimeout(() => {
+      setRunTour(true)
+    }, 2000)
     
-    // Si no ha completado el tour, iniciarlo después de un breve delay
-    if (!tourCompleted) {
-      console.log("✅ Tour: No completado, programando inicio...")
-      
-      // Iniciar el tour después de 2 segundos, sin verificar elementos
-      const timer = setTimeout(() => {
-        console.log("🚀 Tour: Iniciando tour automáticamente")
-        setRunTour(true)
-      }, 2000)
-      
-      return () => {
-        console.log("🧹 Tour: Limpiando timer")
-        clearTimeout(timer)
-      }
-    } else {
-      console.log("⏭️ Tour: Ya completado anteriormente")
+    return () => {
+      clearTimeout(timer)
     }
   }, [isMounted, isAdmin])
 
@@ -121,7 +104,7 @@ export function GuidedTour() {
     // Si el tour se completó o se cerró, guardar en localStorage
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
       console.log("✅ Tour: Completado o omitido, guardando en localStorage")
-      localStorage.setItem(TOUR_STORAGE_KEY, "true")
+      // No guardar en localStorage - el tour siempre se mostrará
       setRunTour(false)
     }
   }
@@ -131,12 +114,10 @@ export function GuidedTour() {
     if (typeof window !== "undefined") {
       (window as any).__startTour = () => {
         console.log("🔧 Tour: Forzando inicio del tour manualmente")
-        localStorage.removeItem(TOUR_STORAGE_KEY)
         setRunTour(true)
       }
       (window as any).__resetTour = () => {
         console.log("🔧 Tour: Reseteando tour")
-        localStorage.removeItem(TOUR_STORAGE_KEY)
         setRunTour(false)
         setTimeout(() => setRunTour(true), 500)
       }
@@ -209,7 +190,6 @@ export function GuidedTour() {
         }}
         onClick={() => {
           console.log("🔧 Tour: Click en debug, forzando inicio")
-          localStorage.removeItem(TOUR_STORAGE_KEY)
           setRunTour(true)
         }}
       >
