@@ -89,8 +89,8 @@ export async function GET(request: NextRequest) {
     // Obtener logs recientes para actividad
     const { data: logs, error: logsError } = await supabaseAdmin
       .from("logs")
-      .select("id, action, details, created_at")
-      .order("created_at", { ascending: false })
+      .select("id, action, details, timestamp")
+      .order("timestamp", { ascending: false })
       .limit(100)
 
     if (logsError) {
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
 
       const { data: cardsData, error: cardsError } = await supabaseAdmin
         .from("cards")
-        .select("id, normalStock, foilStock, stock")
+        .select("id, normalStock, foilStock")
         .eq("status", "approved")
         .range(from, to)
 
@@ -150,8 +150,6 @@ export async function GET(request: NextRequest) {
       let normalStock = 0
       if (card.normalStock !== null && card.normalStock !== undefined) {
         normalStock = Number(card.normalStock) || 0
-      } else if (card.stock !== null && card.stock !== undefined) {
-        normalStock = Number(card.stock) || 0
       }
       
       let foilStock = 0
@@ -174,7 +172,6 @@ export async function GET(request: NextRequest) {
         id: sampleCard.id,
         normalStock: sampleCard.normalStock,
         foilStock: sampleCard.foilStock,
-        stock: sampleCard.stock,
         normalStockType: typeof sampleCard.normalStock,
         foilStockType: typeof sampleCard.foilStock,
       })
@@ -190,7 +187,7 @@ export async function GET(request: NextRequest) {
     // Actividad reciente (últimas 24 horas)
     const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const recentLogs = logs?.filter(log => {
-      const logDate = new Date(log.created_at)
+      const logDate = new Date(log.timestamp || log.created_at || Date.now())
       return logDate >= last24Hours
     }) || []
 
