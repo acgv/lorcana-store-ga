@@ -173,28 +173,6 @@ export function GuidedTour() {
 
   return (
     <>
-      {/* Debug element siempre visible - FORZAR VISIBILIDAD */}
-      <div 
-        style={{ 
-          position: 'fixed', 
-          bottom: 10, 
-          right: 10, 
-          background: 'red', 
-          color: 'white', 
-          padding: '10px 15px', 
-          fontSize: '14px',
-          zIndex: 99999,
-          cursor: 'pointer',
-          borderRadius: '4px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-        }}
-        onClick={() => {
-          console.log("🔧 Tour: Click en debug, forzando inicio")
-          setRunTour(true)
-        }}
-      >
-        🎯 Tour: {isMounted ? 'M' : 'NM'} | {runTour ? 'R' : 'S'} | {isAdmin ? 'A' : 'U'} | S:{steps.length}
-      </div>
       {isMounted && !isAdmin && steps.length > 0 && (
         <Joyride
       steps={steps}
