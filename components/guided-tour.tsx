@@ -9,12 +9,31 @@ import { useLanguage } from "@/components/language-provider"
 
 const TOUR_STORAGE_KEY = "lorcana_tour_completed"
 
+// Log inmediato cuando se carga el módulo
+if (typeof window !== "undefined") {
+  console.log("📦 Tour: Módulo cargado en cliente")
+}
+
 // Cargar Joyride dinámicamente solo en el cliente para evitar problemas de hidratación
-const Joyride = dynamic(() => import("react-joyride").then((mod) => mod.default), {
+const Joyride = dynamic(() => {
+  console.log("📦 Tour: Cargando Joyride dinámicamente...")
+  return import("react-joyride").then((mod) => {
+    console.log("✅ Tour: Joyride cargado exitosamente")
+    return mod.default
+  }).catch((err) => {
+    console.error("❌ Tour: Error cargando Joyride", err)
+    throw err
+  })
+}, {
   ssr: false,
 })
 
 export function GuidedTour() {
+  // Log inmediato al renderizar
+  if (typeof window !== "undefined") {
+    console.log("🚀 Tour: Componente renderizado")
+  }
+  
   const { t } = useLanguage()
   const { user, isAdmin: isUserAdmin } = useUser()
   const { isAdmin: isAdminAuth } = useAuth()
@@ -25,6 +44,7 @@ export function GuidedTour() {
 
   // Asegurar que solo se ejecute en el cliente
   useEffect(() => {
+    console.log("🚀 Tour: useEffect de montaje ejecutado")
     setIsMounted(true)
   }, [])
 
@@ -184,22 +204,31 @@ export function GuidedTour() {
     }
   }, [])
 
+  // Debug: Log del estado actual
+  console.log("🔍 Tour: Estado actual", {
+    isMounted,
+    isAdmin,
+    runTour,
+    stepsLength: steps.length,
+    user: !!user,
+  })
+
   // No renderizar nada hasta que esté montado en el cliente
   if (!isMounted) {
-    console.log("🔍 Tour: No montado aún")
-    return null
+    console.log("🔍 Tour: No montado aún, esperando...")
+    return <div style={{ display: 'none' }} data-tour-debug="not-mounted">Tour not mounted</div>
   }
 
   // No mostrar tour a admins
   if (isAdmin) {
     console.log("🔍 Tour: Usuario es admin, no renderizar")
-    return null
+    return <div style={{ display: 'none' }} data-tour-debug="is-admin">Tour: User is admin</div>
   }
 
   // Verificar que tengamos pasos
   if (steps.length === 0) {
     console.warn("⚠️ Tour: No hay pasos definidos")
-    return null
+    return <div style={{ display: 'none' }} data-tour-debug="no-steps">Tour: No steps</div>
   }
 
   console.log("🔍 Tour: Renderizando Joyride", {
@@ -210,8 +239,48 @@ export function GuidedTour() {
     steps: steps.map(s => ({ target: s.target, content: s.content?.substring(0, 50) })),
   })
 
+  // Si runTour es false pero debería iniciarse, forzar inicio después de un delay
+  useEffect(() => {
+    if (isMounted && !isAdmin && !runTour && steps.length > 0) {
+      const tourCompleted = typeof window !== "undefined" ? localStorage.getItem(TOUR_STORAGE_KEY) : null
+      if (!tourCompleted) {
+        console.log("🔧 Tour: Forzando inicio después de delay")
+        const timer = setTimeout(() => {
+          console.log("🔧 Tour: Iniciando tour forzado")
+          setRunTour(true)
+        }, 2000)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [isMounted, isAdmin, runTour, steps.length])
+
   return (
-    <Joyride
+    <>
+      {/* Debug element siempre visible */}
+      {typeof window !== "undefined" && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            bottom: 10, 
+            right: 10, 
+            background: 'red', 
+            color: 'white', 
+            padding: '5px 10px', 
+            fontSize: '12px',
+            zIndex: 99999,
+            display: isMounted ? 'block' : 'none',
+            cursor: 'pointer'
+          }}
+          onClick={() => {
+            console.log("🔧 Tour: Click en debug, forzando inicio")
+            localStorage.removeItem(TOUR_STORAGE_KEY)
+            setRunTour(true)
+          }}
+        >
+          Tour: {isMounted ? 'M' : 'NM'} | {runTour ? 'R' : 'S'} | {isAdmin ? 'A' : 'U'}
+        </div>
+      )}
+      <Joyride
       steps={steps}
       run={runTour}
       continuous={true}
@@ -306,7 +375,8 @@ export function GuidedTour() {
         next: t("next") || "Siguiente",
         skip: t("skip") || "Omitir",
       }}
-    />
+      />
+    </>
   )
 }
 
