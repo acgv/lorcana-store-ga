@@ -79,7 +79,7 @@ export function Header() {
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
-          <Link href="/lorcana-tcg" className="flex items-center gap-2.5 text-2xl font-display font-black tracking-tight hover:opacity-90 transition-opacity">
+          <Link href="/lorcana-tcg" className="flex items-center gap-2.5 text-2xl font-display font-black tracking-tight hover:opacity-90 transition-opacity" data-tour="logo">
             <Sparkles className="h-6 w-6 text-primary animate-pulse" />
             <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">Lorcana</span>
           </Link>

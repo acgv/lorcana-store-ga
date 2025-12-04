@@ -30,27 +30,45 @@ export function GuidedTour() {
 
   // Verificar si el usuario ya completó el tour
   useEffect(() => {
-    if (!isMounted || typeof window === "undefined") return
+    if (!isMounted || typeof window === "undefined") {
+      console.log("🔍 Tour: Esperando montaje o no hay window")
+      return
+    }
+    
+    console.log("🔍 Tour: Verificando condiciones...", { isAdmin, user: !!user })
     
     // No mostrar tour a admins
     if (isAdmin) {
+      console.log("🚫 Tour: Usuario es admin, no mostrar tour")
       setRunTour(false)
       return
     }
 
     // Verificar si ya completó el tour
     const tourCompleted = localStorage.getItem(TOUR_STORAGE_KEY)
+    console.log("🔍 Tour: Estado completado:", tourCompleted)
     
     // Si no ha completado el tour, iniciarlo después de un breve delay
     if (!tourCompleted) {
+      console.log("✅ Tour: No completado, intentando iniciar...")
+      
       // Función para verificar elementos y iniciar tour
       const checkAndStartTour = () => {
         // Verificar que los elementos del tour existan antes de iniciar
-        const navigationEl = document.querySelector('[data-tour="navigation"]')
+        // Usar logo como elemento principal (siempre visible)
+        const logoEl = document.querySelector('[data-tour="logo"]')
         const catalogEl = document.querySelector('[data-tour="catalog"]')
+        const navigationEl = document.querySelector('[data-tour="navigation"]')
         
-        if (navigationEl && catalogEl) {
-          console.log("✅ Elementos del tour encontrados, iniciando tour...")
+        console.log("🔍 Tour: Buscando elementos...", {
+          logo: !!logoEl,
+          catalog: !!catalogEl,
+          navigation: !!navigationEl,
+        })
+        
+        // Solo necesitamos el logo para iniciar (siempre está visible)
+        if (logoEl) {
+          console.log("✅ Tour: Elemento logo encontrado, iniciando tour...")
           setRunTour(true)
           return true
         }
@@ -64,24 +82,31 @@ export function GuidedTour() {
       
       // Si no se encontraron, esperar y reintentar
       let attempts = 0
-      const maxAttempts = 10
+      const maxAttempts = 20 // Aumentado a 20 intentos
       const checkInterval = setInterval(() => {
         attempts++
+        console.log(`🔍 Tour: Intento ${attempts}/${maxAttempts}`)
         if (checkAndStartTour() || attempts >= maxAttempts) {
           clearInterval(checkInterval)
+          if (attempts >= maxAttempts) {
+            console.warn("⚠️ Tour: No se encontraron elementos después de", maxAttempts, "intentos")
+          }
         }
       }, 500)
       
       // También intentar después de un delay más largo
       const timer = setTimeout(() => {
+        console.log("🔍 Tour: Timeout de 5 segundos alcanzado")
         clearInterval(checkInterval)
         checkAndStartTour()
-      }, 3000)
+      }, 5000) // Aumentado a 5 segundos
       
       return () => {
         clearTimeout(timer)
         clearInterval(checkInterval)
       }
+    } else {
+      console.log("⏭️ Tour: Ya completado anteriormente")
     }
   }, [isMounted, isAdmin, user])
 
@@ -89,7 +114,7 @@ export function GuidedTour() {
   // Solo calcular pasos cuando esté montado para evitar problemas de hidratación
   const steps: Step[] = isMounted ? [
     {
-      target: '[data-tour="navigation"]',
+      target: '[data-tour="logo"]',
       content: t("tourNavigation") || "Aquí puedes explorar productos de Lorcana. Navega por el catálogo, productos y más.",
       placement: "bottom",
       disableBeacon: true,
