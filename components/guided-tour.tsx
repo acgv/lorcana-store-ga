@@ -67,8 +67,14 @@ export function GuidedTour() {
         })
         
         // Solo necesitamos el logo para iniciar (siempre está visible)
+        // Si no encontramos el logo, intentar con cualquier elemento
         if (logoEl) {
           console.log("✅ Tour: Elemento logo encontrado, iniciando tour...")
+          setRunTour(true)
+          return true
+        } else if (catalogEl || navigationEl) {
+          // Si no hay logo pero hay otros elementos, iniciar de todas formas
+          console.log("✅ Tour: Elementos alternativos encontrados, iniciando tour...")
           setRunTour(true)
           return true
         }
@@ -139,24 +145,70 @@ export function GuidedTour() {
   ] : []
 
   const handleJoyrideCallback = (data: CallBackProps) => {
-    const { status } = data
+    const { status, action, index, type } = data
+    console.log("🔍 Tour: Callback", { status, action, index, type })
     
     // Si el tour se completó o se cerró, guardar en localStorage
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      console.log("✅ Tour: Completado o omitido, guardando en localStorage")
       localStorage.setItem(TOUR_STORAGE_KEY, "true")
       setRunTour(false)
     }
   }
 
+  // Exponer funciones globales para debugging
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__startTour = () => {
+        console.log("🔧 Tour: Forzando inicio del tour manualmente")
+        localStorage.removeItem(TOUR_STORAGE_KEY)
+        setRunTour(true)
+      }
+      (window as any).__resetTour = () => {
+        console.log("🔧 Tour: Reseteando tour")
+        localStorage.removeItem(TOUR_STORAGE_KEY)
+        setRunTour(false)
+        setTimeout(() => setRunTour(true), 500)
+      }
+      (window as any).__checkTourElements = () => {
+        const logoEl = document.querySelector('[data-tour="logo"]')
+        const catalogEl = document.querySelector('[data-tour="catalog"]')
+        const loginEl = document.querySelector('[data-tour="login"]')
+        console.log("🔍 Tour: Elementos encontrados", {
+          logo: !!logoEl,
+          catalog: !!catalogEl,
+          login: !!loginEl,
+        })
+        return { logo: !!logoEl, catalog: !!catalogEl, login: !!loginEl }
+      }
+    }
+  }, [])
+
   // No renderizar nada hasta que esté montado en el cliente
   if (!isMounted) {
+    console.log("🔍 Tour: No montado aún")
     return null
   }
 
   // No mostrar tour a admins
   if (isAdmin) {
+    console.log("🔍 Tour: Usuario es admin, no renderizar")
     return null
   }
+
+  // Verificar que tengamos pasos
+  if (steps.length === 0) {
+    console.warn("⚠️ Tour: No hay pasos definidos")
+    return null
+  }
+
+  console.log("🔍 Tour: Renderizando Joyride", {
+    stepsCount: steps.length,
+    runTour,
+    isMounted,
+    isAdmin,
+    steps: steps.map(s => ({ target: s.target, content: s.content?.substring(0, 50) })),
+  })
 
   return (
     <Joyride
@@ -166,6 +218,8 @@ export function GuidedTour() {
       showProgress={true}
       showSkipButton={true}
       callback={handleJoyrideCallback}
+      disableOverlayClose={false}
+      disableScrolling={false}
       styles={{
         options: {
           primaryColor: "hsl(var(--primary))",
