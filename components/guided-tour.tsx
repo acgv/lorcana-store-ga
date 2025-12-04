@@ -9,10 +9,8 @@ import { useLanguage } from "@/components/language-provider"
 
 const TOUR_STORAGE_KEY = "lorcana_tour_completed"
 
-// Log inmediato cuando se carga el módulo
-if (typeof window !== "undefined") {
-  console.log("📦 Tour: Módulo cargado en cliente")
-}
+// Log inmediato cuando se carga el módulo - FORZAR LOG
+console.log("📦 Tour: Módulo cargado (siempre)")
 
 // Cargar Joyride dinámicamente solo en el cliente para evitar problemas de hidratación
 const Joyride = dynamic(() => {
@@ -29,10 +27,8 @@ const Joyride = dynamic(() => {
 })
 
 export function GuidedTour() {
-  // Log inmediato al renderizar
-  if (typeof window !== "undefined") {
-    console.log("🚀 Tour: Componente renderizado")
-  }
+  // Log inmediato al renderizar - FORZAR LOG
+  console.log("🚀 Tour: Componente renderizado (siempre)")
   
   const { t } = useLanguage()
   const { user, isAdmin: isUserAdmin } = useUser()
@@ -41,6 +37,9 @@ export function GuidedTour() {
   const [isMounted, setIsMounted] = useState(false)
 
   const isAdmin = isUserAdmin || isAdminAuth
+  
+  // Log del estado inicial
+  console.log("🚀 Tour: Estado inicial", { isAdmin, user: !!user, isMounted, runTour })
 
   // Asegurar que solo se ejecute en el cliente
   useEffect(() => {
@@ -274,31 +273,29 @@ export function GuidedTour() {
 
   return (
     <>
-      {/* Debug element siempre visible - solo en desarrollo */}
-      {typeof window !== "undefined" && process.env.NODE_ENV === 'development' && (
-        <div 
-          style={{ 
-            position: 'fixed', 
-            bottom: 10, 
-            right: 10, 
-            background: 'red', 
-            color: 'white', 
-            padding: '5px 10px', 
-            fontSize: '12px',
-            zIndex: 99999,
-            display: isMounted ? 'block' : 'none',
-            cursor: 'pointer',
-            borderRadius: '4px'
-          }}
-          onClick={() => {
-            console.log("🔧 Tour: Click en debug, forzando inicio")
-            localStorage.removeItem(TOUR_STORAGE_KEY)
-            setRunTour(true)
-          }}
-        >
-          Tour: {isMounted ? 'M' : 'NM'} | {runTour ? 'R' : 'S'} | {isAdmin ? 'A' : 'U'}
-        </div>
-      )}
+      {/* Debug element siempre visible - FORZAR VISIBILIDAD */}
+      <div 
+        style={{ 
+          position: 'fixed', 
+          bottom: 10, 
+          right: 10, 
+          background: 'red', 
+          color: 'white', 
+          padding: '10px 15px', 
+          fontSize: '14px',
+          zIndex: 99999,
+          cursor: 'pointer',
+          borderRadius: '4px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+        }}
+        onClick={() => {
+          console.log("🔧 Tour: Click en debug, forzando inicio")
+          localStorage.removeItem(TOUR_STORAGE_KEY)
+          setRunTour(true)
+        }}
+      >
+        🎯 Tour: {isMounted ? 'M' : 'NM'} | {runTour ? 'R' : 'S'} | {isAdmin ? 'A' : 'U'} | S:{steps.length}
+      </div>
       {isMounted && !isAdmin && steps.length > 0 && (
         <Joyride
       steps={steps}
