@@ -1,24 +1,36 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Joyride, { CallBackProps, STATUS, Step } from "react-joyride"
+import dynamic from "next/dynamic"
+import { CallBackProps, STATUS, Step } from "react-joyride"
 import { useUser } from "@/hooks/use-user"
 import { useAuth } from "@/hooks/use-auth"
 import { useLanguage } from "@/components/language-provider"
 
 const TOUR_STORAGE_KEY = "lorcana_tour_completed"
 
+// Cargar Joyride dinámicamente solo en el cliente para evitar problemas de hidratación
+const Joyride = dynamic(() => import("react-joyride").then((mod) => mod.default), {
+  ssr: false,
+})
+
 export function GuidedTour() {
   const { t } = useLanguage()
   const { user, isAdmin: isUserAdmin } = useUser()
   const { isAdmin: isAdminAuth } = useAuth()
   const [runTour, setRunTour] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
 
   const isAdmin = isUserAdmin || isAdminAuth
 
+  // Asegurar que solo se ejecute en el cliente
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   // Verificar si el usuario ya completó el tour
   useEffect(() => {
-    if (typeof window === "undefined") return
+    if (!isMounted || typeof window === "undefined") return
     
     // No mostrar tour a admins
     if (isAdmin) {
@@ -42,10 +54,11 @@ export function GuidedTour() {
       
       return () => clearTimeout(timer)
     }
-  }, [isAdmin, user])
+  }, [isMounted, isAdmin, user])
 
   // Pasos del tour - dinámicos según si el usuario está logueado
-  const steps: Step[] = [
+  // Solo calcular pasos cuando esté montado para evitar problemas de hidratación
+  const steps: Step[] = isMounted ? [
     {
       target: '[data-tour="navigation"]',
       content: t("tourNavigation") || "Aquí puedes explorar productos de Lorcana. Navega por el catálogo, productos y más.",
@@ -69,7 +82,7 @@ export function GuidedTour() {
       content: t("tourCollection") || "En 'Mi Colección' verás tus cartas guardadas, valores y listas personalizadas.",
       placement: "left",
     }] : []),
-  ]
+  ] : []
 
   const handleJoyrideCallback = (data: CallBackProps) => {
     const { status } = data
@@ -79,6 +92,11 @@ export function GuidedTour() {
       localStorage.setItem(TOUR_STORAGE_KEY, "true")
       setRunTour(false)
     }
+  }
+
+  // No renderizar nada hasta que esté montado en el cliente
+  if (!isMounted) {
+    return null
   }
 
   // No mostrar tour a admins
