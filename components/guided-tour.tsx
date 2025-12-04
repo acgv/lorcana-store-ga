@@ -204,6 +204,39 @@ export function GuidedTour() {
     }
   }, [])
 
+  // Si runTour es false pero debería iniciarse, forzar inicio después de un delay
+  // IMPORTANTE: Este useEffect debe estar ANTES de cualquier return condicional
+  useEffect(() => {
+    if (!isMounted || isAdmin || runTour) {
+      return
+    }
+    
+    // Verificar que tengamos pasos antes de continuar
+    if (steps.length === 0) {
+      return
+    }
+    
+    const tourCompleted = typeof window !== "undefined" ? localStorage.getItem(TOUR_STORAGE_KEY) : null
+    if (tourCompleted) {
+      return
+    }
+    
+    console.log("🔧 Tour: Forzando inicio después de delay")
+    let isCancelled = false
+    const timer = setTimeout(() => {
+      if (!isCancelled) {
+        console.log("🔧 Tour: Iniciando tour forzado")
+        setRunTour(true)
+      }
+    }, 2000)
+    
+    return () => {
+      isCancelled = true
+      clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMounted, isAdmin, runTour])
+
   // Debug: Log del estado actual
   console.log("🔍 Tour: Estado actual", {
     isMounted,
@@ -238,38 +271,6 @@ export function GuidedTour() {
     isAdmin,
     steps: steps.map(s => ({ target: s.target, content: s.content?.substring(0, 50) })),
   })
-
-  // Si runTour es false pero debería iniciarse, forzar inicio después de un delay
-  useEffect(() => {
-    if (!isMounted || isAdmin || runTour) {
-      return
-    }
-    
-    // Verificar que tengamos pasos antes de continuar
-    if (steps.length === 0) {
-      return
-    }
-    
-    const tourCompleted = typeof window !== "undefined" ? localStorage.getItem(TOUR_STORAGE_KEY) : null
-    if (tourCompleted) {
-      return
-    }
-    
-    console.log("🔧 Tour: Forzando inicio después de delay")
-    let isCancelled = false
-    const timer = setTimeout(() => {
-      if (!isCancelled) {
-        console.log("🔧 Tour: Iniciando tour forzado")
-        setRunTour(true)
-      }
-    }, 2000)
-    
-    return () => {
-      isCancelled = true
-      clearTimeout(timer)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMounted, isAdmin, runTour])
 
   return (
     <>
