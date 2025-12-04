@@ -241,23 +241,40 @@ export function GuidedTour() {
 
   // Si runTour es false pero debería iniciarse, forzar inicio después de un delay
   useEffect(() => {
-    if (isMounted && !isAdmin && !runTour && steps.length > 0) {
-      const tourCompleted = typeof window !== "undefined" ? localStorage.getItem(TOUR_STORAGE_KEY) : null
-      if (!tourCompleted) {
-        console.log("🔧 Tour: Forzando inicio después de delay")
-        const timer = setTimeout(() => {
-          console.log("🔧 Tour: Iniciando tour forzado")
-          setRunTour(true)
-        }, 2000)
-        return () => clearTimeout(timer)
-      }
+    if (!isMounted || isAdmin || runTour) {
+      return
     }
-  }, [isMounted, isAdmin, runTour, steps.length])
+    
+    // Verificar que tengamos pasos antes de continuar
+    if (steps.length === 0) {
+      return
+    }
+    
+    const tourCompleted = typeof window !== "undefined" ? localStorage.getItem(TOUR_STORAGE_KEY) : null
+    if (tourCompleted) {
+      return
+    }
+    
+    console.log("🔧 Tour: Forzando inicio después de delay")
+    let isCancelled = false
+    const timer = setTimeout(() => {
+      if (!isCancelled) {
+        console.log("🔧 Tour: Iniciando tour forzado")
+        setRunTour(true)
+      }
+    }, 2000)
+    
+    return () => {
+      isCancelled = true
+      clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMounted, isAdmin, runTour])
 
   return (
     <>
-      {/* Debug element siempre visible */}
-      {typeof window !== "undefined" && (
+      {/* Debug element siempre visible - solo en desarrollo */}
+      {typeof window !== "undefined" && process.env.NODE_ENV === 'development' && (
         <div 
           style={{ 
             position: 'fixed', 
@@ -269,7 +286,8 @@ export function GuidedTour() {
             fontSize: '12px',
             zIndex: 99999,
             display: isMounted ? 'block' : 'none',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            borderRadius: '4px'
           }}
           onClick={() => {
             console.log("🔧 Tour: Click en debug, forzando inicio")
@@ -280,7 +298,8 @@ export function GuidedTour() {
           Tour: {isMounted ? 'M' : 'NM'} | {runTour ? 'R' : 'S'} | {isAdmin ? 'A' : 'U'}
         </div>
       )}
-      <Joyride
+      {isMounted && !isAdmin && steps.length > 0 && (
+        <Joyride
       steps={steps}
       run={runTour}
       continuous={true}
@@ -375,7 +394,8 @@ export function GuidedTour() {
         next: t("next") || "Siguiente",
         skip: t("skip") || "Omitir",
       }}
-      />
+        />
+      )}
     </>
   )
 }
