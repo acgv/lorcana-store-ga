@@ -49,51 +49,40 @@ export function GuidedTour() {
 
   // Verificar si el usuario ya completó el tour e iniciar automáticamente
   useEffect(() => {
+    console.log("🔍 Tour: useEffect principal ejecutado", { isMounted, isAdmin, runTour })
+    
     if (!isMounted || typeof window === "undefined") {
+      console.log("⏸️ Tour: Esperando montaje")
       return
     }
     
     // No mostrar tour a admins
     if (isAdmin) {
+      console.log("🚫 Tour: Usuario es admin")
       setRunTour(false)
       return
     }
 
     // Verificar si ya completó el tour
     const tourCompleted = localStorage.getItem(TOUR_STORAGE_KEY)
+    console.log("🔍 Tour: Estado completado en localStorage:", tourCompleted)
     
     // Si no ha completado el tour, iniciarlo después de un breve delay
     if (!tourCompleted) {
-      // Función para verificar elementos y iniciar tour
-      const checkAndStartTour = () => {
-        // Verificar que los elementos del tour existan antes de iniciar
-        const logoEl = document.querySelector('[data-tour="logo"]')
-        const catalogEl = document.querySelector('[data-tour="catalog"]')
-        
-        // Si encontramos al menos un elemento, iniciar el tour
-        if (logoEl || catalogEl) {
-          console.log("✅ Tour: Elementos encontrados, iniciando tour...")
-          setRunTour(true)
-          return true
-        }
-        return false
-      }
+      console.log("✅ Tour: No completado, programando inicio...")
       
-      // Esperar un poco para que el DOM esté completamente cargado
+      // Iniciar el tour después de 2 segundos, sin verificar elementos
       const timer = setTimeout(() => {
-        // Intentar iniciar el tour
-        if (!checkAndStartTour()) {
-          // Si no se encontraron elementos, intentar de todas formas después de más tiempo
-          console.log("⚠️ Tour: Elementos no encontrados, iniciando de todas formas...")
-          setTimeout(() => {
-            setRunTour(true)
-          }, 1000)
-        }
-      }, 2000) // Esperar 2 segundos después del montaje
+        console.log("🚀 Tour: Iniciando tour automáticamente")
+        setRunTour(true)
+      }, 2000)
       
       return () => {
+        console.log("🧹 Tour: Limpiando timer")
         clearTimeout(timer)
       }
+    } else {
+      console.log("⏭️ Tour: Ya completado anteriormente")
     }
   }, [isMounted, isAdmin])
 
@@ -165,29 +154,6 @@ export function GuidedTour() {
     }
   }, [])
 
-  // Forzar inicio del tour si no se ha iniciado automáticamente
-  // IMPORTANTE: Este useEffect debe estar ANTES de cualquier return condicional
-  useEffect(() => {
-    if (!isMounted || isAdmin || runTour || steps.length === 0) {
-      return
-    }
-    
-    const tourCompleted = typeof window !== "undefined" ? localStorage.getItem(TOUR_STORAGE_KEY) : null
-    if (tourCompleted) {
-      return
-    }
-    
-    // Forzar inicio después de 3 segundos si no se ha iniciado
-    const timer = setTimeout(() => {
-      console.log("🔧 Tour: Forzando inicio automático")
-      setRunTour(true)
-    }, 3000)
-    
-    return () => {
-      clearTimeout(timer)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMounted, isAdmin, runTour])
 
   // Debug: Log del estado actual
   console.log("🔍 Tour: Estado actual", {
