@@ -83,7 +83,7 @@ export function Header() {
             <Sparkles className="h-6 w-6 text-primary animate-pulse" />
             <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">Lorcana</span>
           </Link>
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-8" data-tour="navigation">
             <Link href="/lorcana-tcg" className="text-sm font-sans font-medium text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-105">
               {t("home")}
             </Link>
@@ -91,6 +91,7 @@ export function Header() {
               href="/lorcana-tcg/catalog"
               className="text-sm font-sans font-medium text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-105"
               prefetch={true}
+              data-tour="catalog"
             >
               {t("catalog")}
             </Link>
@@ -217,6 +218,7 @@ export function Header() {
                       href="/lorcana-tcg/my-collection"
                       className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md flex items-center gap-2"
                       onClick={() => setMobileMenuOpen(false)}
+                      data-tour="collection"
                     >
                       <Heart className="h-4 w-4" />
                       {t("myCollection")}
@@ -257,6 +259,7 @@ export function Header() {
                     href="/lorcana-tcg/login"
                     className="text-base font-sans font-medium text-accent hover:text-accent/80 transition-colors px-2 py-2 hover:bg-muted rounded-md"
                     onClick={() => setMobileMenuOpen(false)}
+                    data-tour="login"
                   >
                     {t("signIn")}
                   </Link>
@@ -307,7 +310,11 @@ export function Header() {
                   <UserCircle className="mr-2 h-4 w-4" />
                   Mi Perfil
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/lorcana-tcg/my-collection")} className="cursor-pointer">
+                <DropdownMenuItem 
+                  onClick={() => router.push("/lorcana-tcg/my-collection")} 
+                  className="cursor-pointer"
+                  data-tour="collection"
+                >
                   <Heart className="mr-2 h-4 w-4" />
                   {t("myCollection")}
                 </DropdownMenuItem>
@@ -336,6 +343,7 @@ export function Header() {
               className="gap-2 hidden md:flex font-semibold text-foreground border border-border hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
               onClick={() => router.push("/lorcana-tcg/login")}
               aria-label={t("signIn") || "Iniciar sesión"}
+              data-tour="login"
             >
               <User className="h-4 w-4" />
               <span className="hidden lg:inline-block">{t("signIn")}</span>

@@ -7,6 +7,7 @@ import "./globals.css"
 import { LanguageProvider } from "@/components/language-provider"
 import { CartProvider } from "@/components/cart-provider"
 import { ThemeProvider } from "@/components/theme-provider"
+import { GuidedTour } from "@/components/guided-tour"
 
 // Fuente display elegante SOLO para títulos grandes (estilo Disney Lorcana)
 // Optimizado con font-display: swap para mostrar texto inmediatamente
@@ -75,7 +76,10 @@ export default function RootLayout({
         />
         <ThemeProvider>
           <LanguageProvider>
-            <CartProvider>{children}</CartProvider>
+            <CartProvider>
+              {children}
+              <GuidedTour />
+            </CartProvider>
           </LanguageProvider>
         </ThemeProvider>
         <Analytics />
