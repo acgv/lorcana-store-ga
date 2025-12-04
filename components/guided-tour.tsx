@@ -43,16 +43,45 @@ export function GuidedTour() {
     
     // Si no ha completado el tour, iniciarlo después de un breve delay
     if (!tourCompleted) {
-      // Esperar a que la página cargue completamente y los elementos estén disponibles
-      const timer = setTimeout(() => {
+      // Función para verificar elementos y iniciar tour
+      const checkAndStartTour = () => {
         // Verificar que los elementos del tour existan antes de iniciar
         const navigationEl = document.querySelector('[data-tour="navigation"]')
-        if (navigationEl) {
+        const catalogEl = document.querySelector('[data-tour="catalog"]')
+        
+        if (navigationEl && catalogEl) {
+          console.log("✅ Elementos del tour encontrados, iniciando tour...")
           setRunTour(true)
+          return true
         }
-      }, 1500)
+        return false
+      }
       
-      return () => clearTimeout(timer)
+      // Intentar inmediatamente
+      if (checkAndStartTour()) {
+        return
+      }
+      
+      // Si no se encontraron, esperar y reintentar
+      let attempts = 0
+      const maxAttempts = 10
+      const checkInterval = setInterval(() => {
+        attempts++
+        if (checkAndStartTour() || attempts >= maxAttempts) {
+          clearInterval(checkInterval)
+        }
+      }, 500)
+      
+      // También intentar después de un delay más largo
+      const timer = setTimeout(() => {
+        clearInterval(checkInterval)
+        checkAndStartTour()
+      }, 3000)
+      
+      return () => {
+        clearTimeout(timer)
+        clearInterval(checkInterval)
+      }
     }
   }, [isMounted, isAdmin, user])
 
