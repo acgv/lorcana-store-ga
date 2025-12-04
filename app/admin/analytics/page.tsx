@@ -271,7 +271,7 @@ export default function AnalyticsPage() {
                       {formatNumber(data.inventory?.totalUnitsInStock || 0)}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {data.inventory?.cardsWithStock ? `${formatNumber(data.inventory.cardsWithStock)} cartas con stock` : "Unidades disponibles"}
+                      {data.inventory?.cardsWithStock ? `${formatNumber(data.inventory.cardsWithStock)} cartas únicas disponibles` : "Unidades disponibles"}
                     </p>
                   </CardContent>
                 </Card>
