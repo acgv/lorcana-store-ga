@@ -170,35 +170,52 @@ export async function GET(request: NextRequest) {
                 console.log(`🔍 Page 1 - Sample card keys:`, Object.keys(sampleCard))
                 console.log(`🔍 Page 1 - Has inkColor in response:`, hasInkColorInResponse, sampleCard.inkColor)
                 console.log(`🔍 Page 1 - Has color in response:`, hasColorInResponse, sampleCard.color)
+                // Verificar si PostgREST está devolviendo inkColor con otro nombre (lowercase, etc.)
+                const hasInkcolorLowercase = 'inkcolor' in sampleCard
+                console.log(`🔍 Page 1 - Has inkcolor (lowercase) in response:`, hasInkcolorLowercase, (sampleCard as any).inkcolor)
                 // Verificar si hay cartas con color en la primera página
-                const firstPageWithColor = data.filter(c => c.inkColor || c.color)
+                const firstPageWithColor = data.filter(c => (c as any).inkColor || (c as any).inkcolor || (c as any).color)
                 console.log(`🔍 Page 1 - Cards with color in raw data:`, firstPageWithColor.length, "out of", data.length)
                 if (firstPageWithColor.length > 0) {
-                  console.log(`🔍 Page 1 - Sample cards with color:`, firstPageWithColor.slice(0, 3).map(c => ({ id: c.id, name: c.name, inkColor: c.inkColor, color: c.color })))
+                  console.log(`🔍 Page 1 - Sample cards with color:`, firstPageWithColor.slice(0, 3).map(c => ({ 
+                    id: c.id, 
+                    name: c.name, 
+                    inkColor: (c as any).inkColor, 
+                    inkcolor: (c as any).inkcolor,
+                    color: (c as any).color 
+                  })))
                 } else {
                   console.warn(`⚠️ Page 1 - NO CARDS WITH COLOR in raw Supabase response!`)
-                  console.warn(`⚠️ Page 1 - Sample card from Supabase:`, {
-                    id: sampleCard.id,
-                    name: sampleCard.name,
-                    inkColor: sampleCard.inkColor,
-                    color: sampleCard.color,
-                    allKeys: Object.keys(sampleCard)
+                  console.warn(`⚠️ Page 1 - Sample card from Supabase (FULL OBJECT):`, JSON.stringify(sampleCard, null, 2))
+                  console.warn(`⚠️ Page 1 - All keys in sample card:`, Object.keys(sampleCard))
+                  // Verificar todas las posibles variaciones del nombre
+                  const possibleNames = ['inkColor', 'inkcolor', 'InkColor', 'INKCOLOR', 'color', 'Color', 'COLOR']
+                  possibleNames.forEach(name => {
+                    if (name in sampleCard) {
+                      console.warn(`⚠️ Page 1 - Found column with name "${name}":`, (sampleCard as any)[name])
+                    }
                   })
                 }
               }
               
               // Asegurar que normalStock y foilStock sean números, e incluir inkColor si existe
               // PostgREST puede devolver camelCase como lowercase, verificar ambos
-              const normalizedData = data.map(card => ({
-                ...card,
-                normalStock: card.normalStock ?? 0,
-                foilStock: card.foilStock ?? 0,
-                // PostgREST puede devolver inkColor como 'inkcolor' (lowercase) o 'inkColor' (camelCase)
-                // Intentar ambos nombres
-                inkColor: (card as any).inkColor !== undefined ? (card as any).inkColor : 
-                         (card as any).inkcolor !== undefined ? (card as any).inkcolor : null,
-                color: (card as any).color !== undefined ? (card as any).color : null
-              }))
+              // IMPORTANTE: Si inkColor viene como null pero la columna existe, puede ser un problema del schema cache
+              const normalizedData = data.map(card => {
+                const cardAny = card as any
+                // Si inkColor es null pero sabemos que debería tener valor, intentar obtenerlo de otra manera
+                // Por ahora, preservar lo que viene de PostgREST
+                return {
+                  ...card,
+                  normalStock: card.normalStock ?? 0,
+                  foilStock: card.foilStock ?? 0,
+                  // PostgREST puede devolver inkColor como 'inkcolor' (lowercase) o 'inkColor' (camelCase)
+                  // Intentar ambos nombres, pero si ambos son null, puede ser un problema del schema cache
+                  inkColor: cardAny.inkColor !== undefined && cardAny.inkColor !== null ? cardAny.inkColor : 
+                           cardAny.inkcolor !== undefined && cardAny.inkcolor !== null ? cardAny.inkcolor : null,
+                  color: cardAny.color !== undefined && cardAny.color !== null ? cardAny.color : null
+                }
+              })
               
               // Debug: verificar si inkColor está presente después de normalizar
               const cardsWithColor = normalizedData.filter(c => c.inkColor || c.color)
