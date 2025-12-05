@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useEffect, useRef, Suspense, useDeferredValue } from "react"
+import React, { useState, useMemo, useEffect, useRef, Suspense } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -48,10 +48,16 @@ function CatalogContent() {
   })
   
   // Estado local para el input de búsqueda (actualización inmediata)
-  const [searchInput, setSearchInput] = useState(filters.search)
+  const initialSearch = searchParams.get("search") || ""
+  const [searchInput, setSearchInput] = useState(initialSearch)
   
-  // Usar deferred value solo para el filtrado (no para el input)
-  const deferredSearch = useDeferredValue(searchInput)
+  // Sincronizar searchInput con la URL cuando cambie desde fuera (ej: navegación)
+  useEffect(() => {
+    const searchParam = searchParams.get("search") || ""
+    if (searchParam !== searchInput) {
+      setSearchInput(searchParam)
+    }
+  }, [searchParams])
   
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "cardNumberLowHigh")
   const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
@@ -322,11 +328,11 @@ function CatalogContent() {
   // Sincronizar filtros y searchInput con la URL cuando cambie (por ejemplo, cuando se busca desde el header)
   useEffect(() => {
     const searchParam = searchParams.get("search") || ""
-    if (searchParam !== filters.search) {
+    if (searchParam !== searchInput) {
+      setSearchInput(searchParam)
       setFilters(prev => ({ ...prev, search: searchParam }))
-      setSearchInput(searchParam) // Sincronizar también el input
     }
-  }, [searchParams, filters.search])
+  }, [searchParams])
   
   // Detectar cuando el usuario navega a otra página
   useEffect(() => {
@@ -461,8 +467,8 @@ function CatalogContent() {
     let filtered = cardsToFilter
     
     // Search filter primero (más restrictivo, reduce el dataset rápidamente)
-    if (deferredSearch && deferredSearch.trim()) {
-      const searchLower = deferredSearch.toLowerCase().trim()
+    if (searchInput && searchInput.trim()) {
+      const searchLower = searchInput.toLowerCase().trim()
       // Pre-calcular valores para evitar múltiples llamadas a toLowerCase
       filtered = filtered.filter((card) => {
         const nameLower = card.name.toLowerCase()
@@ -566,7 +572,7 @@ function CatalogContent() {
     })
 
     return sorted
-  }, [allCards, cards, deferredSearch, filters.type, filters.set, filters.rarity, filters.minPrice, filters.maxPrice, filters.version, filters.productType, sortBy])
+  }, [allCards, cards, searchInput, filters.type, filters.set, filters.rarity, filters.minPrice, filters.maxPrice, filters.version, filters.productType, sortBy])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -635,10 +641,8 @@ function CatalogContent() {
                 onChange={(e) => {
                   const newSearchValue = e.target.value
                   // Actualizar el input inmediatamente (sin lag)
+                  // El deferredSearch se actualizará automáticamente y disparará el filtrado
                   setSearchInput(newSearchValue)
-                  
-                  // Actualizar filters también para mantener sincronización
-                  setFilters({ ...filters, search: newSearchValue })
                   
                   // Debounce para actualizar URL (evitar actualizaciones excesivas)
                   if (urlUpdateTimeoutRef.current) {
