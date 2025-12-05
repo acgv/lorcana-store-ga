@@ -47,15 +47,19 @@ function CatalogContent() {
     productType: "card", // El catálogo solo muestra cartas
   })
   
-  // Estado local para el input de búsqueda (actualización inmediata)
+  // Estado local para el input de búsqueda (lo que el usuario está escribiendo)
   const initialSearch = searchParams.get("search") || ""
   const [searchInput, setSearchInput] = useState(initialSearch)
   
-  // Sincronizar searchInput con la URL cuando cambie desde fuera (ej: navegación)
+  // Estado para el término de búsqueda activo (solo se actualiza al presionar Enter)
+  const [activeSearch, setActiveSearch] = useState(initialSearch)
+  
+  // Sincronizar searchInput y activeSearch con la URL cuando cambie desde fuera (ej: navegación)
   useEffect(() => {
     const searchParam = searchParams.get("search") || ""
-    if (searchParam !== searchInput) {
+    if (searchParam !== activeSearch) {
       setSearchInput(searchParam)
+      setActiveSearch(searchParam)
     }
   }, [searchParams])
   
@@ -467,8 +471,9 @@ function CatalogContent() {
     let filtered = cardsToFilter
     
     // Search filter primero (más restrictivo, reduce el dataset rápidamente)
-    if (searchInput && searchInput.trim()) {
-      const searchLower = searchInput.toLowerCase().trim()
+    // Usar activeSearch (solo se actualiza al presionar Enter)
+    if (activeSearch && activeSearch.trim()) {
+      const searchLower = activeSearch.toLowerCase().trim()
       // Pre-calcular valores para evitar múltiples llamadas a toLowerCase
       filtered = filtered.filter((card) => {
         const nameLower = card.name.toLowerCase()
@@ -572,7 +577,7 @@ function CatalogContent() {
     })
 
     return sorted
-  }, [allCards, cards, searchInput, filters.type, filters.set, filters.rarity, filters.minPrice, filters.maxPrice, filters.version, filters.productType, sortBy])
+  }, [allCards, cards, activeSearch, filters.type, filters.set, filters.rarity, filters.minPrice, filters.maxPrice, filters.version, filters.productType, sortBy])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -625,9 +630,22 @@ function CatalogContent() {
           <form 
             onSubmit={(e) => {
               e.preventDefault()
+              const searchValue = searchInput.trim()
+              
+              // Actualizar el término de búsqueda activo (dispara el filtrado)
+              setActiveSearch(searchValue)
+              
+              // Actualizar URL
               const params = new URLSearchParams(window.location.search)
-              params.set('search', searchInput.trim())
-              router.push(`${pathname}?${params.toString()}`)
+              if (searchValue) {
+                params.set('search', searchValue)
+              } else {
+                params.delete('search')
+              }
+              const newUrl = params.toString() 
+                ? `${pathname}?${params.toString()}`
+                : pathname || ''
+              router.push(newUrl)
             }}
             className="w-full max-w-2xl mx-auto"
           >
@@ -635,32 +653,25 @@ function CatalogContent() {
               <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
               <Input 
                 type="search" 
-                placeholder={t("search") || "Buscar cartas por nombre o número..."} 
+                placeholder={t("search") || "Buscar cartas por nombre o número... (presiona Enter)"} 
                 className="pl-12 pr-4 h-12 text-base bg-background border-2 border-primary/20 focus:border-primary/60 transition-colors" 
                 value={searchInput}
                 onChange={(e) => {
-                  const newSearchValue = e.target.value
-                  // Actualizar el input inmediatamente (sin lag)
-                  // El deferredSearch se actualizará automáticamente y disparará el filtrado
-                  setSearchInput(newSearchValue)
-                  
-                  // Debounce para actualizar URL (evitar actualizaciones excesivas)
-                  if (urlUpdateTimeoutRef.current) {
-                    clearTimeout(urlUpdateTimeoutRef.current)
-                  }
-                  
-                  urlUpdateTimeoutRef.current = setTimeout(() => {
+                  // Solo actualizar el input visual, no filtrar hasta presionar Enter
+                  setSearchInput(e.target.value)
+                }}
+                onKeyDown={(e) => {
+                  // Si presiona Escape, limpiar la búsqueda
+                  if (e.key === 'Escape') {
+                    setSearchInput('')
+                    setActiveSearch('')
                     const params = new URLSearchParams(window.location.search)
-                    if (newSearchValue.trim()) {
-                      params.set('search', newSearchValue.trim())
-                    } else {
-                      params.delete('search')
-                    }
+                    params.delete('search')
                     const newUrl = params.toString() 
                       ? `${pathname}?${params.toString()}`
                       : pathname || ''
-                    router.replace(newUrl, { scroll: false })
-                  }, 300) // 300ms de debounce
+                    router.push(newUrl)
+                  }
                 }}
               />
             </div>
