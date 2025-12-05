@@ -258,7 +258,17 @@ function DeckBuilder() {
     console.log("🎨 Cards with color:", availableCards.filter(c => (c as any).inkColor || (c as any).color).length)
     
     if (sortedColors.length === 0 && availableCards.length > 0) {
-      console.warn("⚠️ No colors found! Sample card data:", availableCards[0])
+      const sampleCard = availableCards[0]
+      console.warn("⚠️ No colors found! Sample card data:", {
+        id: sampleCard.id,
+        name: sampleCard.name,
+        allKeys: Object.keys(sampleCard),
+        inkColor: (sampleCard as any).inkColor,
+        color: (sampleCard as any).color,
+        hasInkColor: 'inkColor' in sampleCard,
+        hasColor: 'color' in sampleCard,
+        fullCard: sampleCard
+      })
     }
     
     return sortedColors

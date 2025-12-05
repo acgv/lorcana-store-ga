@@ -170,16 +170,34 @@ export async function GET(request: NextRequest) {
                 console.log(`🔍 Page 1 - Sample card keys:`, Object.keys(sampleCard))
                 console.log(`🔍 Page 1 - Has inkColor in response:`, hasInkColorInResponse, sampleCard.inkColor)
                 console.log(`🔍 Page 1 - Has color in response:`, hasColorInResponse, sampleCard.color)
+                // Verificar si hay cartas con color en la primera página
+                const firstPageWithColor = data.filter(c => c.inkColor || c.color)
+                console.log(`🔍 Page 1 - Cards with color in raw data:`, firstPageWithColor.length, "out of", data.length)
+                if (firstPageWithColor.length > 0) {
+                  console.log(`🔍 Page 1 - Sample cards with color:`, firstPageWithColor.slice(0, 3).map(c => ({ id: c.id, name: c.name, inkColor: c.inkColor, color: c.color })))
+                } else {
+                  console.warn(`⚠️ Page 1 - NO CARDS WITH COLOR in raw Supabase response!`)
+                  console.warn(`⚠️ Page 1 - Sample card from Supabase:`, {
+                    id: sampleCard.id,
+                    name: sampleCard.name,
+                    inkColor: sampleCard.inkColor,
+                    color: sampleCard.color,
+                    allKeys: Object.keys(sampleCard)
+                  })
+                }
               }
               
               // Asegurar que normalStock y foilStock sean números, e incluir inkColor si existe
+              // PostgREST puede devolver camelCase como lowercase, verificar ambos
               const normalizedData = data.map(card => ({
                 ...card,
                 normalStock: card.normalStock ?? 0,
                 foilStock: card.foilStock ?? 0,
-                // Preservar inkColor y color tal como vienen de Supabase
-                inkColor: card.inkColor !== undefined ? card.inkColor : null,
-                color: card.color !== undefined ? card.color : null
+                // PostgREST puede devolver inkColor como 'inkcolor' (lowercase) o 'inkColor' (camelCase)
+                // Intentar ambos nombres
+                inkColor: (card as any).inkColor !== undefined ? (card as any).inkColor : 
+                         (card as any).inkcolor !== undefined ? (card as any).inkcolor : null,
+                color: (card as any).color !== undefined ? (card as any).color : null
               }))
               
               // Debug: verificar si inkColor está presente después de normalizar
