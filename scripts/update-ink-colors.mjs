@@ -66,24 +66,51 @@ async function findCardByName(name) {
 async function main() {
   console.log("🎨 Actualizando colores de tinta (inkColor) de las cartas...\n")
 
-  // 1. Obtener todas las cartas de Supabase
-  console.log("📦 Obteniendo cartas de Supabase...")
-  const { data: cards, error: fetchError } = await supabase
-    .from("cards")
-    .select("id, name, inkColor")
-    .order("id")
+  // 1. Obtener TODAS las cartas de Supabase usando paginación
+  console.log("📦 Obteniendo cartas de Supabase (con paginación)...")
+  let allCards = []
+  let page = 0
+  const pageSize = 1000
+  let hasMore = true
 
-  if (fetchError) {
-    console.error("❌ Error obteniendo cartas:", fetchError)
-    process.exit(1)
+  while (hasMore) {
+    const from = page * pageSize
+    const to = from + pageSize - 1
+
+    const { data: cardsPage, error: fetchError } = await supabase
+      .from("cards")
+      .select("id, name, inkColor")
+      .order("id")
+      .range(from, to)
+
+    if (fetchError) {
+      console.error("❌ Error obteniendo cartas:", fetchError)
+      break
+    }
+
+    if (cardsPage && cardsPage.length > 0) {
+      allCards = [...allCards, ...cardsPage]
+      console.log(`   Cargadas ${allCards.length} cartas... (página ${page + 1})`)
+    }
+
+    hasMore = cardsPage && cardsPage.length === pageSize
+    page++
+
+    // Safety limit: no más de 50 páginas (50,000 cartas máximo)
+    if (page >= 50) {
+      console.log(`⚠️  Límite de seguridad alcanzado (50 páginas). Cargadas ${allCards.length} cartas.`)
+      break
+    }
   }
 
-  if (!cards || cards.length === 0) {
+  if (allCards.length === 0) {
     console.log("⚠️  No se encontraron cartas en la base de datos")
     process.exit(0)
   }
 
-  console.log(`✅ Encontradas ${cards.length} cartas\n`)
+  console.log(`✅ Encontradas ${allCards.length} cartas en total\n`)
+  
+  const cards = allCards
 
   // 2. Cargar todas las cartas de la API de Lorcana una vez
   console.log("🌐 Cargando cartas de la API de Lorcana...")
@@ -101,6 +128,10 @@ async function main() {
     console.log("   Usando búsqueda individual por carta...\n")
   }
 
+  // Filtrar solo las cartas que NO tienen color
+  const cardsToUpdate = cards.filter(card => !card.inkColor || card.inkColor.trim() === "")
+  console.log(`📋 Cartas que necesitan color: ${cardsToUpdate.length} de ${cards.length}\n`)
+
   // Crear un mapa de la API para búsqueda rápida
   const apiMap = new Map()
   if (lorcanaCards.length > 0) {
@@ -114,23 +145,17 @@ async function main() {
     })
   }
 
-  // 3. Actualizar cada carta
+  // 3. Actualizar cada carta (solo las que no tienen color)
   let updated = 0
   let skipped = 0
   let errors = 0
   const batchSize = 50
   const updates = []
 
-  console.log("🔄 Procesando cartas...\n")
+  console.log("🔄 Procesando cartas sin color...\n")
 
-  for (let i = 0; i < cards.length; i++) {
-    const card = cards[i]
-    
-    // Saltar si ya tiene color
-    if (card.inkColor) {
-      skipped++
-      continue
-    }
+  for (let i = 0; i < cardsToUpdate.length; i++) {
+    const card = cardsToUpdate[i]
 
     let color = null
 
@@ -161,7 +186,7 @@ async function main() {
 
       // Mostrar progreso cada 50 cartas
       if (updated % 50 === 0) {
-        console.log(`⏳ Procesadas ${i + 1}/${cards.length} cartas... (${updated} actualizadas)`)
+        console.log(`⏳ Procesadas ${i + 1}/${cardsToUpdate.length} cartas sin color... (${updated} actualizadas)`)
       }
     } else {
       errors++
@@ -184,9 +209,10 @@ async function main() {
   }
 
   console.log("\n✅ Proceso completado!")
-  console.log(`   📊 Total cartas: ${cards.length}`)
+  console.log(`   📊 Total cartas verificadas: ${cards.length}`)
+  console.log(`   📋 Cartas sin color procesadas: ${cardsToUpdate.length}`)
   console.log(`   ✅ Actualizadas: ${updated}`)
-  console.log(`   ⏭️  Omitidas (ya tenían color): ${skipped}`)
+  console.log(`   ⏭️  Omitidas (ya tenían color): ${cards.length - cardsToUpdate.length}`)
   console.log(`   ❌ No encontradas: ${errors}`)
 }
 
