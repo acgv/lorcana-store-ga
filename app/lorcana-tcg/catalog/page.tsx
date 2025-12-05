@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useEffect, useRef, Suspense } from "react"
+import React, { useState, useMemo, useEffect, useRef, Suspense, useDeferredValue } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -45,6 +45,10 @@ function CatalogContent() {
     search: searchParams.get("search") || "",
     productType: "card", // El catálogo solo muestra cartas
   })
+  
+  // Usar deferred value para el search para mejorar rendimiento (diferir el filtrado pesado)
+  const deferredSearch = useDeferredValue(filters.search)
+  
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "cardNumberLowHigh")
   const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
 
@@ -394,11 +398,26 @@ function CatalogContent() {
 
   const filteredCards = useMemo(() => {
     if (cards.length === 0) {
-      console.log("⚠️ No hay cartas cargadas")
       return []
     }
     
-    const filtered = cards.filter((card) => {
+    // Optimización: Filtrar primero por search (el más costoso) para reducir el dataset
+    let filtered = cards
+    
+    // Search filter primero (más restrictivo, reduce el dataset rápidamente)
+    if (deferredSearch && deferredSearch.trim()) {
+      const searchLower = deferredSearch.toLowerCase().trim()
+      // Pre-calcular valores para evitar múltiples llamadas a toLowerCase
+      filtered = filtered.filter((card) => {
+        const nameLower = card.name.toLowerCase()
+        const numberStr = card.number?.toString() || card.cardNumber || ""
+        // Usar indexOf que es más rápido que includes para strings largos
+        return nameLower.indexOf(searchLower) !== -1 || numberStr.indexOf(searchLower) !== -1
+      })
+    }
+    
+    // Aplicar otros filtros sobre el dataset ya reducido por search
+    filtered = filtered.filter((card) => {
       // Product Type filter
       if (filters.productType && filters.productType !== "all") {
         const productType = (card as any).productType || "card"
@@ -446,13 +465,6 @@ function CatalogContent() {
         if (filters.version === "foil" && !hasFoilStock) return false
       }
       
-      // Search filter
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase()
-        if (!card.name.toLowerCase().includes(searchLower) && !card.number.toString().includes(searchLower)) {
-          return false
-        }
-      }
       return true
     })
 
@@ -465,8 +477,8 @@ function CatalogContent() {
       console.log(`🔍 Filtro "Solo Foil" activo: ${foilCards.length} cartas con foilStock > 0 de ${filtered.length} cartas filtradas`)
     }
 
-    // Sort - Prioriza cartas con stock
-    filtered.sort((a, b) => {
+    // Sort - Prioriza cartas con stock (crear copia para no mutar)
+    const sorted = [...filtered].sort((a, b) => {
       // Calcular si tiene stock (normal o foil)
       const aHasStock = ((a as any).normalStock || 0) + ((a as any).foilStock || 0) > 0
       const bHasStock = ((b as any).normalStock || 0) + ((b as any).foilStock || 0) > 0
@@ -497,9 +509,8 @@ function CatalogContent() {
       }
     })
 
-    console.log(`🔍 Filtros aplicados: ${cards.length} → ${filtered.length} cartas`)
-    return filtered
-  }, [cards, filters, sortBy])
+    return sorted
+  }, [cards, deferredSearch, filters.type, filters.set, filters.rarity, filters.minPrice, filters.maxPrice, filters.version, filters.productType, sortBy])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -566,18 +577,26 @@ function CatalogContent() {
                 className="pl-12 pr-4 h-12 text-base bg-background border-2 border-primary/20 focus:border-primary/60 transition-colors" 
                 value={filters.search}
                 onChange={(e) => {
-                  setFilters({ ...filters, search: e.target.value })
-                  // Actualizar URL en tiempo real mientras escribe (con debounce)
-                  const params = new URLSearchParams(window.location.search)
-                  if (e.target.value.trim()) {
-                    params.set('search', e.target.value.trim())
-                  } else {
-                    params.delete('search')
+                  const newSearchValue = e.target.value
+                  setFilters({ ...filters, search: newSearchValue })
+                  
+                  // Debounce para actualizar URL (evitar actualizaciones excesivas)
+                  if (urlUpdateTimeoutRef.current) {
+                    clearTimeout(urlUpdateTimeoutRef.current)
                   }
-                  const newUrl = params.toString() 
-                    ? `${pathname}?${params.toString()}`
-                    : pathname || ''
-                  router.replace(newUrl, { scroll: false })
+                  
+                  urlUpdateTimeoutRef.current = setTimeout(() => {
+                    const params = new URLSearchParams(window.location.search)
+                    if (newSearchValue.trim()) {
+                      params.set('search', newSearchValue.trim())
+                    } else {
+                      params.delete('search')
+                    }
+                    const newUrl = params.toString() 
+                      ? `${pathname}?${params.toString()}`
+                      : pathname || ''
+                    router.replace(newUrl, { scroll: false })
+                  }, 300) // 300ms de debounce
                 }}
               />
             </div>
