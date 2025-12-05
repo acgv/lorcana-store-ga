@@ -1,11 +1,17 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { mockCards } from "@/lib/mock-data"
 import { supabase, supabaseAdmin } from "@/lib/db"
 import { rateLimitApi, RateLimitPresets } from "@/lib/rate-limit"
 import { calculateStandardFoilPrice, ensureFoilPriceGreater } from "@/lib/price-utils"
 
 // GET: Obtener todas las cartas y productos con su stock
-export async function GET() {
+export async function GET(request: NextRequest) {
+  try {
+    // ✅ SEGURIDAD: Rate limiting para prevenir abuso
+    const rateLimitResult = await rateLimitApi(request, RateLimitPresets.api)
+    if (!rateLimitResult.success) {
+      return rateLimitResult.response
+    }
   try {
     let dataSource = "mock"
     
@@ -149,10 +155,19 @@ export async function GET() {
 
 // POST: Actualizar stock y/o precio de una carta específica
 export async function POST(request: Request) {
-  // Rate limiting: 50 requests por minuto para operaciones admin
+  // ✅ SEGURIDAD: Rate limiting
   const rateLimitResult = await rateLimitApi(request, RateLimitPresets.admin)
   if (!rateLimitResult.success) {
     return rateLimitResult.response
+  }
+
+  // ✅ SEGURIDAD: Verificar que el usuario es admin
+  const adminCheck = await verifyAdmin(request)
+  if (!adminCheck.success) {
+    return NextResponse.json(
+      { success: false, error: adminCheck.error || 'Unauthorized' },
+      { status: adminCheck.status || 401 }
+    )
   }
 
   try {
@@ -364,6 +379,21 @@ export async function POST(request: Request) {
 
 // PATCH: Actualizar stock y/o precios en lote (múltiples cartas)
 export async function PATCH(request: Request) {
+  // ✅ SEGURIDAD: Rate limiting
+  const rateLimitResult = await rateLimitApi(request, RateLimitPresets.admin)
+  if (!rateLimitResult.success) {
+    return rateLimitResult.response
+  }
+
+  // ✅ SEGURIDAD: Verificar que el usuario es admin
+  const adminCheck = await verifyAdmin(request)
+  if (!adminCheck.success) {
+    return NextResponse.json(
+      { success: false, error: adminCheck.error || 'Unauthorized' },
+      { status: adminCheck.status || 401 }
+    )
+  }
+
   try {
     const body = await request.json()
     const { updates } = body // Array de { cardId, normalStock?, foilStock?, price?, foilPrice? }

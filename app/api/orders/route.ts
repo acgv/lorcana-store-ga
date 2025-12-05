@@ -1,8 +1,18 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/db'
+import { verifyAdmin } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // ✅ SEGURIDAD: Verificar que el usuario es admin
+    const adminCheck = await verifyAdmin(request)
+    if (!adminCheck.success) {
+      return NextResponse.json(
+        { success: false, error: adminCheck.error || 'Unauthorized' },
+        { status: adminCheck.status || 401 }
+      )
+    }
+
     if (!supabaseAdmin) {
       return NextResponse.json(
         { success: false, error: 'Supabase admin not configured' },

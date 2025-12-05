@@ -1,20 +1,34 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/db"
+import { verifySupabaseSession } from "@/lib/auth-helpers"
 
 // GET - Get user's collection (owned cards only)
 export async function GET(request: NextRequest) {
   try {
+    // ✅ SEGURIDAD: Verificar autenticación
+    const auth = await verifySupabaseSession(request)
+    if (!auth.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: auth.error || "Unauthorized",
+        },
+        { status: auth.status || 401 }
+      )
+    }
+
     const searchParams = request.nextUrl.searchParams
     const userId = searchParams.get("userId")
     const status = searchParams.get("status") // 'owned' or null (both)
 
-    if (!userId) {
+    // ✅ SEGURIDAD: Verificar que el usuario solo acceda a su propia colección
+    if (!userId || userId !== auth.userId) {
       return NextResponse.json(
         {
           success: false,
-          error: "User ID is required",
+          error: "You can only access your own collection",
         },
-        { status: 400 }
+        { status: 403 }
       )
     }
 
@@ -104,14 +118,37 @@ export async function GET(request: NextRequest) {
 // POST - Add card to user's collection
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { userId, cardId, status, version, quantity, notes } = body
-
-    if (!userId || !cardId || !status) {
+    // ✅ SEGURIDAD: Verificar autenticación
+    const auth = await verifySupabaseSession(request)
+    if (!auth.success) {
       return NextResponse.json(
         {
           success: false,
-          error: "userId, cardId, and status are required",
+          error: auth.error || "Unauthorized",
+        },
+        { status: auth.status || 401 }
+      )
+    }
+
+    const body = await request.json()
+    const { userId, cardId, status, version, quantity, notes } = body
+
+    // ✅ SEGURIDAD: Verificar que el usuario solo modifique su propia colección
+    if (!userId || userId !== auth.userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "You can only modify your own collection",
+        },
+        { status: 403 }
+      )
+    }
+
+    if (!cardId || !status) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "cardId and status are required",
         },
         { status: 400 }
       )
@@ -186,10 +223,33 @@ export async function POST(request: NextRequest) {
 // PUT - Update quantity of a card in collection
 export async function PUT(request: NextRequest) {
   try {
+    // ✅ SEGURIDAD: Verificar autenticación
+    const auth = await verifySupabaseSession(request)
+    if (!auth.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: auth.error || "Unauthorized",
+        },
+        { status: auth.status || 401 }
+      )
+    }
+
     const body = await request.json()
     const { userId, cardId, status, version, quantity } = body
 
-    if (!userId || !cardId || !status || !quantity) {
+    // ✅ SEGURIDAD: Verificar que el usuario solo modifique su propia colección
+    if (!userId || userId !== auth.userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "You can only modify your own collection",
+        },
+        { status: 403 }
+      )
+    }
+
+    if (!cardId || !status || !quantity) {
       return NextResponse.json(
         {
           success: false,
@@ -237,17 +297,40 @@ export async function PUT(request: NextRequest) {
 // DELETE - Remove card from collection
 export async function DELETE(request: NextRequest) {
   try {
+    // ✅ SEGURIDAD: Verificar autenticación
+    const auth = await verifySupabaseSession(request)
+    if (!auth.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: auth.error || "Unauthorized",
+        },
+        { status: auth.status || 401 }
+      )
+    }
+
     const searchParams = request.nextUrl.searchParams
     const userId = searchParams.get("userId")
     const cardId = searchParams.get("cardId")
     const status = searchParams.get("status")
     const version = searchParams.get("version") || "normal"
 
-    if (!userId || !cardId || !status) {
+    // ✅ SEGURIDAD: Verificar que el usuario solo modifique su propia colección
+    if (!userId || userId !== auth.userId) {
       return NextResponse.json(
         {
           success: false,
-          error: "userId, cardId, and status are required",
+          error: "You can only modify your own collection",
+        },
+        { status: 403 }
+      )
+    }
+
+    if (!cardId || !status) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "cardId and status are required",
         },
         { status: 400 }
       )
