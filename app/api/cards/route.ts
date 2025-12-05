@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
 
         // Si hay un límite, solo cargar esa cantidad (para carga inicial rápida)
         if (limit) {
+            // Primero intentar con inkColor, si falla, usar sin ella
             let query = supabase
               .from("cards")
               .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor,color")
@@ -47,7 +48,30 @@ export async function GET(request: NextRequest) {
           const { data, error } = await query
           
           if (error) {
-            console.log(`⚠ GET /api/cards - Supabase error: ${error.message}, using MOCK`)
+            // Si el error es por inkColor, intentar sin esa columna
+            if (error.message.includes('inkColor') || error.message.includes('column') || error.message.includes('does not exist')) {
+              console.log(`⚠ GET /api/cards - Error con inkColor, intentando sin ella: ${error.message}`)
+              let fallbackQuery = supabase
+                .from("cards")
+                .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description")
+                .eq("status", filters.status)
+                .limit(limit)
+              
+              if (filters.type) fallbackQuery = fallbackQuery.eq("type", filters.type)
+              if (filters.set) fallbackQuery = fallbackQuery.eq("set", filters.set)
+              if (filters.rarity) fallbackQuery = fallbackQuery.eq("rarity", filters.rarity)
+              if (filters.language) fallbackQuery = fallbackQuery.eq("language", filters.language)
+              
+              const { data: fallbackData, error: fallbackError } = await fallbackQuery
+              if (fallbackError) {
+                console.log(`⚠ GET /api/cards - Supabase error: ${fallbackError.message}, using MOCK`)
+              } else if (fallbackData) {
+                allCards = fallbackData
+                console.log(`📊 Cards loaded (limited, without inkColor): ${allCards.length} cards`)
+              }
+            } else {
+              console.log(`⚠ GET /api/cards - Supabase error: ${error.message}, using MOCK`)
+            }
           } else if (data) {
             allCards = data
             console.log(`📊 Cards loaded (limited): ${allCards.length} cards`)
@@ -60,6 +84,7 @@ export async function GET(request: NextRequest) {
             const to = from + pageSize - 1
             
             // Solo seleccionar campos necesarios para mejorar rendimiento
+            // Primero intentar con inkColor, si falla, usar sin ella
             let query = supabase
               .from("cards")
               .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor,color")
@@ -74,8 +99,36 @@ export async function GET(request: NextRequest) {
             const { data, error } = await query
             
             if (error) {
-              console.log(`⚠ GET /api/cards - Supabase error: ${error.message}, using MOCK`)
-              break
+              // Si el error es por inkColor, intentar sin esa columna
+              if (error.message.includes('inkColor') || error.message.includes('column') || error.message.includes('does not exist')) {
+                console.log(`⚠ GET /api/cards - Error con inkColor en página ${page + 1}, intentando sin ella: ${error.message}`)
+                let fallbackQuery = supabase
+                  .from("cards")
+                  .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description")
+                  .eq("status", filters.status)
+                  .range(from, to)
+                
+                if (filters.type) fallbackQuery = fallbackQuery.eq("type", filters.type)
+                if (filters.set) fallbackQuery = fallbackQuery.eq("set", filters.set)
+                if (filters.rarity) fallbackQuery = fallbackQuery.eq("rarity", filters.rarity)
+                if (filters.language) fallbackQuery = fallbackQuery.eq("language", filters.language)
+                
+                const { data: fallbackData, error: fallbackError } = await fallbackQuery
+                if (fallbackError) {
+                  console.log(`⚠ GET /api/cards - Supabase error: ${fallbackError.message}, using MOCK`)
+                  break
+                }
+                
+                if (fallbackData && fallbackData.length > 0) {
+                  allCards = [...allCards, ...fallbackData]
+                  console.log(`📊 Cards pagination - Page ${page + 1}: loaded ${fallbackData.length} cards (without inkColor), total so far: ${allCards.length}`)
+                } else {
+                  hasMore = false
+                }
+              } else {
+                console.log(`⚠ GET /api/cards - Supabase error: ${error.message}, using MOCK`)
+                break
+              }
             }
             
             if (data && data.length > 0) {

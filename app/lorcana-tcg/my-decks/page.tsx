@@ -107,8 +107,10 @@ function DeckBuilder() {
           return
         }
 
-        // Cargar información de las cartas desde la API
-        const response = await fetch(`/api/cards`)
+        // Cargar información de las cartas desde la API (sin caché para obtener datos actualizados)
+        const response = await fetch(`/api/cards?t=${Date.now()}`, {
+          cache: 'no-store'
+        })
         const data = await response.json()
         
         if (data.success && data.data) {
