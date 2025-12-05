@@ -8,8 +8,9 @@ import { CardGrid } from "@/components/card-grid"
 import { CardFilters } from "@/components/card-filters"
 import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { SlidersHorizontal } from "lucide-react"
+import { SlidersHorizontal, Search } from "lucide-react"
 
 function ProductsContent() {
   const { t } = useLanguage()
@@ -379,6 +380,43 @@ function ProductsContent() {
           <p className="text-muted-foreground mt-2">
             {t("productsSubtitle")}
           </p>
+        </div>
+
+        {/* Search prominente */}
+        <div className="mb-6">
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault()
+              const params = new URLSearchParams(window.location.search)
+              params.set('search', filters.search.trim())
+              router.push(`${pathname}?${params.toString()}`)
+            }}
+            className="w-full max-w-2xl mx-auto"
+          >
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <Input 
+                type="search" 
+                placeholder={t("search") || "Buscar productos por nombre..."} 
+                className="pl-12 pr-4 h-12 text-base bg-background border-2 border-primary/20 focus:border-primary/60 transition-colors" 
+                value={filters.search}
+                onChange={(e) => {
+                  setFilters({ ...filters, search: e.target.value })
+                  // Actualizar URL en tiempo real mientras escribe (con debounce)
+                  const params = new URLSearchParams(window.location.search)
+                  if (e.target.value.trim()) {
+                    params.set('search', e.target.value.trim())
+                  } else {
+                    params.delete('search')
+                  }
+                  const newUrl = params.toString() 
+                    ? `${pathname}?${params.toString()}`
+                    : pathname || ''
+                  router.replace(newUrl, { scroll: false })
+                }}
+              />
+            </div>
+          </form>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">

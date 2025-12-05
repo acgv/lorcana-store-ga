@@ -71,8 +71,7 @@ export function Header() {
     }
   }, [pathname])
 
-  // Determinar si mostrar el search (solo en catalog y products)
-  const showSearch = pathname?.includes('/lorcana-tcg/catalog') || pathname?.includes('/lorcana-tcg/products')
+  // El search ya no se muestra en el header, se muestra en cada sección
 
   return (
     <>
@@ -269,23 +268,6 @@ export function Header() {
             </SheetContent>
           </Sheet>
 
-          {/* Search solo visible en catalog y products */}
-          {showSearch && (
-            <form onSubmit={handleSearch} className="hidden lg:block w-64">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input 
-                  type="search" 
-                  placeholder={pathname?.includes('/lorcana-tcg/catalog') 
-                    ? (t("search") || "Buscar cartas...") 
-                    : (t("search") || "Buscar productos...")} 
-                  className="pl-9 bg-muted/50 border-border/50" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </form>
-          )}
           <ThemeToggle />
           <LanguageSelector />
           

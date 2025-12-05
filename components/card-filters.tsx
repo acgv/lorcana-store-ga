@@ -57,16 +57,7 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
         </h3>
       </div>
 
-      {/* Search */}
-      <div className="space-y-3">
-        <Label className="text-sm font-semibold text-foreground/90">{t("search")}</Label>
-        <Input
-          placeholder={t("search")}
-          value={filters.search}
-          onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-          className="bg-background/50 border-primary/30 focus:border-primary/60 transition-colors"
-        />
-      </div>
+      {/* Search - Oculto porque ahora está más prominente arriba en cada página */}
 
       {/* Product Type - Solo mostrar si no está forzado a "card" */}
       {filters.productType !== "card" && (
