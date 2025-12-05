@@ -201,7 +201,14 @@ function DeckBuilder() {
         })
         .filter(color => color && color !== "" && color !== "null")
     )
-    return Array.from(colors).sort()
+    const sortedColors = Array.from(colors).sort()
+    console.log("🎨 Available colors:", sortedColors, "from", availableCards.length, "cards")
+    console.log("🎨 Sample cards with colors:", availableCards.slice(0, 5).map(c => ({
+      name: c.name,
+      inkColor: (c as any).inkColor,
+      color: (c as any).color
+    })))
+    return sortedColors
   }, [availableCards])
 
   // Validar mazo
@@ -433,16 +440,20 @@ function DeckBuilder() {
                   <Select
                     value={selectedColor}
                     onValueChange={setSelectedColor}
-                    disabled={availableColors.length === 0 || loadingCards}
+                    disabled={loadingCards}
                   >
                     <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
-                      <SelectValue placeholder="Todos los colores" />
+                      <SelectValue placeholder={availableColors.length > 0 ? "Todos los colores" : "Sin colores disponibles"} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos los colores</SelectItem>
-                      {availableColors.length > 0 && availableColors.map(color => (
-                        <SelectItem key={color} value={color}>{color}</SelectItem>
-                      ))}
+                      {availableColors.length > 0 ? (
+                        availableColors.map(color => (
+                          <SelectItem key={color} value={color}>{color}</SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="all" disabled>No hay colores disponibles</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
