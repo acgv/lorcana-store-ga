@@ -11,6 +11,8 @@
     "db:seed": "node scripts/seed-supabase.mjs",
     "db:update-colors": "node scripts/update-ink-colors.mjs",
     "db:verify-colors": "node scripts/verify-ink-colors.mjs",
+    "db:verify-stock": "node scripts/verify-stock.mjs",
+    "db:search-stock": "node scripts/search-stock-in-db.mjs",
     "db:setup": "echo Run this SQL in Supabase SQL editor: scripts/supabase-schema.sql",
     "verify:setup": "node docs/security/verify-setup.mjs"
   },

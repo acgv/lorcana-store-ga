@@ -192,11 +192,16 @@ async function main() {
 
 async function updateBatch(updates) {
   // Actualizar una por una para evitar problemas con campos requeridos
+  // IMPORTANTE: Solo actualizar inkColor, NO tocar stock ni precios
   let successCount = 0
   for (const update of updates) {
+    // Usar update con solo inkColor para asegurar que no se toquen otros campos
     const { error } = await supabase
       .from("cards")
-      .update({ inkColor: update.inkColor })
+      .update({ 
+        inkColor: update.inkColor,
+        // NO incluir stock ni precios - solo actualizar inkColor
+      })
       .eq("id", update.id)
 
     if (error) {

@@ -66,15 +66,29 @@ export async function GET(request: NextRequest) {
               if (fallbackError) {
                 console.log(`⚠ GET /api/cards - Supabase error: ${fallbackError.message}, using MOCK`)
               } else if (fallbackData) {
-                allCards = fallbackData
+                // Asegurar que normalStock y foilStock sean números
+                allCards = fallbackData.map(card => ({
+                  ...card,
+                  normalStock: card.normalStock ?? 0,
+                  foilStock: card.foilStock ?? 0
+                }))
+                const cardsWithStock = allCards.filter(c => (c.normalStock && c.normalStock > 0) || (c.foilStock && c.foilStock > 0))
                 console.log(`📊 Cards loaded (limited, without inkColor): ${allCards.length} cards`)
+                console.log(`   📦 Cartas con stock: ${cardsWithStock.length}`)
               }
             } else {
               console.log(`⚠ GET /api/cards - Supabase error: ${error.message}, using MOCK`)
             }
           } else if (data) {
-            allCards = data
+            // Asegurar que normalStock y foilStock sean números
+            allCards = data.map(card => ({
+              ...card,
+              normalStock: card.normalStock ?? 0,
+              foilStock: card.foilStock ?? 0
+            }))
+            const cardsWithStock = allCards.filter(c => (c.normalStock && c.normalStock > 0) || (c.foilStock && c.foilStock > 0))
             console.log(`📊 Cards loaded (limited): ${allCards.length} cards`)
+            console.log(`   📦 Cartas con stock: ${cardsWithStock.length}`)
           }
         } else {
           // Obtener todas las cartas usando paginación (solo si no hay límite)
@@ -120,7 +134,13 @@ export async function GET(request: NextRequest) {
                 }
                 
                 if (fallbackData && fallbackData.length > 0) {
-                  allCards = [...allCards, ...fallbackData]
+                  // Asegurar que normalStock y foilStock sean números
+                  const normalizedData = fallbackData.map(card => ({
+                    ...card,
+                    normalStock: card.normalStock ?? 0,
+                    foilStock: card.foilStock ?? 0
+                  }))
+                  allCards = [...allCards, ...normalizedData]
                   console.log(`📊 Cards pagination - Page ${page + 1}: loaded ${fallbackData.length} cards (without inkColor), total so far: ${allCards.length}`)
                 } else {
                   hasMore = false
@@ -132,7 +152,13 @@ export async function GET(request: NextRequest) {
             }
             
             if (data && data.length > 0) {
-              allCards = [...allCards, ...data]
+              // Asegurar que normalStock y foilStock sean números
+              const normalizedData = data.map(card => ({
+                ...card,
+                normalStock: card.normalStock ?? 0,
+                foilStock: card.foilStock ?? 0
+              }))
+              allCards = [...allCards, ...normalizedData]
               console.log(`📊 Cards pagination - Page ${page + 1}: loaded ${data.length} cards, total so far: ${allCards.length}`)
             }
             
@@ -159,9 +185,18 @@ export async function GET(request: NextRequest) {
         }
 
         if (allCards.length > 0) {
-          cards = allCards as unknown as Card[]
+          // Asegurar que normalStock y foilStock sean números, no null
+          cards = allCards.map(card => ({
+            ...card,
+            normalStock: card.normalStock ?? 0,
+            foilStock: card.foilStock ?? 0
+          })) as unknown as Card[]
           dataSource = "supabase"
+          
+          // Debug: verificar stock en las primeras cartas
+          const cardsWithStock = cards.filter(c => (c.normalStock && c.normalStock > 0) || (c.foilStock && c.foilStock > 0))
           console.log(`✓ GET /api/cards - Using SUPABASE (${cards.length} cards from ${page} pages)`)
+          console.log(`   📦 Cartas con stock: ${cardsWithStock.length} de ${cards.length}`)
         } else {
           console.log("⚠ GET /api/cards - Supabase returned empty, using MOCK")
         }
