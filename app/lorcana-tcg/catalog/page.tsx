@@ -47,8 +47,11 @@ function CatalogContent() {
     productType: "card", // El catálogo solo muestra cartas
   })
   
-  // Usar deferred value para el search para mejorar rendimiento (diferir el filtrado pesado)
-  const deferredSearch = useDeferredValue(filters.search)
+  // Estado local para el input de búsqueda (actualización inmediata)
+  const [searchInput, setSearchInput] = useState(filters.search)
+  
+  // Usar deferred value solo para el filtrado (no para el input)
+  const deferredSearch = useDeferredValue(searchInput)
   
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "cardNumberLowHigh")
   const [viewMode, setViewMode] = useState<"grid" | "list">((searchParams.get("viewMode") as "grid" | "list") || "grid")
@@ -316,11 +319,12 @@ function CatalogContent() {
   // Ref para almacenar el timeout y poder cancelarlo
   const urlUpdateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
   
-  // Sincronizar filtros con la URL cuando cambie (por ejemplo, cuando se busca desde el header)
+  // Sincronizar filtros y searchInput con la URL cuando cambie (por ejemplo, cuando se busca desde el header)
   useEffect(() => {
     const searchParam = searchParams.get("search") || ""
     if (searchParam !== filters.search) {
       setFilters(prev => ({ ...prev, search: searchParam }))
+      setSearchInput(searchParam) // Sincronizar también el input
     }
   }, [searchParams, filters.search])
   
@@ -616,7 +620,7 @@ function CatalogContent() {
             onSubmit={(e) => {
               e.preventDefault()
               const params = new URLSearchParams(window.location.search)
-              params.set('search', filters.search.trim())
+              params.set('search', searchInput.trim())
               router.push(`${pathname}?${params.toString()}`)
             }}
             className="w-full max-w-2xl mx-auto"
@@ -627,9 +631,13 @@ function CatalogContent() {
                 type="search" 
                 placeholder={t("search") || "Buscar cartas por nombre o número..."} 
                 className="pl-12 pr-4 h-12 text-base bg-background border-2 border-primary/20 focus:border-primary/60 transition-colors" 
-                value={filters.search}
+                value={searchInput}
                 onChange={(e) => {
                   const newSearchValue = e.target.value
+                  // Actualizar el input inmediatamente (sin lag)
+                  setSearchInput(newSearchValue)
+                  
+                  // Actualizar filters también para mantener sincronización
                   setFilters({ ...filters, search: newSearchValue })
                   
                   // Debounce para actualizar URL (evitar actualizaciones excesivas)
