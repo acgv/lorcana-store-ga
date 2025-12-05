@@ -9,6 +9,7 @@
     "start": "next start",
     "import:cards": "node scripts/import-lorcana-data.js",
     "db:seed": "node scripts/seed-supabase.mjs",
+    "db:update-colors": "node scripts/update-ink-colors.mjs",
     "db:setup": "echo Run this SQL in Supabase SQL editor: scripts/supabase-schema.sql",
     "verify:setup": "node docs/security/verify-setup.mjs"
   },

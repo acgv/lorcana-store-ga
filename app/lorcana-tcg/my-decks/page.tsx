@@ -170,8 +170,9 @@ function DeckBuilder() {
 
     if (selectedColor !== "all") {
       filtered = filtered.filter(card => {
-        const cardColor = (card as any).inkColor || (card as any).color || ""
-        return cardColor.toLowerCase() === selectedColor.toLowerCase()
+        const cardColor = (card as any).inkColor || (card as any).color
+        if (!cardColor) return false
+        return String(cardColor).toLowerCase().trim() === selectedColor.toLowerCase().trim()
       })
     }
 
@@ -194,8 +195,11 @@ function DeckBuilder() {
   const availableColors = useMemo(() => {
     const colors = new Set(
       availableCards
-        .map(card => (card as any).inkColor || (card as any).color)
-        .filter(color => color && color.trim() !== "")
+        .map(card => {
+          const color = (card as any).inkColor || (card as any).color
+          return color ? String(color).trim() : null
+        })
+        .filter(color => color && color !== "" && color !== "null")
     )
     return Array.from(colors).sort()
   }, [availableCards])

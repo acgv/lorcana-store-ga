@@ -127,6 +127,8 @@ function transformCard(lorcanaCard) {
     version: 'normal',
     language: 'en',
     status: 'approved',
+    // Color de tinta de la carta (Amber, Ruby, Emerald, Sapphire, Steel, Amethyst)
+    inkColor: lorcanaCard.Color || null,
     // Stock inicial en 0 para nuevas cartas
     stock: 0,
     normalStock: 0,
