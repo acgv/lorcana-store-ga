@@ -12,7 +12,6 @@ export async function GET(request: NextRequest) {
     if (!rateLimitResult.success) {
       return rateLimitResult.response
     }
-  try {
     let dataSource = "mock"
     
     // Intentar desde Supabase primero si hay configuración
@@ -154,7 +153,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST: Actualizar stock y/o precio de una carta específica
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   // ✅ SEGURIDAD: Rate limiting
   const rateLimitResult = await rateLimitApi(request, RateLimitPresets.admin)
   if (!rateLimitResult.success) {
@@ -378,7 +377,7 @@ export async function POST(request: Request) {
 }
 
 // PATCH: Actualizar stock y/o precios en lote (múltiples cartas)
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   // ✅ SEGURIDAD: Rate limiting
   const rateLimitResult = await rateLimitApi(request, RateLimitPresets.admin)
   if (!rateLimitResult.success) {
