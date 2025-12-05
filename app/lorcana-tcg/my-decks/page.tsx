@@ -88,10 +88,17 @@ function DeckBuilder() {
       
       setLoadingCards(true)
       try {
-        // Obtener IDs de cartas en la colección
-        const collectionCardIds = collection.map(item => item.card_id)
+        // Obtener IDs de cartas en la colección (normalizar para comparación)
+        const collectionCardIds = collection.map(item => {
+          const id = item.card_id || ""
+          // Normalizar: convertir a string y lowercase para comparación
+          return id.toString().toLowerCase().trim()
+        }).filter(id => id.length > 0)
+        
+        console.log("🔍 Collection card IDs:", collectionCardIds.slice(0, 10), `(${collectionCardIds.length} total)`)
         
         if (collectionCardIds.length === 0) {
+          console.log("⚠️ No hay cartas en la colección")
           setAvailableCards([])
           setLoadingCards(false)
           return
@@ -102,14 +109,29 @@ function DeckBuilder() {
         const data = await response.json()
         
         if (data.success && data.data) {
+          console.log("📦 Cards loaded from API:", data.data.length)
+          
           // Filtrar solo las cartas que están en la colección
-          const cards = data.data.filter((card: CardType) => 
-            collectionCardIds.includes(card.id)
-          )
+          // Normalizar IDs para comparación
+          const cards = data.data.filter((card: CardType) => {
+            const cardId = card.id?.toString().toLowerCase().trim() || ""
+            const matches = collectionCardIds.includes(cardId)
+            return matches
+          })
+          
+          console.log("✅ Matching cards found:", cards.length, "out of", collectionCardIds.length, "collection items")
+          
+          if (cards.length === 0 && collectionCardIds.length > 0) {
+            console.warn("⚠️ No se encontraron coincidencias. Sample collection IDs:", collectionCardIds.slice(0, 5))
+            console.warn("⚠️ Sample card IDs from API:", data.data.slice(0, 5).map((c: CardType) => c.id))
+          }
+          
           setAvailableCards(cards)
+        } else {
+          console.error("❌ API response error:", data)
         }
       } catch (error) {
-        console.error("Error loading cards:", error)
+        console.error("❌ Error loading cards:", error)
         toast({
           title: "Error",
           description: "No se pudieron cargar las cartas",
@@ -347,21 +369,31 @@ function DeckBuilder() {
                   value={selectedSet}
                   onChange={(e) => setSelectedSet(e.target.value)}
                   className="px-3 py-2 text-sm border rounded-md bg-background"
+                  disabled={availableSets.length === 0}
                 >
                   <option value="all">Todos los sets</option>
-                  {availableSets.map(set => (
-                    <option key={set} value={set}>{set}</option>
-                  ))}
+                  {availableSets.length > 0 ? (
+                    availableSets.map(set => (
+                      <option key={set} value={set}>{set}</option>
+                    ))
+                  ) : (
+                    <option disabled>No hay sets disponibles</option>
+                  )}
                 </select>
                 <select
                   value={selectedType}
                   onChange={(e) => setSelectedType(e.target.value)}
                   className="px-3 py-2 text-sm border rounded-md bg-background"
+                  disabled={availableTypes.length === 0}
                 >
                   <option value="all">Todos los tipos</option>
-                  {availableTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
+                  {availableTypes.length > 0 ? (
+                    availableTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))
+                  ) : (
+                    <option disabled>No hay tipos disponibles</option>
+                  )}
                 </select>
               </div>
             </div>
@@ -371,11 +403,32 @@ function DeckBuilder() {
               <div className="text-center py-8 text-muted-foreground">
                 Cargando cartas...
               </div>
+            ) : collection.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground space-y-2">
+                <p>No tienes cartas en tu colección.</p>
+                <Link href="/lorcana-tcg/my-collection">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    Ir a Mi Colección
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            ) : availableCards.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground space-y-2">
+                <p>No se pudieron cargar las cartas de tu colección.</p>
+                <p className="text-xs">Tienes {collection.length} cartas en tu colección, pero no se encontraron coincidencias.</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => window.location.reload()}
+                  className="gap-2"
+                >
+                  Recargar
+                </Button>
+              </div>
             ) : filteredCards.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                {availableCards.length === 0 
-                  ? "No tienes cartas en tu colección. Agrega cartas primero."
-                  : "No se encontraron cartas con esos filtros."}
+                No se encontraron cartas con esos filtros.
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[600px] overflow-y-auto">
