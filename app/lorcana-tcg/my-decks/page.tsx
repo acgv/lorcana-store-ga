@@ -116,6 +116,21 @@ function DeckBuilder() {
         if (data.success && data.data) {
           console.log("📦 Cards loaded from API:", data.data.length)
           
+          // Debug: Verificar si la API devolvió inkColor en alguna carta
+          const apiCardsWithColor = data.data.filter((c: any) => c.inkColor || c.color)
+          console.log("🎨 API cards with color:", apiCardsWithColor.length, "out of", data.data.length, "total API cards")
+          if (data.data.length > 0) {
+            console.log("🎨 Sample API card (first):", {
+              id: data.data[0].id,
+              name: data.data[0].name,
+              inkColor: data.data[0].inkColor,
+              color: data.data[0].color,
+              hasInkColor: 'inkColor' in data.data[0],
+              hasColor: 'color' in data.data[0],
+              allKeys: Object.keys(data.data[0])
+            })
+          }
+          
           // Filtrar solo las cartas que están en la colección
           // Normalizar IDs para comparación
           const cards = data.data.filter((card: CardType) => {
@@ -126,16 +141,17 @@ function DeckBuilder() {
           
           console.log("✅ Matching cards found:", cards.length, "out of", collectionCardIds.length, "collection items")
           
-          // Debug: Verificar si las cartas tienen inkColor
+          // Debug: Verificar si las cartas tienen inkColor DESPUÉS del filtro
           const cardsWithColor = cards.filter((c: CardType) => (c as any).inkColor || (c as any).color)
-          console.log("🎨 Cards with color:", cardsWithColor.length, "out of", cards.length)
+          console.log("🎨 Cards with color (after filter):", cardsWithColor.length, "out of", cards.length)
           if (cards.length > 0) {
-            console.log("🎨 Sample card colors:", cards.slice(0, 5).map((c: CardType) => ({
+            console.log("🎨 Sample card colors (after filter):", cards.slice(0, 5).map((c: CardType) => ({
               id: c.id,
               name: c.name,
               inkColor: (c as any).inkColor,
               color: (c as any).color,
-              hasColor: !!(c as any).inkColor || !!(c as any).color
+              hasColor: !!(c as any).inkColor || !!(c as any).color,
+              allKeys: Object.keys(c as any)
             })))
           }
           
@@ -208,21 +224,43 @@ function DeckBuilder() {
 
   // Obtener colores únicos
   const availableColors = useMemo(() => {
+    console.log("🔍 Calculating availableColors from", availableCards.length, "cards")
+    
+    // Debug: ver todas las cartas y sus colores
+    const cardsWithColorData = availableCards.map(card => ({
+      id: card.id,
+      name: card.name,
+      inkColor: (card as any).inkColor,
+      color: (card as any).color,
+      hasInkColor: !!(card as any).inkColor,
+      hasColor: !!(card as any).color,
+      inkColorType: typeof (card as any).inkColor,
+      colorType: typeof (card as any).color
+    }))
+    
+    console.log("🎨 All cards color data (first 10):", cardsWithColorData.slice(0, 10))
+    
     const colors = new Set(
       availableCards
         .map(card => {
           const color = (card as any).inkColor || (card as any).color
-          return color ? String(color).trim() : null
+          const trimmed = color ? String(color).trim() : null
+          if (trimmed && trimmed !== "" && trimmed !== "null") {
+            return trimmed
+          }
+          return null
         })
-        .filter(color => color && color !== "" && color !== "null")
+        .filter(color => color !== null)
     )
+    
     const sortedColors = Array.from(colors).sort()
-    console.log("🎨 Available colors:", sortedColors, "from", availableCards.length, "cards")
-    console.log("🎨 Sample cards with colors:", availableCards.slice(0, 5).map(c => ({
-      name: c.name,
-      inkColor: (c as any).inkColor,
-      color: (c as any).color
-    })))
+    console.log("🎨 Available colors found:", sortedColors, "from", availableCards.length, "cards")
+    console.log("🎨 Cards with color:", availableCards.filter(c => (c as any).inkColor || (c as any).color).length)
+    
+    if (sortedColors.length === 0 && availableCards.length > 0) {
+      console.warn("⚠️ No colors found! Sample card data:", availableCards[0])
+    }
+    
     return sortedColors
   }, [availableCards])
 

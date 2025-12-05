@@ -141,13 +141,16 @@ export async function GET(request: NextRequest) {
                 
                 if (fallbackData && fallbackData.length > 0) {
                   // Asegurar que normalStock y foilStock sean números
+                  // Nota: fallbackData no incluye inkColor porque la columna no existe o falló
                   const normalizedData = fallbackData.map(card => ({
                     ...card,
                     normalStock: card.normalStock ?? 0,
-                    foilStock: card.foilStock ?? 0
+                    foilStock: card.foilStock ?? 0,
+                    inkColor: null, // Explícitamente null cuando no se puede obtener
+                    color: null
                   }))
                   allCards = [...allCards, ...normalizedData]
-                  console.log(`📊 Cards pagination - Page ${page + 1}: loaded ${fallbackData.length} cards (without inkColor), total so far: ${allCards.length}`)
+                  console.log(`📊 Cards pagination - Page ${page + 1}: loaded ${fallbackData.length} cards (without inkColor - column may not exist), total so far: ${allCards.length}`)
                 } else {
                   hasMore = false
                 }
@@ -158,14 +161,44 @@ export async function GET(request: NextRequest) {
             }
             
             if (data && data.length > 0) {
+              // Debug: verificar si inkColor viene en la respuesta de Supabase
+              const sampleCard = data[0]
+              const hasInkColorInResponse = 'inkColor' in sampleCard
+              const hasColorInResponse = 'color' in sampleCard
+              
+              if (page === 0) {
+                console.log(`🔍 Page 1 - Sample card keys:`, Object.keys(sampleCard))
+                console.log(`🔍 Page 1 - Has inkColor in response:`, hasInkColorInResponse, sampleCard.inkColor)
+                console.log(`🔍 Page 1 - Has color in response:`, hasColorInResponse, sampleCard.color)
+              }
+              
               // Asegurar que normalStock y foilStock sean números, e incluir inkColor si existe
               const normalizedData = data.map(card => ({
                 ...card,
                 normalStock: card.normalStock ?? 0,
                 foilStock: card.foilStock ?? 0,
-                inkColor: card.inkColor || null,
-                color: card.color || null
+                // Preservar inkColor y color tal como vienen de Supabase
+                inkColor: card.inkColor !== undefined ? card.inkColor : null,
+                color: card.color !== undefined ? card.color : null
               }))
+              
+              // Debug: verificar si inkColor está presente después de normalizar
+              const cardsWithColor = normalizedData.filter(c => c.inkColor || c.color)
+              if (page === 0) {
+                console.log(`🎨 First page: ${cardsWithColor.length} cards with color out of ${normalizedData.length}`)
+                if (cardsWithColor.length > 0) {
+                  console.log(`🎨 Sample colors:`, cardsWithColor.slice(0, 3).map(c => ({ name: c.name, inkColor: c.inkColor, color: c.color })))
+                } else {
+                  console.warn(`⚠️ No cards with color found in first page! Sample card:`, {
+                    id: normalizedData[0].id,
+                    name: normalizedData[0].name,
+                    hasInkColor: 'inkColor' in normalizedData[0],
+                    inkColorValue: normalizedData[0].inkColor,
+                    allKeys: Object.keys(normalizedData[0])
+                  })
+                }
+              }
+              
               allCards = [...allCards, ...normalizedData]
               console.log(`📊 Cards pagination - Page ${page + 1}: loaded ${data.length} cards, total so far: ${allCards.length}`)
             }
