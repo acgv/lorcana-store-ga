@@ -124,6 +124,19 @@ function DeckBuilder() {
           
           console.log("✅ Matching cards found:", cards.length, "out of", collectionCardIds.length, "collection items")
           
+          // Debug: Verificar si las cartas tienen inkColor
+          const cardsWithColor = cards.filter((c: CardType) => (c as any).inkColor || (c as any).color)
+          console.log("🎨 Cards with color:", cardsWithColor.length, "out of", cards.length)
+          if (cards.length > 0) {
+            console.log("🎨 Sample card colors:", cards.slice(0, 5).map((c: CardType) => ({
+              id: c.id,
+              name: c.name,
+              inkColor: (c as any).inkColor,
+              color: (c as any).color,
+              hasColor: !!(c as any).inkColor || !!(c as any).color
+            })))
+          }
+          
           if (cards.length === 0 && collectionCardIds.length > 0) {
             console.warn("⚠️ No se encontraron coincidencias. Sample collection IDs:", collectionCardIds.slice(0, 5))
             console.warn("⚠️ Sample card IDs from API:", data.data.slice(0, 5).map((c: CardType) => c.id))
