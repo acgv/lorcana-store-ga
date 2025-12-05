@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const source = (searchParams.get("source") || "auto").toLowerCase()
+    const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : undefined
     const filters = {
       status: searchParams.get("status") || "approved",
       type: searchParams.get("type") || undefined,
@@ -30,54 +31,77 @@ export async function GET(request: NextRequest) {
         const pageSize = 1000
         let hasMore = true
 
-        // Obtener todas las cartas usando paginación
-        // Continuar hasta obtener menos de pageSize items (más robusto que depender del count)
-        while (hasMore) {
-          const from = page * pageSize
-          const to = from + pageSize - 1
-          
-          // Solo seleccionar campos necesarios para mejorar rendimiento
+        // Si hay un límite, solo cargar esa cantidad (para carga inicial rápida)
+        if (limit) {
           let query = supabase
             .from("cards")
             .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description")
             .eq("status", filters.status)
-            .range(from, to)
-
+            .limit(limit)
+          
           if (filters.type) query = query.eq("type", filters.type)
           if (filters.set) query = query.eq("set", filters.set)
           if (filters.rarity) query = query.eq("rarity", filters.rarity)
           if (filters.language) query = query.eq("language", filters.language)
-
+          
           const { data, error } = await query
           
           if (error) {
             console.log(`⚠ GET /api/cards - Supabase error: ${error.message}, using MOCK`)
-            break
+          } else if (data) {
+            allCards = data
+            console.log(`📊 Cards loaded (limited): ${allCards.length} cards`)
           }
-          
-          if (data && data.length > 0) {
-            allCards = [...allCards, ...data]
-            console.log(`📊 Cards pagination - Page ${page + 1}: loaded ${data.length} cards, total so far: ${allCards.length}`)
-          }
-          
-          // Continuar si obtuvimos exactamente pageSize items (probablemente hay más)
-          // Detener si obtuvimos menos (última página) o si no hay datos
-          hasMore = data && data.length === pageSize
-          
-          if (!hasMore) {
-            if (data && data.length > 0) {
-              console.log(`✅ Cards pagination complete: loaded ${allCards.length} cards (last page had ${data.length} items)`)
-            } else {
-              console.log(`✅ Cards pagination complete: loaded ${allCards.length} cards (no more data)`)
+        } else {
+          // Obtener todas las cartas usando paginación (solo si no hay límite)
+          // Continuar hasta obtener menos de pageSize items (más robusto que depender del count)
+          while (hasMore) {
+            const from = page * pageSize
+            const to = from + pageSize - 1
+            
+            // Solo seleccionar campos necesarios para mejorar rendimiento
+            let query = supabase
+              .from("cards")
+              .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description")
+              .eq("status", filters.status)
+              .range(from, to)
+
+            if (filters.type) query = query.eq("type", filters.type)
+            if (filters.set) query = query.eq("set", filters.set)
+            if (filters.rarity) query = query.eq("rarity", filters.rarity)
+            if (filters.language) query = query.eq("language", filters.language)
+
+            const { data, error } = await query
+            
+            if (error) {
+              console.log(`⚠ GET /api/cards - Supabase error: ${error.message}, using MOCK`)
+              break
             }
-          }
-          
-          page++
-          
-          // Safety limit: no más de 50 páginas (50,000 cartas máximo)
-          if (page >= 50) {
-            console.log(`⚠️ Reached safety limit of 50 pages (50,000 cards). Loaded ${allCards.length} cards.`)
-            break
+            
+            if (data && data.length > 0) {
+              allCards = [...allCards, ...data]
+              console.log(`📊 Cards pagination - Page ${page + 1}: loaded ${data.length} cards, total so far: ${allCards.length}`)
+            }
+            
+            // Continuar si obtuvimos exactamente pageSize items (probablemente hay más)
+            // Detener si obtuvimos menos (última página) o si no hay datos
+            hasMore = data && data.length === pageSize
+            
+            if (!hasMore) {
+              if (data && data.length > 0) {
+                console.log(`✅ Cards pagination complete: loaded ${allCards.length} cards (last page had ${data.length} items)`)
+              } else {
+                console.log(`✅ Cards pagination complete: loaded ${allCards.length} cards (no more data)`)
+              }
+            }
+            
+            page++
+            
+            // Safety limit: no más de 50 páginas (50,000 cartas máximo)
+            if (page >= 50) {
+              console.log(`⚠️ Reached safety limit of 50 pages (50,000 cards). Loaded ${allCards.length} cards.`)
+              break
+            }
           }
         }
 

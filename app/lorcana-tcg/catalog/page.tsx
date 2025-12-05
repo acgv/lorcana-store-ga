@@ -26,6 +26,7 @@ function CatalogContent() {
   const [allCards, setAllCards] = useState<any[]>([]) // Todas las cartas para filtrado
   const [loading, setLoading] = useState(true)
   const [initialLoad, setInitialLoad] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   
   // Flag para indicar si el usuario está navegando activamente
   const isNavigatingRef = useRef(false)
@@ -72,7 +73,7 @@ function CatalogContent() {
       // Verificar caché primero
       const cacheKey = "lorcana_cards_cache"
       const cacheTimestamp = "lorcana_cards_cache_timestamp"
-      const CACHE_DURATION = 5 * 60 * 1000 // 5 minutos
+      const CACHE_DURATION = 30 * 60 * 1000 // 30 minutos (aumentado para mejor rendimiento)
       
       try {
         const cached = localStorage.getItem(cacheKey)
@@ -118,18 +119,22 @@ function CatalogContent() {
         // Crear AbortController para cancelar la petición si el componente se desmonta
         abortController = new AbortController()
         
-        // Cargar desde API de forma asíncrona (no bloquea navegación)
-        const response = await fetch(`/api/cards`, {
+        // ESTRATEGIA: Cargar primero solo las primeras cartas para mostrar contenido rápido
+        // Luego cargar el resto en background
+        
+        // Paso 1: Cargar primeras 200 cartas rápidamente
+        const INITIAL_BATCH_SIZE = 200
+        const response = await fetch(`/api/cards?limit=${INITIAL_BATCH_SIZE}`, {
           signal: abortController.signal,
         })
         
-        if (!isMounted) return // Si el componente se desmontó, no actualizar estado
+        if (!isMounted) return
         
         const result = await response.json()
         
         if (result.success) {
           // Filtrar solo cartas (productType = "card" o null)
-          const allCardsData = (result.data || []).filter((card: any) => {
+          const initialCards = (result.data || []).filter((card: any) => {
             const productType = card.productType || "card"
             return productType === "card"
           }).map((card: any) => ({
@@ -138,18 +143,62 @@ function CatalogContent() {
           }))
           
           if (isMounted) {
-            setAllCards(allCardsData)
-            
-            // Mostrar todas las cartas inmediatamente (ya están cargadas)
-            setCards(allCardsData)
+            // Mostrar las primeras cartas inmediatamente
+            setCards(initialCards)
+            setAllCards(initialCards) // Inicialmente solo las primeras
             setLoading(false)
             setInitialLoad(false)
             
-            // Guardar en caché
-            localStorage.setItem(cacheKey, JSON.stringify(allCardsData))
-            localStorage.setItem(cacheTimestamp, Date.now().toString())
+            console.log(`✅ Cartas iniciales cargadas: ${initialCards.length} (mostrando contenido rápido)`)
             
-            console.log(`✅ Cartas cargadas: ${allCardsData.length} desde ${result.meta?.source || "mock"}`)
+            // Paso 2: Cargar el resto en background (no bloquea la UI)
+            if (initialCards.length >= INITIAL_BATCH_SIZE) {
+              setIsLoadingMore(true)
+              
+              // Cargar todas las cartas en background
+              requestIdleCallbackPolyfill(async () => {
+                try {
+                  const fullResponse = await fetch(`/api/cards`, {
+                    signal: abortController?.signal,
+                  })
+                  
+                  if (!isMounted) return
+                  
+                  const fullResult = await fullResponse.json()
+                  
+                  if (fullResult.success) {
+                    const allCardsData = (fullResult.data || []).filter((card: any) => {
+                      const productType = card.productType || "card"
+                      return productType === "card"
+                    }).map((card: any) => ({
+                      ...card,
+                      productType: "card",
+                    }))
+                    
+                    if (isMounted) {
+                      setAllCards(allCardsData)
+                      setCards(allCardsData) // Actualizar con todas las cartas
+                      setIsLoadingMore(false)
+                      
+                      // Guardar en caché
+                      localStorage.setItem(cacheKey, JSON.stringify(allCardsData))
+                      localStorage.setItem(cacheTimestamp, Date.now().toString())
+                      
+                      console.log(`✅ Todas las cartas cargadas: ${allCardsData.length} desde ${fullResult.meta?.source || "mock"}`)
+                    }
+                  }
+                } catch (err) {
+                  if (isMounted) {
+                    setIsLoadingMore(false)
+                    console.warn("⚠️ Error cargando cartas completas en background:", err)
+                  }
+                }
+              }, { timeout: 1000 }) // Esperar 1 segundo antes de cargar el resto
+            } else {
+              // Si hay menos de INITIAL_BATCH_SIZE, ya tenemos todas
+              localStorage.setItem(cacheKey, JSON.stringify(initialCards))
+              localStorage.setItem(cacheTimestamp, Date.now().toString())
+            }
           }
         } else {
           // Fallback a mock si API falla
@@ -397,12 +446,15 @@ function CatalogContent() {
   }, [cards])
 
   const filteredCards = useMemo(() => {
-    if (cards.length === 0) {
+    // Usar allCards si está disponible (tiene todas las cartas), sino usar cards (carga inicial)
+    const cardsToFilter = allCards.length > 0 ? allCards : cards
+    
+    if (cardsToFilter.length === 0) {
       return []
     }
     
     // Optimización: Filtrar primero por search (el más costoso) para reducir el dataset
-    let filtered = cards
+    let filtered = cardsToFilter
     
     // Search filter primero (más restrictivo, reduce el dataset rápidamente)
     if (deferredSearch && deferredSearch.trim()) {
@@ -510,7 +562,7 @@ function CatalogContent() {
     })
 
     return sorted
-  }, [cards, deferredSearch, filters.type, filters.set, filters.rarity, filters.minPrice, filters.maxPrice, filters.version, filters.productType, sortBy])
+  }, [allCards, cards, deferredSearch, filters.type, filters.set, filters.rarity, filters.minPrice, filters.maxPrice, filters.version, filters.productType, sortBy])
 
   return (
     <div className="min-h-screen flex flex-col">
