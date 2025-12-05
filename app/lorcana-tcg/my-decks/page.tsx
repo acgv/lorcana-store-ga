@@ -368,8 +368,9 @@ function DeckBuilder() {
                 <select
                   value={selectedSet}
                   onChange={(e) => setSelectedSet(e.target.value)}
-                  className="px-3 py-2 text-sm border rounded-md bg-background"
-                  disabled={availableSets.length === 0}
+                  className="px-3 py-2 text-sm border rounded-md bg-background cursor-pointer appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEgMUw2IDZMMTEgMSIgc3Ryb2tlPSIjOTk5IiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+')] bg-no-repeat bg-right-2 bg-[length:12px_8px] pr-8"
+                  disabled={availableSets.length === 0 || loadingCards}
+                  style={{ zIndex: 10 }}
                 >
                   <option value="all">Todos los sets</option>
                   {availableSets.length > 0 ? (
@@ -383,8 +384,9 @@ function DeckBuilder() {
                 <select
                   value={selectedType}
                   onChange={(e) => setSelectedType(e.target.value)}
-                  className="px-3 py-2 text-sm border rounded-md bg-background"
-                  disabled={availableTypes.length === 0}
+                  className="px-3 py-2 text-sm border rounded-md bg-background cursor-pointer appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEgMUw2IDZMMTEgMSIgc3Ryb2tlPSIjOTk5IiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+')] bg-no-repeat bg-right-2 bg-[length:12px_8px] pr-8"
+                  disabled={availableTypes.length === 0 || loadingCards}
+                  style={{ zIndex: 10 }}
                 >
                   <option value="all">Todos los tipos</option>
                   {availableTypes.length > 0 ? (

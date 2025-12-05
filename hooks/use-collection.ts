@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useUser } from "@/hooks/use-user"
+import { supabase } from "@/lib/db"
 
 interface CollectionItem {
   id: string
@@ -28,7 +29,24 @@ export function useCollection() {
       setLoading(true)
       
       console.log("🔄 Loading collection for user:", user.id, force ? "(forced)" : "")
-      const response = await fetch(`/api/my-collection?userId=${user.id}`)
+      
+      // Obtener token de sesión para autenticación
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      
+      if (!token) {
+        console.error("❌ No session token available")
+        setLoading(false)
+        loadingRef.current = false
+        return
+      }
+      
+      const response = await fetch(`/api/my-collection?userId=${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
       const data = await response.json()
 
       if (data.success) {
