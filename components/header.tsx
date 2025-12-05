@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Search, ShoppingCart, Sparkles, Menu, User, LogOut, FileText, Shield, Heart, UserCircle } from "lucide-react"
+import { Search, ShoppingCart, Sparkles, Menu, User, LogOut, FileText, Shield, Heart, UserCircle, List } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useLanguage } from "@/components/language-provider"
@@ -223,6 +223,14 @@ export function Header() {
                       <Heart className="h-4 w-4" />
                       {t("myCollection")}
                     </Link>
+                    <Link
+                      href="/lorcana-tcg/my-decks"
+                      className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md flex items-center gap-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <List className="h-4 w-4" />
+                      Mis Mazos
+                    </Link>
                     {/* TODO: Re-habilitar funcionalidad de Mis Envíos */}
                     {/* <Link
                       href="/lorcana-tcg/my-submissions"
@@ -305,6 +313,13 @@ export function Header() {
                 >
                   <Heart className="mr-2 h-4 w-4" />
                   {t("myCollection")}
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => router.push("/lorcana-tcg/my-decks")} 
+                  className="cursor-pointer"
+                >
+                  <List className="mr-2 h-4 w-4" />
+                  Mis Mazos
                 </DropdownMenuItem>
                 {/* TODO: Re-habilitar funcionalidad de Mis Envíos */}
                 {/* <DropdownMenuItem onClick={() => router.push("/lorcana-tcg/my-submissions")} className="cursor-pointer">
