@@ -33,11 +33,11 @@ export async function GET(request: NextRequest) {
 
         // Si hay un límite, solo cargar esa cantidad (para carga inicial rápida)
         if (limit) {
-          let query = supabase
-            .from("cards")
-            .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description")
-            .eq("status", filters.status)
-            .limit(limit)
+            let query = supabase
+              .from("cards")
+              .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor,color")
+              .eq("status", filters.status)
+              .limit(limit)
           
           if (filters.type) query = query.eq("type", filters.type)
           if (filters.set) query = query.eq("set", filters.set)
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
             // Solo seleccionar campos necesarios para mejorar rendimiento
             let query = supabase
               .from("cards")
-              .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description")
+              .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor,color")
               .eq("status", filters.status)
               .range(from, to)
 

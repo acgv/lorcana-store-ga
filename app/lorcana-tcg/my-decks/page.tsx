@@ -12,6 +12,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import { 
@@ -62,6 +64,7 @@ function DeckBuilder() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedSet, setSelectedSet] = useState<string>("all")
   const [selectedType, setSelectedType] = useState<string>("all")
+  const [selectedColor, setSelectedColor] = useState<string>("all")
   const [deckName, setDeckName] = useState("")
   const [editingDeckId, setEditingDeckId] = useState<string | null>(null)
   const [availableCards, setAvailableCards] = useState<CardType[]>([])
@@ -165,8 +168,15 @@ function DeckBuilder() {
       filtered = filtered.filter(card => card.type === selectedType)
     }
 
+    if (selectedColor !== "all") {
+      filtered = filtered.filter(card => {
+        const cardColor = (card as any).inkColor || (card as any).color || ""
+        return cardColor.toLowerCase() === selectedColor.toLowerCase()
+      })
+    }
+
     return filtered
-  }, [availableCards, searchQuery, selectedSet, selectedType])
+  }, [availableCards, searchQuery, selectedSet, selectedType, selectedColor])
 
   // Obtener sets únicos
   const availableSets = useMemo(() => {
@@ -180,14 +190,27 @@ function DeckBuilder() {
     return Array.from(types).sort()
   }, [availableCards])
 
+  // Obtener colores únicos
+  const availableColors = useMemo(() => {
+    const colors = new Set(
+      availableCards
+        .map(card => (card as any).inkColor || (card as any).color)
+        .filter(color => color && color.trim() !== "")
+    )
+    return Array.from(colors).sort()
+  }, [availableCards])
+
   // Validar mazo
   const deckValidation = useMemo(() => {
     const totalCards = currentDeck.reduce((sum, item) => sum + item.quantity, 0)
-    const colors = new Set(currentDeck.map(item => {
-      // Extraer color de la carta (necesitarías agregar este campo a CardType)
-      // Por ahora, usaremos el set como proxy
-      return item.card.set
-    }))
+    const colors = new Set(
+      currentDeck
+        .map(item => {
+          const cardColor = (item.card as any).inkColor || (item.card as any).color
+          return cardColor ? cardColor.toLowerCase() : null
+        })
+        .filter(color => color !== null)
+    )
     
     const errors: string[] = []
     const warnings: string[] = []
@@ -364,39 +387,61 @@ function DeckBuilder() {
                   className="pl-9"
                 />
               </div>
-              <div className="flex gap-2 flex-wrap">
-                <select
-                  value={selectedSet}
-                  onChange={(e) => setSelectedSet(e.target.value)}
-                  className="px-3 py-2 text-sm border rounded-md bg-background cursor-pointer appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEgMUw2IDZMMTEgMSIgc3Ryb2tlPSIjOTk5IiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+')] bg-no-repeat bg-right-2 bg-[length:12px_8px] pr-8"
-                  disabled={availableSets.length === 0 || loadingCards}
-                  style={{ zIndex: 10 }}
-                >
-                  <option value="all">Todos los sets</option>
-                  {availableSets.length > 0 ? (
-                    availableSets.map(set => (
-                      <option key={set} value={set}>{set}</option>
-                    ))
-                  ) : (
-                    <option disabled>No hay sets disponibles</option>
-                  )}
-                </select>
-                <select
-                  value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
-                  className="px-3 py-2 text-sm border rounded-md bg-background cursor-pointer appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEgMUw2IDZMMTEgMSIgc3Ryb2tlPSIjOTk5IiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+')] bg-no-repeat bg-right-2 bg-[length:12px_8px] pr-8"
-                  disabled={availableTypes.length === 0 || loadingCards}
-                  style={{ zIndex: 10 }}
-                >
-                  <option value="all">Todos los tipos</option>
-                  {availableTypes.length > 0 ? (
-                    availableTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))
-                  ) : (
-                    <option disabled>No hay tipos disponibles</option>
-                  )}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-foreground/90">Set</Label>
+                  <Select
+                    value={selectedSet}
+                    onValueChange={setSelectedSet}
+                    disabled={availableSets.length === 0 || loadingCards}
+                  >
+                    <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
+                      <SelectValue placeholder="Todos los sets" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los sets</SelectItem>
+                      {availableSets.length > 0 && availableSets.map(set => (
+                        <SelectItem key={set} value={set}>{set}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-foreground/90">Tipo</Label>
+                  <Select
+                    value={selectedType}
+                    onValueChange={setSelectedType}
+                    disabled={availableTypes.length === 0 || loadingCards}
+                  >
+                    <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
+                      <SelectValue placeholder="Todos los tipos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los tipos</SelectItem>
+                      {availableTypes.length > 0 && availableTypes.map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-foreground/90">Color</Label>
+                  <Select
+                    value={selectedColor}
+                    onValueChange={setSelectedColor}
+                    disabled={availableColors.length === 0 || loadingCards}
+                  >
+                    <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
+                      <SelectValue placeholder="Todos los colores" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los colores</SelectItem>
+                      {availableColors.length > 0 && availableColors.map(color => (
+                        <SelectItem key={color} value={color}>{color}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
@@ -488,9 +533,25 @@ function DeckBuilder() {
                 {deckValidation.totalCards}/60
               </Badge>
             </CardTitle>
-            <CardDescription>
-              {deckValidation.colors} color(es) • {currentDeck.length} carta(s) única(s)
-            </CardDescription>
+                      <CardDescription className="space-y-1">
+                        <div>{deckValidation.colors} color(es) • {currentDeck.length} carta(s) única(s)</div>
+                        {deckValidation.colors > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {Array.from(new Set(
+                              currentDeck
+                                .map(item => {
+                                  const cardColor = (item.card as any).inkColor || (item.card as any).color
+                                  return cardColor ? cardColor : null
+                                })
+                                .filter(color => color !== null)
+                            )).map(color => (
+                              <Badge key={color} variant="outline" className="text-xs">
+                                {color}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Validación */}
