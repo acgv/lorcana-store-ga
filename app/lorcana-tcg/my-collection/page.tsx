@@ -171,7 +171,8 @@ function MyCollectionContent() {
     try {
       setLoadingCards(true)
       console.log("🔍 Fetching cards from /api/cards...")
-      const response = await fetch("/api/cards")
+      // Cache-buster para evitar respuestas antiguas (y asegurar que se vean todas las cartas)
+      const response = await fetch(`/api/cards?t=${Date.now()}`)
       const data = await response.json()
       
       console.log("📦 API Response:", data)

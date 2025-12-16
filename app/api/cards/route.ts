@@ -4,6 +4,9 @@ import { mockCards } from "@/lib/mock-data"
 import { calculateStandardFoilPrice } from "@/lib/price-utils"
 import type { ApiResponse, Card } from "@/lib/types"
 
+// Evitar cache en route handlers: necesitamos listar TODO (más de 1000) y no servir respuestas viejas
+export const dynamic = "force-dynamic"
+
 // Initialize database with mock data
 Database.initialize(mockCards as any)
 
@@ -209,6 +212,8 @@ export async function GET(request: NextRequest) {
               .from("cards")
               .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor,color")
               .eq("status", filters.status)
+              // Importante: ordenar para que la paginación por range/offset sea estable
+              .order("id", { ascending: true })
               .range(from, to)
 
             if (filters.type) query = query.eq("type", filters.type)
@@ -226,6 +231,7 @@ export async function GET(request: NextRequest) {
                   .from("cards")
                   .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description")
                   .eq("status", filters.status)
+                  .order("id", { ascending: true })
                   .range(from, to)
                 
                 if (filters.type) fallbackQuery = fallbackQuery.eq("type", filters.type)
@@ -399,8 +405,13 @@ export async function GET(request: NextRequest) {
       success: true,
       data: cards,
     } as any
-
-    return NextResponse.json(response)
+    return NextResponse.json(response, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    })
   } catch (error) {
     const response: ApiResponse = {
       success: false,
