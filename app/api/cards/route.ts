@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     // Intentar leer desde Supabase si está configurado
     let cards: Card[] | null = null
     let dataSource = "mock"
+    let totalCount: number | null = null
     
     if (source !== "mock" && supabase) {
       try {
@@ -188,7 +189,10 @@ export async function GET(request: NextRequest) {
             // Intentar con inkColor, si falla, usar sin ella
             let query = supabase
               .from("cards")
-              .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor")
+              .select(
+                "id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor",
+                page === 0 ? ({ count: "exact" } as any) : undefined
+              )
               .eq("status", filters.status)
               // Importante: ordenar para que la paginación por range/offset sea estable
               .order("id", { ascending: true })
@@ -199,7 +203,11 @@ export async function GET(request: NextRequest) {
             if (filters.rarity) query = query.eq("rarity", filters.rarity)
             if (filters.language) query = query.eq("language", filters.language)
 
-            const { data, error } = await query
+            const { data, error, count } = await query
+            if (page === 0 && typeof count === "number") {
+              totalCount = count
+              console.log(`📌 Cards total count (status=${filters.status}): ${totalCount}`)
+            }
             
             if (error) {
               // Si el error es por inkColor, intentar sin esa columna
@@ -207,7 +215,10 @@ export async function GET(request: NextRequest) {
                 console.log(`⚠ GET /api/cards - Error con inkColor en página ${page + 1}, intentando sin ella: ${error.message}`)
                 let fallbackQuery = supabase
                   .from("cards")
-                  .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description")
+                  .select(
+                    "id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description",
+                    page === 0 ? ({ count: "exact" } as any) : undefined
+                  )
                   .eq("status", filters.status)
                   .order("id", { ascending: true })
                   .range(from, to)
@@ -217,7 +228,11 @@ export async function GET(request: NextRequest) {
                 if (filters.rarity) fallbackQuery = fallbackQuery.eq("rarity", filters.rarity)
                 if (filters.language) fallbackQuery = fallbackQuery.eq("language", filters.language)
                 
-                const { data: fallbackData, error: fallbackError } = await fallbackQuery
+                const { data: fallbackData, error: fallbackError, count: fallbackCount } = await fallbackQuery
+                if (page === 0 && typeof fallbackCount === "number") {
+                  totalCount = fallbackCount
+                  console.log(`📌 Cards total count (fallback, status=${filters.status}): ${totalCount}`)
+                }
                 if (fallbackError) {
                   console.log(`⚠ GET /api/cards - Supabase fallback error: ${fallbackError.message}, using MOCK`)
                   break
@@ -382,12 +397,18 @@ export async function GET(request: NextRequest) {
     const response: ApiResponse<Card[]> = {
       success: true,
       data: cards,
+      meta: {
+        source: dataSource,
+        returned: cards?.length ?? 0,
+        total: totalCount,
+      } as any,
     } as any
     return NextResponse.json(response, {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
         Pragma: "no-cache",
         Expires: "0",
+        ...(typeof totalCount === "number" ? { "X-Total-Count": String(totalCount) } : {}),
       },
     })
   } catch (error) {
