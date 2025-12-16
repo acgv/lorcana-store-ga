@@ -104,53 +104,38 @@ export async function GET(request: NextRequest) {
           // IMPORTANTE: Usar función RPC para evitar problemas del schema cache de PostgREST con inkColor
           // Primero intentar con la función RPC si existe
           try {
-            // Nota: la RPC también está sujeta al límite default de PostgREST (1000).
-            // Por eso, paginamos con .range() hasta traer todo.
+            // ✅ FIX DEFINITIVO: NO usar .range() en RPC (puede ignorarse y quedarse en 1000).
+            // Usar una RPC paginada por parámetros limit/offset.
+            // Requiere la función SQL: get_cards_with_ink_color_paged(limit, offset, filtros...)
             let rpcAll: any[] = []
             let rpcPage = 0
             let rpcHasMore = true
-
-            // Algunas versiones de supabase-js / postgrest ignoran .range() en RPC y siempre devuelven
-            // el primer "page" (máx 1000). Detectamos ese caso y hacemos fallback a paginación normal.
-            let rpcFirstPageFirstId: string | null = null
-            let rpcRangeSeemsIgnored = false
+            let rpcSupported = true
 
             while (rpcHasMore) {
-              const from = rpcPage * pageSize
-              const to = from + pageSize - 1
-
-              const { data: rpcData, error: rpcError } = await supabase
-                .rpc("get_cards_with_ink_color")
-                .range(from, to)
+              const offset = rpcPage * pageSize
+              const { data: rpcData, error: rpcError } = await supabase.rpc("get_cards_with_ink_color_paged", {
+                p_status: filters.status,
+                p_limit: pageSize,
+                p_offset: offset,
+                p_type: filters.type ?? null,
+                p_set: filters.set ?? null,
+                p_rarity: filters.rarity ?? null,
+                p_language: filters.language ?? null,
+              })
 
               if (rpcError) {
-                // Si la RPC falla, caemos al método normal con paginación
+                rpcSupported = false
                 console.log(
-                  `⚠ GET /api/cards - RPC function failed on page ${rpcPage + 1}: ${rpcError.message}, using pagination`
+                  `⚠ GET /api/cards - RPC paged not available/failed on page ${rpcPage + 1}: ${rpcError.message}, using table pagination`
                 )
-                rpcAll = []
-                rpcHasMore = false
                 break
               }
 
               if (rpcData && rpcData.length > 0) {
-                // Detectar si el "range" está siendo ignorado (misma primera fila en páginas distintas)
-                const firstId = (rpcData[0] as any)?.id ? String((rpcData[0] as any).id) : null
-                if (rpcPage === 0) {
-                  rpcFirstPageFirstId = firstId
-                } else if (rpcFirstPageFirstId && firstId && firstId === rpcFirstPageFirstId) {
-                  rpcRangeSeemsIgnored = true
-                  console.log(
-                    `⚠ GET /api/cards - RPC range appears to be ignored (same first id on page ${rpcPage + 1}). Falling back to table pagination.`
-                  )
-                  rpcAll = []
-                  rpcHasMore = false
-                  break
-                }
-
                 rpcAll = [...rpcAll, ...rpcData]
                 console.log(
-                  `📊 Cards RPC pagination - Page ${rpcPage + 1}: loaded ${rpcData.length} cards, total so far: ${rpcAll.length}`
+                  `📊 Cards RPC(paged) - Page ${rpcPage + 1}: loaded ${rpcData.length} cards, total so far: ${rpcAll.length}`
                 )
               }
 
@@ -160,24 +145,17 @@ export async function GET(request: NextRequest) {
               // Safety limit: no más de 50 páginas (50,000 cartas máximo)
               if (rpcPage >= 50) {
                 console.log(
-                  `⚠️ Reached safety limit of 50 pages (50,000 cards) while paging RPC. Loaded ${rpcAll.length} cards.`
+                  `⚠️ Reached safety limit of 50 pages (50,000 cards) while paging RPC(paged). Loaded ${rpcAll.length} cards.`
                 )
                 break
               }
             }
 
-            if (rpcAll.length > 0 && !rpcRangeSeemsIgnored) {
-              console.log(`✅ GET /api/cards - Using RPC function, loaded ${rpcAll.length} cards with inkColor`)
+            if (rpcSupported && rpcAll.length > 0) {
+              console.log(`✅ GET /api/cards - Using RPC(paged), loaded ${rpcAll.length} cards with inkColor`)
 
-              // Aplicar filtros en memoria
-              let filteredCards = rpcAll.filter((card: any) => card.status === filters.status)
-              if (filters.type) filteredCards = filteredCards.filter((card: any) => card.type === filters.type)
-              if (filters.set) filteredCards = filteredCards.filter((card: any) => card.set === filters.set)
-              if (filters.rarity) filteredCards = filteredCards.filter((card: any) => card.rarity === filters.rarity)
-              if (filters.language) filteredCards = filteredCards.filter((card: any) => card.language === filters.language)
-
-              // Normalizar datos
-              allCards = filteredCards.map((card: any) => ({
+              // Normalizar datos (la RPC ya filtra por status/filtros)
+              allCards = rpcAll.map((card: any) => ({
                 ...card,
                 normalStock: card.normalStock ?? 0,
                 foilStock: card.foilStock ?? 0,
@@ -185,15 +163,13 @@ export async function GET(request: NextRequest) {
                 color: card.color || null,
               }))
 
-              // Verificar si las cartas tienen color
               const cardsWithColor = allCards.filter((c) => c.inkColor || c.color)
-              console.log(`🎨 Cards with color from RPC: ${cardsWithColor.length} out of ${allCards.length}`)
+              console.log(`🎨 Cards with color from RPC(paged): ${cardsWithColor.length} out of ${allCards.length}`)
 
-              hasMore = false // Ya tenemos todas las cartas (vía RPC paginada)
+              hasMore = false // Ya tenemos todas las cartas (vía RPC paginada por parámetros)
             } else {
-              // Si la función RPC no existe o falla, usar el método normal con paginación
-              console.log(`⚠ GET /api/cards - RPC returned no data or failed, using pagination`)
-              hasMore = true // Continuar con paginación normal
+              console.log(`⚠ GET /api/cards - RPC(paged) not used, using table pagination`)
+              hasMore = true
             }
           } catch (rpcErr) {
             // Si hay error al llamar RPC, continuar con paginación normal
