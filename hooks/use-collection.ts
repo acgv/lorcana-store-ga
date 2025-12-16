@@ -19,6 +19,16 @@ export function useCollection() {
   const loadingRef = useRef(false) // Flag para prevenir múltiples cargas
   const lastUserIdRef = useRef<string | null>(null) // Track último usuario cargado
 
+  const getAuthHeaders = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) return null
+    return {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    } as const
+  }, [])
+
   const loadCollection = useCallback(async (force = false) => {
     if (!user?.id) return
     if (loadingRef.current) return // Ya está cargando, salir
@@ -31,10 +41,8 @@ export function useCollection() {
       console.log("🔄 Loading collection for user:", user.id, force ? "(forced)" : "")
       
       // Obtener token de sesión para autenticación
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-      
-      if (!token) {
+      const headers = await getAuthHeaders()
+      if (!headers) {
         console.error("❌ No session token available")
         setLoading(false)
         loadingRef.current = false
@@ -42,10 +50,7 @@ export function useCollection() {
       }
       
       const response = await fetch(`/api/my-collection?userId=${user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers,
       })
       const data = await response.json()
 
@@ -117,9 +122,12 @@ export function useCollection() {
     if (!user) return { success: false, error: "Not logged in" }
 
     try {
+      const headers = await getAuthHeaders()
+      if (!headers) return { success: false, error: "No session token available" }
+
       const response = await fetch("/api/my-collection", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           userId: user.id,
           cardId,
@@ -152,9 +160,12 @@ export function useCollection() {
     if (!user) return { success: false, error: "Not logged in" }
 
     try {
+      const headers = await getAuthHeaders()
+      if (!headers) return { success: false, error: "No session token available" }
+
       const response = await fetch(
         `/api/my-collection?userId=${user.id}&cardId=${cardId}&status=${status}&version=${version}`,
-        { method: "DELETE" }
+        { method: "DELETE", headers }
       )
 
       const data = await response.json()
@@ -186,6 +197,7 @@ export function useCollection() {
     removeFromCollection,
     loadCollection, // Exponer para refresh manual
     refresh: manualRefresh, // Forzar recarga invalidando cache
+    getAuthHeaders, // Exponer por si alguna vista necesita hacer requests directos
   }
 }
 

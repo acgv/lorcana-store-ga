@@ -43,7 +43,7 @@ function MyCollectionContent() {
   // Flag para indicar si el usuario está navegando activamente
   const isNavigatingRef = useRef(false)
   const { user, loading: userLoading } = useUser()
-  const { collection, isInCollection, addToCollection, removeFromCollection, refresh, loading } = useCollection()
+  const { collection, isInCollection, addToCollection, removeFromCollection, refresh, loading, getAuthHeaders } = useCollection()
   const { addToCart } = useCart()
   const { toast } = useToast()
   
@@ -772,9 +772,18 @@ function AllCardsCard({
 
   const updateQuantity = async (status: "owned", version: "normal" | "foil", newQty: number) => {
     try {
+      const headers = await getAuthHeaders()
+      if (!headers) {
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: "No session token available",
+        })
+        return
+      }
       const response = await fetch("/api/my-collection", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           userId: user.id,
           cardId: card.id,
