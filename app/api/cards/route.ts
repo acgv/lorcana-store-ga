@@ -101,35 +101,76 @@ export async function GET(request: NextRequest) {
           // IMPORTANTE: Usar función RPC para evitar problemas del schema cache de PostgREST con inkColor
           // Primero intentar con la función RPC si existe
           try {
-            const { data: rpcData, error: rpcError } = await supabase.rpc('get_cards_with_ink_color')
-            
-            if (!rpcError && rpcData && rpcData.length > 0) {
-              console.log(`✅ GET /api/cards - Using RPC function, loaded ${rpcData.length} cards with inkColor`)
-              
+            // Nota: la RPC también está sujeta al límite default de PostgREST (1000).
+            // Por eso, paginamos con .range() hasta traer todo.
+            let rpcAll: any[] = []
+            let rpcPage = 0
+            let rpcHasMore = true
+
+            while (rpcHasMore) {
+              const from = rpcPage * pageSize
+              const to = from + pageSize - 1
+
+              const { data: rpcData, error: rpcError } = await supabase
+                .rpc("get_cards_with_ink_color")
+                .range(from, to)
+
+              if (rpcError) {
+                // Si la RPC falla, caemos al método normal con paginación
+                console.log(
+                  `⚠ GET /api/cards - RPC function failed on page ${rpcPage + 1}: ${rpcError.message}, using pagination`
+                )
+                rpcAll = []
+                rpcHasMore = false
+                break
+              }
+
+              if (rpcData && rpcData.length > 0) {
+                rpcAll = [...rpcAll, ...rpcData]
+                console.log(
+                  `📊 Cards RPC pagination - Page ${rpcPage + 1}: loaded ${rpcData.length} cards, total so far: ${rpcAll.length}`
+                )
+              }
+
+              rpcHasMore = !!(rpcData && rpcData.length === pageSize)
+              rpcPage++
+
+              // Safety limit: no más de 50 páginas (50,000 cartas máximo)
+              if (rpcPage >= 50) {
+                console.log(
+                  `⚠️ Reached safety limit of 50 pages (50,000 cards) while paging RPC. Loaded ${rpcAll.length} cards.`
+                )
+                break
+              }
+            }
+
+            if (rpcAll.length > 0) {
+              console.log(`✅ GET /api/cards - Using RPC function, loaded ${rpcAll.length} cards with inkColor`)
+
               // Aplicar filtros en memoria
-              let filteredCards = rpcData.filter((card: any) => card.status === filters.status)
+              let filteredCards = rpcAll.filter((card: any) => card.status === filters.status)
               if (filters.type) filteredCards = filteredCards.filter((card: any) => card.type === filters.type)
               if (filters.set) filteredCards = filteredCards.filter((card: any) => card.set === filters.set)
               if (filters.rarity) filteredCards = filteredCards.filter((card: any) => card.rarity === filters.rarity)
               if (filters.language) filteredCards = filteredCards.filter((card: any) => card.language === filters.language)
-              
+
               // Normalizar datos
               allCards = filteredCards.map((card: any) => ({
                 ...card,
                 normalStock: card.normalStock ?? 0,
                 foilStock: card.foilStock ?? 0,
                 inkColor: card.inkColor || null,
-                color: card.color || null
+                color: card.color || null,
               }))
-              
+
               // Verificar si las cartas tienen color
-              const cardsWithColor = allCards.filter(c => c.inkColor || c.color)
+              const cardsWithColor = allCards.filter((c) => c.inkColor || c.color)
               console.log(`🎨 Cards with color from RPC: ${cardsWithColor.length} out of ${allCards.length}`)
-              
-              hasMore = false // Ya tenemos todas las cartas
+
+              hasMore = false // Ya tenemos todas las cartas (vía RPC paginada)
             } else {
               // Si la función RPC no existe o falla, usar el método normal con paginación
-              console.log(`⚠ GET /api/cards - RPC function not available or failed: ${rpcError?.message || 'unknown'}, using pagination`)
+              console.log(`⚠ GET /api/cards - RPC returned no data or failed, using pagination`)
               hasMore = true // Continuar con paginación normal
             }
           } catch (rpcErr) {
