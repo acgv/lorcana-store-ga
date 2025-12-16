@@ -107,6 +107,11 @@ export async function GET(request: NextRequest) {
             let rpcPage = 0
             let rpcHasMore = true
 
+            // Algunas versiones de supabase-js / postgrest ignoran .range() en RPC y siempre devuelven
+            // el primer "page" (máx 1000). Detectamos ese caso y hacemos fallback a paginación normal.
+            let rpcFirstPageFirstId: string | null = null
+            let rpcRangeSeemsIgnored = false
+
             while (rpcHasMore) {
               const from = rpcPage * pageSize
               const to = from + pageSize - 1
@@ -126,6 +131,20 @@ export async function GET(request: NextRequest) {
               }
 
               if (rpcData && rpcData.length > 0) {
+                // Detectar si el "range" está siendo ignorado (misma primera fila en páginas distintas)
+                const firstId = (rpcData[0] as any)?.id ? String((rpcData[0] as any).id) : null
+                if (rpcPage === 0) {
+                  rpcFirstPageFirstId = firstId
+                } else if (rpcFirstPageFirstId && firstId && firstId === rpcFirstPageFirstId) {
+                  rpcRangeSeemsIgnored = true
+                  console.log(
+                    `⚠ GET /api/cards - RPC range appears to be ignored (same first id on page ${rpcPage + 1}). Falling back to table pagination.`
+                  )
+                  rpcAll = []
+                  rpcHasMore = false
+                  break
+                }
+
                 rpcAll = [...rpcAll, ...rpcData]
                 console.log(
                   `📊 Cards RPC pagination - Page ${rpcPage + 1}: loaded ${rpcData.length} cards, total so far: ${rpcAll.length}`
@@ -144,7 +163,7 @@ export async function GET(request: NextRequest) {
               }
             }
 
-            if (rpcAll.length > 0) {
+            if (rpcAll.length > 0 && !rpcRangeSeemsIgnored) {
               console.log(`✅ GET /api/cards - Using RPC function, loaded ${rpcAll.length} cards with inkColor`)
 
               // Aplicar filtros en memoria
