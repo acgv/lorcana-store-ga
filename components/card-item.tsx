@@ -11,8 +11,6 @@ import Image from "next/image"
 import { Sparkles, Star, AlertCircle, Package, ShoppingCart, Eye, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { useAnalytics } from "@/hooks/use-analytics"
-import { trackCartAdd, trackCardView } from "@/lib/analytics"
 
 interface CardItemProps {
   card: Card
@@ -25,7 +23,6 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
   const { addToCart, items } = useCart()
   const { toast } = useToast()
   const { isInCollection, collection } = useCollection()
-  const { track, isAuthenticated } = useAnalytics()
   const [adding, setAdding] = useState<string | null>(null)
 
   // Detectar si es un producto (no carta)
@@ -117,15 +114,6 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
       return
     }
 
-    // Trackear agregar al carrito
-    trackCartAdd(
-      card.id,
-      card.name,
-      version === "foil" ? (card.foilPrice || card.price) : card.price,
-      version,
-      isAuthenticated
-    )
-
     toast({
       title: t("success"),
       description: `${card.name} (${version === "foil" ? t("foil") : t("normal")}) ${t("addedToCart")}`,
@@ -134,10 +122,7 @@ export function CardItem({ card, viewMode, priority = false }: CardItemProps) {
     setTimeout(() => setAdding(null), 500)
   }
   
-  // Trackear vista de carta cuando se hace click
-  const handleCardClick = () => {
-    trackCardView(card.id, card.name, card.set, card.rarity)
-  }
+  const handleCardClick = () => {}
 
   if (viewMode === "list") {
     return (

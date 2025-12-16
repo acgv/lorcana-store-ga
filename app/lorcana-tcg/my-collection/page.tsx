@@ -23,8 +23,6 @@ import {
   TrendingUp, Plus, Minus, Check, List, Sparkles, ShoppingCart, AlertCircle, RefreshCw
 } from "lucide-react"
 import type { Card as CardType } from "@/lib/types"
-import { useAnalytics } from "@/hooks/use-analytics"
-import { trackCollectionView, trackCollectionCardAdd, trackCollectionCardRemove, trackFeatureBlocked } from "@/lib/analytics"
 
 interface CollectionItem {
   id: string
@@ -48,7 +46,6 @@ function MyCollectionContent() {
   const { collection, isInCollection, addToCollection, removeFromCollection, refresh, loading } = useCollection()
   const { addToCart } = useCart()
   const { toast } = useToast()
-  const { track, isAuthenticated } = useAnalytics()
   
   const [allCards, setAllCards] = useState<CardType[]>([])
   const [loadingCards, setLoadingCards] = useState(true)
@@ -72,18 +69,9 @@ function MyCollectionContent() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!userLoading && !user) {
-      // Trackear bloqueo de funcionalidad
-      trackFeatureBlocked("collection_view", "/lorcana-tcg/login")
       router.push("/lorcana-tcg/login?redirect=/lorcana-tcg/my-collection")
     }
-  }, [user, userLoading, router, track])
-  
-  // Trackear vista de colección cuando se carga
-  useEffect(() => {
-    if (user && collection.length >= 0) {
-      trackCollectionView(user.id, collection.length)
-    }
-  }, [user, collection.length, track])
+  }, [user, userLoading, router])
 
   // Detectar cuando el usuario navega a otra página
   useEffect(() => {
@@ -741,16 +729,6 @@ function AllCardsCard({
     setUpdating(null)
 
     if (result.success) {
-      // Trackear agregar a colección
-      if (user) {
-        trackCollectionCardAdd(
-          user.id,
-          card.id,
-          card.name,
-          collection.length + 1
-        )
-      }
-      
       toast({
         title: t("success"),
         description: t("addedToCollection"),
@@ -782,17 +760,7 @@ function AllCardsCard({
       // Remove if quantity would be 0
       setUpdating(`dec-${status}-${version}`)
       await removeFromCollection(card.id, status, version)
-      
-      // Trackear remover de colección
-      if (user) {
-        trackCollectionCardRemove(
-          user.id,
-          card.id,
-          card.name,
-          collection.length - 1
-        )
-      }
-      
+
       setUpdating(null)
     } else {
       // Decrease quantity

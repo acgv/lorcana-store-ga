@@ -9,7 +9,6 @@ import { useLanguage } from "@/components/language-provider"
 import { useUser } from "@/hooks/use-user"
 import { Chrome } from "lucide-react"
 import { Suspense } from "react"
-import { trackLoginAttempt, trackLoginSuccess, trackLoginFailed, trackPageView } from "@/lib/analytics"
 
 function LoginContent() {
   const { t } = useLanguage()
@@ -23,31 +22,7 @@ function LoginContent() {
   const redirect = searchParams.get("redirect") || "/lorcana-tcg"
   const fromParam = searchParams.get("from") || null
 
-  // Track page view
-  useEffect(() => {
-    trackPageView("/lorcana-tcg/login", {
-      redirect,
-      from: fromParam,
-    })
-  }, [redirect, fromParam])
-
-  // Track auth state changes for login success
-  useEffect(() => {
-    if (!supabase) return
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        // Trackear login exitoso
-        trackLoginSuccess(session.user.id, "google")
-      }
-    })
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
+  // (sin tracking de eventos)
 
   // If already logged in, redirect
   useEffect(() => {
@@ -61,9 +36,6 @@ function LoginContent() {
       setSigningIn(true)
       setError(null)
 
-      // Trackear intento de login
-      trackLoginAttempt("google")
-
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -75,16 +47,11 @@ function LoginContent() {
       })
 
       if (error) {
-        // Trackear fallo de login
-        trackLoginFailed(error.message, "google")
         setError(error.message)
         setSigningIn(false)
       }
-      // El éxito se trackea en el listener de auth state change
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error"
-      // Trackear fallo de login
-      trackLoginFailed(errorMessage, "google")
       console.error("Error signing in with Google:", err)
       setError("Failed to sign in with Google. Please try again.")
       setSigningIn(false)

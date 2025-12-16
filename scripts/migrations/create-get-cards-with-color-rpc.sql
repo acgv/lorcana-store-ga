@@ -42,7 +42,7 @@ BEGIN
     c."productType",
     c.description,
     c."inkColor",
-    c.color
+    null::text as color
   FROM cards c
   WHERE c.status = 'approved';
 END;

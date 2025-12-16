@@ -7,8 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLanguage } from "@/components/language-provider"
 import { Grid, List } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useAnalytics } from "@/hooks/use-analytics"
-import { trackEvent } from "@/lib/analytics"
 
 interface CardFiltersProps {
   filters: {
@@ -30,22 +28,12 @@ interface CardFiltersProps {
 }
 
 export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, setViewMode, hideCardOption = false }: CardFiltersProps) {
-  const { track } = useAnalytics()
-  
-  // Trackear cambios de sort
   const handleSortChange = (newSort: string) => {
     setSortBy(newSort)
-    trackEvent("sort_applied", {
-      sortBy: newSort,
-    })
   }
   
-  // Trackear cambios de view mode
   const handleViewModeChange = (newMode: "grid" | "list") => {
     setViewMode(newMode)
-    trackEvent("view_mode_changed", {
-      viewMode: newMode,
-    })
   }
   const { t } = useLanguage()
 

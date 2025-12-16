@@ -13,7 +13,6 @@ import { useUser } from "@/hooks/use-user"
 import { supabase } from "@/lib/db"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { trackCheckoutStart, trackCheckoutComplete, trackCheckoutAbandoned, trackFeatureBlocked } from "@/lib/analytics"
 
 interface CartSheetProps {
   open: boolean
@@ -59,9 +58,6 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
     if (!isAuthenticated) {
       console.log('❌ User not authenticated')
       
-      // Trackear bloqueo de checkout por falta de autenticación
-      trackFeatureBlocked("checkout", "/lorcana-tcg/login")
-      
       // El carrito ya se guarda automáticamente en localStorage por el cart-provider
       // Redirigir al login con parámetro para indicar que viene del checkout
       toast({
@@ -78,9 +74,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
       return
     }
 
-    // Trackear inicio de checkout
     const cartItems = items.reduce((sum, item) => sum + item.quantity, 0)
-    trackCheckoutStart(totalPrice, cartItems, isAuthenticated)
 
     // Validar mínimo de compra ($50 CLP)
     if (totalPrice < 50) {

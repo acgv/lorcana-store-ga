@@ -1,7 +1,6 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { trackEvent } from "@/lib/analytics"
 
 export interface CartItem {
   id: string
@@ -88,31 +87,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Si es nuevo, agregar con cantidad 1
       return [...prev, { ...item, quantity: 1, maxStock }]
     })
-    
-    // Trackear acción del carrito (el tracking detallado se hace en CardItem)
-    trackEvent("cart_add", {
-      cardId: item.id,
-      cardName: item.name,
-      price: item.price,
-      version: item.version,
-    })
-    
     return { success: true }
   }
 
   const removeFromCart = (id: string, version: "normal" | "foil") => {
-    const item = items.find((i) => i.id === id && i.version === version)
+    // Nota: sin tracking de eventos para reducir tráfico
     setItems((prev) => prev.filter((i) => !(i.id === id && i.version === version)))
-    
-    // Trackear remover del carrito
-    if (item) {
-      trackEvent("cart_remove", {
-        cardId: item.id,
-        cardName: item.name,
-        price: item.price,
-        version: item.version,
-      })
-    }
   }
 
   const updateQuantity = (id: string, version: "normal" | "foil", quantity: number) => {

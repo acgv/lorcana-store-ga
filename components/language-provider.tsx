@@ -1682,20 +1682,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Wrapper para setLanguage que trackea cambios
+  // Wrapper para setLanguage (sin tracking de eventos para reducir tráfico)
   const setLanguageWithTracking = (newLang: Language) => {
-    if (newLang !== language) {
-      // Solo trackear si realmente cambió
-      if (typeof window !== "undefined") {
-        // Importar dinámicamente para evitar problemas de SSR
-        import("@/lib/analytics").then(({ trackEvent }) => {
-          trackEvent("language_changed", {
-            fromLanguage: language,
-            toLanguage: newLang,
-          })
-        })
-      }
-    }
     setLanguage(newLang)
   }
 

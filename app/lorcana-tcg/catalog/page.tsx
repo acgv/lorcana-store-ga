@@ -12,15 +12,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { SlidersHorizontal, Search } from "lucide-react"
-import { useAnalytics } from "@/hooks/use-analytics"
-import { trackSearch, trackFilterApplied } from "@/lib/analytics"
 
 function CatalogContent() {
   const { t } = useLanguage()
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
-  const { trackSection } = useAnalytics()
   
   const [cards, setCards] = useState<any[]>([])
   const [allCards, setAllCards] = useState<any[]>([]) // Todas las cartas para filtrado
@@ -255,76 +252,7 @@ function CatalogContent() {
     }
   }, []) // Solo cargar una vez al montar
   
-  // Trackear sección de catálogo solo una vez cuando se carga inicialmente
-  const hasTrackedSectionRef = React.useRef(false)
-  useEffect(() => {
-    if (!initialLoad && !hasTrackedSectionRef.current && cards.length > 0) {
-      hasTrackedSectionRef.current = true
-      // Usar requestIdleCallback para no bloquear el renderizado
-      requestIdleCallbackPolyfill(() => {
-        trackSection("catalog", {
-          cardsCount: cards.length,
-        })
-      }, { timeout: 1000 })
-    }
-  }, [initialLoad, cards.length, trackSection])
-  
-  // Trackear búsqueda cuando cambie (con debounce para evitar múltiples eventos)
-  const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current)
-    }
-    
-    if (filters.search && filters.search.trim()) {
-      // Debounce de 500ms para evitar múltiples eventos
-      searchTimeoutRef.current = setTimeout(() => {
-        requestIdleCallbackPolyfill(() => {
-          trackSearch(filters.search.trim())
-        }, { timeout: 500 })
-      }, 500)
-    }
-    
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current)
-      }
-    }
-  }, [filters.search])
-  
-  // Trackear filtros cuando cambien (con debounce y solo cuando no es carga inicial)
-  const filtersTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
-  useEffect(() => {
-    if (initialLoad) return // No trackear durante la carga inicial
-    
-    if (filtersTimeoutRef.current) {
-      clearTimeout(filtersTimeoutRef.current)
-    }
-    
-    // Debounce de 300ms para evitar múltiples eventos
-    filtersTimeoutRef.current = setTimeout(() => {
-      requestIdleCallbackPolyfill(() => {
-        if (filters.type !== "all") {
-          trackFilterApplied("type", filters.type)
-        }
-        if (filters.set !== "all") {
-          trackFilterApplied("set", filters.set)
-        }
-        if (filters.rarity !== "all") {
-          trackFilterApplied("rarity", filters.rarity)
-        }
-        if (filters.version !== "all") {
-          trackFilterApplied("version", filters.version)
-        }
-      }, { timeout: 500 })
-    }, 300)
-    
-    return () => {
-      if (filtersTimeoutRef.current) {
-        clearTimeout(filtersTimeoutRef.current)
-      }
-    }
-  }, [filters.type, filters.set, filters.rarity, filters.version, initialLoad])
+  // (sin tracking de eventos)
   
   // Ref para almacenar el timeout y poder cancelarlo
   const urlUpdateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)

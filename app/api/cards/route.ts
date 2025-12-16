@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
             // Intentar primero con inkColor, si falla, usar sin ella
             let query = supabase
               .from("cards")
-              .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor,color")
+              .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor")
               .eq("status", filters.status)
               .limit(limit)
           
@@ -89,10 +89,11 @@ export async function GET(request: NextRequest) {
               normalStock: card.normalStock ?? 0,
               foilStock: card.foilStock ?? 0,
               inkColor: card.inkColor || null,
-              color: card.color || null
+              // Tu schema no tiene columna "color" (solo inkColor). Mantener compatibilidad.
+              color: null
             }))
             const cardsWithStock = allCards.filter(c => (c.normalStock && c.normalStock > 0) || (c.foilStock && c.foilStock > 0))
-            const cardsWithColor = allCards.filter(c => c.inkColor || c.color)
+            const cardsWithColor = allCards.filter(c => c.inkColor)
             console.log(`📊 Cards loaded (limited): ${allCards.length} cards`)
             console.log(`   📦 Cartas con stock: ${cardsWithStock.length}`)
             console.log(`   🎨 Cartas con color: ${cardsWithColor.length}`)
@@ -160,10 +161,11 @@ export async function GET(request: NextRequest) {
                 normalStock: card.normalStock ?? 0,
                 foilStock: card.foilStock ?? 0,
                 inkColor: card.inkColor || null,
-                color: card.color || null,
+                // Compatibilidad: tu schema no tiene columna "color"
+                color: null,
               }))
 
-              const cardsWithColor = allCards.filter((c) => c.inkColor || c.color)
+              const cardsWithColor = allCards.filter((c) => c.inkColor)
               console.log(`🎨 Cards with color from RPC(paged): ${cardsWithColor.length} out of ${allCards.length}`)
 
               hasMore = false // Ya tenemos todas las cartas (vía RPC paginada por parámetros)
@@ -186,7 +188,7 @@ export async function GET(request: NextRequest) {
             // Intentar con inkColor, si falla, usar sin ella
             let query = supabase
               .from("cards")
-              .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor,color")
+              .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor")
               .eq("status", filters.status)
               // Importante: ordenar para que la paginación por range/offset sea estable
               .order("id", { ascending: true })
@@ -251,27 +253,26 @@ export async function GET(request: NextRequest) {
               if (page === 0) {
                 console.log(`🔍 Page 1 - Sample card keys:`, Object.keys(sampleCard))
                 console.log(`🔍 Page 1 - Has inkColor in response:`, hasInkColorInResponse, sampleCard.inkColor)
-                console.log(`🔍 Page 1 - Has color in response:`, hasColorInResponse, sampleCard.color)
+                console.log(`🔍 Page 1 - Has color in response:`, hasColorInResponse, (sampleCard as any).color)
                 // Verificar si PostgREST está devolviendo inkColor con otro nombre (lowercase, etc.)
                 const hasInkcolorLowercase = 'inkcolor' in sampleCard
                 console.log(`🔍 Page 1 - Has inkcolor (lowercase) in response:`, hasInkcolorLowercase, (sampleCard as any).inkcolor)
                 // Verificar si hay cartas con color en la primera página
-                const firstPageWithColor = data.filter(c => (c as any).inkColor || (c as any).inkcolor || (c as any).color)
+                const firstPageWithColor = data.filter(c => (c as any).inkColor || (c as any).inkcolor)
                 console.log(`🔍 Page 1 - Cards with color in raw data:`, firstPageWithColor.length, "out of", data.length)
                 if (firstPageWithColor.length > 0) {
                   console.log(`🔍 Page 1 - Sample cards with color:`, firstPageWithColor.slice(0, 3).map(c => ({ 
                     id: c.id, 
                     name: c.name, 
                     inkColor: (c as any).inkColor, 
-                    inkcolor: (c as any).inkcolor,
-                    color: (c as any).color 
+                    inkcolor: (c as any).inkcolor
                   })))
                 } else {
                   console.warn(`⚠️ Page 1 - NO CARDS WITH COLOR in raw Supabase response!`)
                   console.warn(`⚠️ Page 1 - Sample card from Supabase (FULL OBJECT):`, JSON.stringify(sampleCard, null, 2))
                   console.warn(`⚠️ Page 1 - All keys in sample card:`, Object.keys(sampleCard))
                   // Verificar todas las posibles variaciones del nombre
-                  const possibleNames = ['inkColor', 'inkcolor', 'InkColor', 'INKCOLOR', 'color', 'Color', 'COLOR']
+                  const possibleNames = ['inkColor', 'inkcolor', 'InkColor', 'INKCOLOR']
                   possibleNames.forEach(name => {
                     if (name in sampleCard) {
                       console.warn(`⚠️ Page 1 - Found column with name "${name}":`, (sampleCard as any)[name])
@@ -295,16 +296,17 @@ export async function GET(request: NextRequest) {
                   // Intentar ambos nombres, pero si ambos son null, puede ser un problema del schema cache
                   inkColor: cardAny.inkColor !== undefined && cardAny.inkColor !== null ? cardAny.inkColor : 
                            cardAny.inkcolor !== undefined && cardAny.inkcolor !== null ? cardAny.inkcolor : null,
-                  color: cardAny.color !== undefined && cardAny.color !== null ? cardAny.color : null
+                  // Compatibilidad: tu schema no tiene columna "color"
+                  color: null
                 }
               })
               
               // Debug: verificar si inkColor está presente después de normalizar
-              const cardsWithColor = normalizedData.filter(c => c.inkColor || c.color)
+              const cardsWithColor = normalizedData.filter(c => c.inkColor)
               if (page === 0) {
                 console.log(`🎨 First page: ${cardsWithColor.length} cards with color out of ${normalizedData.length}`)
                 if (cardsWithColor.length > 0) {
-                  console.log(`🎨 Sample colors:`, cardsWithColor.slice(0, 3).map(c => ({ name: c.name, inkColor: c.inkColor, color: c.color })))
+                  console.log(`🎨 Sample colors:`, cardsWithColor.slice(0, 3).map(c => ({ name: c.name, inkColor: c.inkColor })))
                 } else {
                   console.warn(`⚠️ No cards with color found in first page! Sample card:`, {
                     id: normalizedData[0].id,
@@ -349,13 +351,13 @@ export async function GET(request: NextRequest) {
             normalStock: card.normalStock ?? 0,
             foilStock: card.foilStock ?? 0,
             inkColor: card.inkColor || null,
-            color: card.color || null
+            color: null
           })) as unknown as Card[]
           dataSource = "supabase"
           
           // Debug: verificar stock y color en las primeras cartas
           const cardsWithStock = cards.filter(c => (c.normalStock && c.normalStock > 0) || (c.foilStock && c.foilStock > 0))
-          const cardsWithColor = cards.filter(c => (c as any).inkColor || (c as any).color)
+          const cardsWithColor = cards.filter(c => (c as any).inkColor)
           console.log(`✓ GET /api/cards - Using SUPABASE (${cards.length} cards from ${page} pages)`)
           console.log(`   📦 Cartas con stock: ${cardsWithStock.length} de ${cards.length}`)
           console.log(`   🎨 Cartas con color: ${cardsWithColor.length} de ${cards.length}`)
