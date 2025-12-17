@@ -58,6 +58,48 @@ function DeckBuilder() {
   const { user } = useUser()
   const { collection, loading: collectionLoading } = useCollection()
   const { toast } = useToast()
+
+  const setOrder = useMemo(() => {
+    return [
+      "firstChapter",
+      "riseOfFloodborn",
+      "intoInklands",
+      "ursulaReturn",
+      "shimmering",
+      "azurite",
+      "archazia",
+      "reignOfJafar",
+      "fabled",
+      "whi",
+    ] as const
+  }, [])
+
+  const setOrderIndex = useMemo(() => {
+    const m = new Map<string, number>()
+    setOrder.forEach((s, i) => m.set(s, i + 1))
+    return m
+  }, [setOrder])
+
+  const formatSetLabel = useMemo(() => {
+    return (setValue: string) => {
+      const n = setOrderIndex.get(setValue)
+      if (!n) return setValue
+      const labelKey =
+        setValue === "whi"
+          ? "whispersInTheWell"
+          : (setValue as
+              | "firstChapter"
+              | "riseOfFloodborn"
+              | "intoInklands"
+              | "ursulaReturn"
+              | "shimmering"
+              | "azurite"
+              | "archazia"
+              | "reignOfJafar"
+              | "fabled")
+      return `${n}. ${t(labelKey)}`
+    }
+  }, [setOrderIndex, t])
   
   const [currentDeck, setCurrentDeck] = useState<DeckCard[]>([])
   const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
@@ -213,8 +255,13 @@ function DeckBuilder() {
   // Obtener sets únicos
   const availableSets = useMemo(() => {
     const sets = new Set(availableCards.map(card => card.set))
-    return Array.from(sets).sort()
-  }, [availableCards])
+    return Array.from(sets).sort((a, b) => {
+      const ai = setOrderIndex.get(a) ?? Number.MAX_SAFE_INTEGER
+      const bi = setOrderIndex.get(b) ?? Number.MAX_SAFE_INTEGER
+      if (ai !== bi) return ai - bi
+      return String(a).localeCompare(String(b))
+    })
+  }, [availableCards, setOrderIndex])
 
   // Obtener tipos únicos
   const availableTypes = useMemo(() => {
@@ -475,7 +522,7 @@ function DeckBuilder() {
                     <SelectContent>
                       <SelectItem value="all">Todos los sets</SelectItem>
                       {availableSets.length > 0 && availableSets.map(set => (
-                        <SelectItem key={set} value={set}>{set}</SelectItem>
+                        <SelectItem key={set} value={set}>{formatSetLabel(String(set))}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

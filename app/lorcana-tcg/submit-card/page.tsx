@@ -263,12 +263,16 @@ export default function SubmitCardPage() {
                         <SelectValue placeholder={t("selectSet")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="firstChapter">{t("firstChapter")}</SelectItem>
-                        <SelectItem value="riseOfFloodborn">{t("riseOfFloodborn")}</SelectItem>
-                        <SelectItem value="intoInklands">{t("intoInklands")}</SelectItem>
-                        <SelectItem value="ursulaReturn">{t("ursulaReturn")}</SelectItem>
-                        <SelectItem value="shimmering">{t("shimmering")}</SelectItem>
-                        <SelectItem value="azurite">{t("azurite")}</SelectItem>
+                        <SelectItem value="firstChapter">1. {t("firstChapter")}</SelectItem>
+                        <SelectItem value="riseOfFloodborn">2. {t("riseOfFloodborn")}</SelectItem>
+                        <SelectItem value="intoInklands">3. {t("intoInklands")}</SelectItem>
+                        <SelectItem value="ursulaReturn">4. {t("ursulaReturn")}</SelectItem>
+                        <SelectItem value="shimmering">5. {t("shimmering")}</SelectItem>
+                        <SelectItem value="azurite">6. {t("azurite")}</SelectItem>
+                        <SelectItem value="archazia">7. {t("archazia")}</SelectItem>
+                        <SelectItem value="reignOfJafar">8. {t("reignOfJafar")}</SelectItem>
+                        <SelectItem value="fabled">9. {t("fabled")}</SelectItem>
+                        <SelectItem value="whi">10. {t("whispersInTheWell")}</SelectItem>
                         <SelectItem value="unknown">{t("unknown")}</SelectItem>
                       </SelectContent>
                     </Select>

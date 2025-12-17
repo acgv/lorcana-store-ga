@@ -846,16 +846,16 @@ export default function InventoryPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t("allSets")}</SelectItem>
-                  <SelectItem value="firstChapter">{t("firstChapter")}</SelectItem>
-                  <SelectItem value="riseOfFloodborn">{t("riseOfFloodborn")}</SelectItem>
-                  <SelectItem value="intoInklands">{t("intoInklands")}</SelectItem>
-                  <SelectItem value="ursulaReturn">{t("ursulaReturn")}</SelectItem>
-                  <SelectItem value="shimmering">{t("shimmering")}</SelectItem>
-                  <SelectItem value="azurite">{t("azurite")}</SelectItem>
-                  <SelectItem value="archazia">Set 7 - Archazia's Island</SelectItem>
-                  <SelectItem value="reignOfJafar">Set 8 - Reign of Jafar</SelectItem>
-                  <SelectItem value="fabled">Set 9 - Fabled</SelectItem>
-                  <SelectItem value="whi">{t("whispersInTheWell")}</SelectItem>
+                  <SelectItem value="firstChapter">1. {t("firstChapter")}</SelectItem>
+                  <SelectItem value="riseOfFloodborn">2. {t("riseOfFloodborn")}</SelectItem>
+                  <SelectItem value="intoInklands">3. {t("intoInklands")}</SelectItem>
+                  <SelectItem value="ursulaReturn">4. {t("ursulaReturn")}</SelectItem>
+                  <SelectItem value="shimmering">5. {t("shimmering")}</SelectItem>
+                  <SelectItem value="azurite">6. {t("azurite")}</SelectItem>
+                  <SelectItem value="archazia">7. {t("archazia")}</SelectItem>
+                  <SelectItem value="reignOfJafar">8. {t("reignOfJafar")}</SelectItem>
+                  <SelectItem value="fabled">9. {t("fabled")}</SelectItem>
+                  <SelectItem value="whi">10. {t("whispersInTheWell")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1012,16 +1012,16 @@ export default function InventoryPage() {
                           <SelectValue placeholder="Seleccionar Set" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="firstChapter">First Chapter</SelectItem>
-                          <SelectItem value="riseOfFloodborn">Rise of Floodborn</SelectItem>
-                          <SelectItem value="intoInklands">Into the Inklands</SelectItem>
-                          <SelectItem value="ursulaReturn">Ursula's Return</SelectItem>
-                          <SelectItem value="shimmering">Shimmering Skies</SelectItem>
-                          <SelectItem value="azurite">Azurite</SelectItem>
-                          <SelectItem value="archazia">Set 7 - Archazia's Island</SelectItem>
-                          <SelectItem value="reignOfJafar">Set 8 - Reign of Jafar</SelectItem>
-                          <SelectItem value="fabled">Set 9 - Fabled</SelectItem>
-                          <SelectItem value="whi">Whispers in the Well</SelectItem>
+                          <SelectItem value="firstChapter">1. {t("firstChapter")}</SelectItem>
+                          <SelectItem value="riseOfFloodborn">2. {t("riseOfFloodborn")}</SelectItem>
+                          <SelectItem value="intoInklands">3. {t("intoInklands")}</SelectItem>
+                          <SelectItem value="ursulaReturn">4. {t("ursulaReturn")}</SelectItem>
+                          <SelectItem value="shimmering">5. {t("shimmering")}</SelectItem>
+                          <SelectItem value="azurite">6. {t("azurite")}</SelectItem>
+                          <SelectItem value="archazia">7. {t("archazia")}</SelectItem>
+                          <SelectItem value="reignOfJafar">8. {t("reignOfJafar")}</SelectItem>
+                          <SelectItem value="fabled">9. {t("fabled")}</SelectItem>
+                          <SelectItem value="whi">10. {t("whispersInTheWell")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1242,16 +1242,16 @@ export default function InventoryPage() {
                             <SelectValue placeholder="Seleccionar Set" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="firstChapter">First Chapter</SelectItem>
-                            <SelectItem value="riseOfFloodborn">Rise of Floodborn</SelectItem>
-                            <SelectItem value="intoInklands">Into the Inklands</SelectItem>
-                            <SelectItem value="ursulaReturn">Ursula's Return</SelectItem>
-                            <SelectItem value="shimmering">Shimmering Skies</SelectItem>
-                            <SelectItem value="azurite">Azurite</SelectItem>
-                            <SelectItem value="archazia">Set 7 - Archazia's Island</SelectItem>
-                            <SelectItem value="reignOfJafar">Set 8 - Reign of Jafar</SelectItem>
-                            <SelectItem value="fabled">Set 9 - Fabled</SelectItem>
-                            <SelectItem value="whi">Whispers in the Well</SelectItem>
+                            <SelectItem value="firstChapter">1. {t("firstChapter")}</SelectItem>
+                            <SelectItem value="riseOfFloodborn">2. {t("riseOfFloodborn")}</SelectItem>
+                            <SelectItem value="intoInklands">3. {t("intoInklands")}</SelectItem>
+                            <SelectItem value="ursulaReturn">4. {t("ursulaReturn")}</SelectItem>
+                            <SelectItem value="shimmering">5. {t("shimmering")}</SelectItem>
+                            <SelectItem value="azurite">6. {t("azurite")}</SelectItem>
+                            <SelectItem value="archazia">7. {t("archazia")}</SelectItem>
+                            <SelectItem value="reignOfJafar">8. {t("reignOfJafar")}</SelectItem>
+                            <SelectItem value="fabled">9. {t("fabled")}</SelectItem>
+                            <SelectItem value="whi">10. {t("whispersInTheWell")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1368,15 +1368,16 @@ export default function InventoryPage() {
                             <SelectValue placeholder="Seleccionar Set" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="firstChapter">First Chapter</SelectItem>
-                            <SelectItem value="riseOfFloodborn">Rise of the Floodborn</SelectItem>
-                            <SelectItem value="intoInklands">Into the Inklands</SelectItem>
-                            <SelectItem value="ursulaReturn">Ursula's Return</SelectItem>
-                            <SelectItem value="shimmering">Shimmering Skies</SelectItem>
-                            <SelectItem value="azurite">Azurite</SelectItem>
-                            <SelectItem value="archazia">Set 7 - Archazia's Island</SelectItem>
-                            <SelectItem value="fabled">Fabled</SelectItem>
-                            <SelectItem value="whi">Whispers in the Well</SelectItem>
+                            <SelectItem value="firstChapter">1. {t("firstChapter")}</SelectItem>
+                            <SelectItem value="riseOfFloodborn">2. {t("riseOfFloodborn")}</SelectItem>
+                            <SelectItem value="intoInklands">3. {t("intoInklands")}</SelectItem>
+                            <SelectItem value="ursulaReturn">4. {t("ursulaReturn")}</SelectItem>
+                            <SelectItem value="shimmering">5. {t("shimmering")}</SelectItem>
+                            <SelectItem value="azurite">6. {t("azurite")}</SelectItem>
+                            <SelectItem value="archazia">7. {t("archazia")}</SelectItem>
+                            <SelectItem value="reignOfJafar">8. {t("reignOfJafar")}</SelectItem>
+                            <SelectItem value="fabled">9. {t("fabled")}</SelectItem>
+                            <SelectItem value="whi">10. {t("whispersInTheWell")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

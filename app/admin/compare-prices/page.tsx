@@ -945,16 +945,16 @@ export default function ComparePricesPage() {
   // Función para revertir precios de un set
   const revertSetPrices = async (set: string) => {
     const setNames: Record<string, string> = {
-      'firstChapter': 'Set 1 - The First Chapter',
-      'riseOfFloodborn': 'Set 2 - Rise of the Floodborn',
-      'intoInklands': 'Set 3 - Into the Inklands',
-      'ursulaReturn': 'Set 4 - Ursula\'s Return',
-      'shimmering': 'Set 5 - Shimmering Skies',
-      'azurite': 'Set 6 - Azurite Sea',
-      'archazia': 'Set 7 - Archazia\'s Island',
-      'reignOfJafar': 'Set 8 - Reign of Jafar',
-      'fabled': 'Set 9 - Fabled',
-      'whi': 'Set 10 - Whispers in the Well',
+      firstChapter: '1. El Primer Capítulo',
+      riseOfFloodborn: '2. Ascenso de los Floodborn',
+      intoInklands: '3. Hacia las Inklands',
+      ursulaReturn: '4. El Regreso de Úrsula',
+      shimmering: '5. Cielos Brillantes',
+      azurite: '6. Mar Azurita',
+      archazia: '7. Isla de Archazia',
+      reignOfJafar: '8. Reinado de Jafar',
+      fabled: '9. Fabled',
+      whi: '10. Whispers in the Well',
     }
     
     const setName = setNames[set] || set
@@ -1544,16 +1544,16 @@ export default function ComparePricesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos los sets</SelectItem>
-                      <SelectItem value="firstChapter">Set 1 - The First Chapter</SelectItem>
-                      <SelectItem value="riseOfFloodborn">Set 2 - Rise of the Floodborn</SelectItem>
-                      <SelectItem value="intoInklands">Set 3 - Into the Inklands</SelectItem>
-                      <SelectItem value="ursulaReturn">Set 4 - Ursula's Return</SelectItem>
-                      <SelectItem value="shimmering">Set 5 - Shimmering Skies</SelectItem>
-                      <SelectItem value="azurite">Set 6 - Azurite Sea</SelectItem>
-                      <SelectItem value="archazia">Set 7 - Archazia's Island</SelectItem>
-                      <SelectItem value="reignOfJafar">Set 8 - Reign of Jafar</SelectItem>
-                      <SelectItem value="fabled">Set 9 - Fabled</SelectItem>
-                      <SelectItem value="whi">Set 10 - Whispers in the Well</SelectItem>
+                      <SelectItem value="firstChapter">1. El Primer Capítulo</SelectItem>
+                      <SelectItem value="riseOfFloodborn">2. Ascenso de los Floodborn</SelectItem>
+                      <SelectItem value="intoInklands">3. Hacia las Inklands</SelectItem>
+                      <SelectItem value="ursulaReturn">4. El Regreso de Úrsula</SelectItem>
+                      <SelectItem value="shimmering">5. Cielos Brillantes</SelectItem>
+                      <SelectItem value="azurite">6. Mar Azurita</SelectItem>
+                      <SelectItem value="archazia">7. Isla de Archazia</SelectItem>
+                      <SelectItem value="reignOfJafar">8. Reinado de Jafar</SelectItem>
+                      <SelectItem value="fabled">9. Fabled</SelectItem>
+                      <SelectItem value="whi">10. Whispers in the Well</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={filterStock} onValueChange={setFilterStock}>
