@@ -140,6 +140,7 @@ const translations: Record<Language, Record<string, string>> = {
     item: "Item",
     action: "Action",
     song: "Song",
+    location: "Location",
     common: "Common",
     uncommon: "Uncommon",
     rare: "Rare",
@@ -315,6 +316,13 @@ const translations: Record<Language, Record<string, string>> = {
     reviewedOn: "Reviewed on",
     // User Menu
     myAccount: "My Account",
+    // UI labels
+    openCart: "Open cart",
+    openFilters: "Open filters",
+    openNavigationMenu: "Open menu",
+    // Colors
+    allColors: "All colors",
+    noColorsAvailable: "No colors available",
     myProfile: "My Profile",
     signOut: "Sign Out",
     adminPanel: "Admin Panel",
@@ -532,6 +540,7 @@ const translations: Record<Language, Record<string, string>> = {
     item: "Objet",
     action: "Action",
     song: "Chanson",
+    location: "Lieu",
     common: "Commun",
     uncommon: "Peu commun",
     rare: "Rare",
@@ -547,7 +556,7 @@ const translations: Record<Language, Record<string, string>> = {
     archazia: "L'Île d'Archazia",
     reignOfJafar: "Règne de Jafar",
     fabled: "Fabled",
-    whispersInTheWell: "Whispers in the Well",
+    whispersInTheWell: "Murmures dans le Puits",
     total: "Total",
     checkout: "Commander",
     emptyCart: "Votre panier est vide",
@@ -702,6 +711,13 @@ const translations: Record<Language, Record<string, string>> = {
     reviewedOn: "Examiné le",
     // User Menu
     myAccount: "Mon Compte",
+    // UI labels
+    openCart: "Ouvrir le panier",
+    openFilters: "Ouvrir les filtres",
+    openNavigationMenu: "Ouvrir le menu",
+    // Colors
+    allColors: "Toutes les couleurs",
+    noColorsAvailable: "Aucune couleur disponible",
     myProfile: "Mon Profil",
     signOut: "Déconnexion",
     adminPanel: "Panneau d'Admin",
@@ -919,6 +935,7 @@ const translations: Record<Language, Record<string, string>> = {
     item: "Gegenstand",
     action: "Aktion",
     song: "Lied",
+    location: "Ort",
     common: "Gewöhnlich",
     uncommon: "Ungewöhnlich",
     rare: "Selten",
@@ -934,7 +951,7 @@ const translations: Record<Language, Record<string, string>> = {
     archazia: "Archazias Insel",
     reignOfJafar: "Jafars Herrschaft",
     fabled: "Fabled",
-    whispersInTheWell: "Whispers in the Well",
+    whispersInTheWell: "Flüstern im Brunnen",
     total: "Gesamt",
     checkout: "Zur Kasse",
     emptyCart: "Ihr Warenkorb ist leer",
@@ -1089,6 +1106,13 @@ const translations: Record<Language, Record<string, string>> = {
     reviewedOn: "Überprüft am",
     // User Menu
     myAccount: "Mein Konto",
+    // UI labels
+    openCart: "Warenkorb öffnen",
+    openFilters: "Filter öffnen",
+    openNavigationMenu: "Menü öffnen",
+    // Colors
+    allColors: "Alle Farben",
+    noColorsAvailable: "Keine Farben verfügbar",
     myProfile: "Mein Profil",
     signOut: "Abmelden",
     adminPanel: "Admin-Panel",
@@ -1360,6 +1384,7 @@ const translations: Record<Language, Record<string, string>> = {
     item: "Objeto",
     action: "Acción",
     song: "Canción",
+    location: "Ubicación",
     common: "Común",
     uncommon: "Poco común",
     rare: "Raro",
@@ -1375,7 +1400,7 @@ const translations: Record<Language, Record<string, string>> = {
     archazia: "Isla de Archazia",
     reignOfJafar: "Reinado de Jafar",
     fabled: "Fabled",
-    whispersInTheWell: "Whispers in the Well",
+    whispersInTheWell: "Susurros en el Pozo",
     total: "Total",
     checkout: "Finalizar compra",
     emptyCart: "Tu carrito está vacío",
@@ -1537,6 +1562,13 @@ const translations: Record<Language, Record<string, string>> = {
     reviewedOn: "Revisado el",
     // User Menu
     myAccount: "Mi Cuenta",
+    // UI labels
+    openCart: "Abrir carrito",
+    openFilters: "Abrir filtros",
+    openNavigationMenu: "Abrir menú",
+    // Colors
+    allColors: "Todos los colores",
+    noColorsAvailable: "Sin colores disponibles",
     myProfile: "Mi Perfil",
     signOut: "Cerrar Sesión",
     adminPanel: "Panel Admin",

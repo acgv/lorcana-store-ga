@@ -112,6 +112,36 @@ function DeckBuilder() {
   const [availableCards, setAvailableCards] = useState<CardType[]>([])
   const [loadingCards, setLoadingCards] = useState(false)
 
+  const inkColorHex: Record<string, string> = {
+    Amber: "#F59E0B",
+    Amethyst: "#8B5CF6",
+    Emerald: "#10B981",
+    Ruby: "#EF4444",
+    Sapphire: "#3B82F6",
+    Steel: "#94A3B8",
+  }
+
+  const renderColorDots = (label: string) => {
+    const parts = String(label)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 2)
+
+    return (
+      <span className="inline-flex items-center gap-1 mr-2">
+        {parts.map((p) => (
+          <span
+            key={p}
+            className="inline-block h-2.5 w-2.5 rounded-full border border-white/20"
+            style={{ backgroundColor: inkColorHex[p] || "#64748B" }}
+            aria-hidden="true"
+          />
+        ))}
+      </span>
+    )
+  }
+
   // Cargar mazos guardados
   useEffect(() => {
     if (user?.id) {
@@ -540,7 +570,9 @@ function DeckBuilder() {
                     <SelectContent>
                       <SelectItem value="all">Todos los tipos</SelectItem>
                       {availableTypes.length > 0 && availableTypes.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                        <SelectItem key={type} value={type}>
+                          {t(String(type))}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -553,13 +585,19 @@ function DeckBuilder() {
                     disabled={loadingCards}
                   >
                     <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
-                      <SelectValue placeholder={availableColors.length > 0 ? "Todos los colores" : "Sin colores disponibles"} />
+                      <div className="flex items-center gap-2">
+                        {selectedColor !== "all" && renderColorDots(String(selectedColor))}
+                        <SelectValue placeholder={availableColors.length > 0 ? t("allColors") : t("noColorsAvailable")} />
+                      </div>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos los colores</SelectItem>
+                      <SelectItem value="all">{t("allColors")}</SelectItem>
                       {availableColors.length > 0 ? (
                         availableColors.map(color => (
-                          <SelectItem key={color} value={color}>{color}</SelectItem>
+                          <SelectItem key={color} value={color}>
+                            {renderColorDots(String(color))}
+                            {String(color)}
+                          </SelectItem>
                         ))
                       ) : (
                         <SelectItem value="all" disabled>No hay colores disponibles</SelectItem>
