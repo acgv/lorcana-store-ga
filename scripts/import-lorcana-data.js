@@ -129,6 +129,8 @@ function transformCard(lorcanaCard) {
     status: 'approved',
     // Color de tinta de la carta (Amber, Ruby, Emerald, Sapphire, Steel, Amethyst)
     inkColor: lorcanaCard.Color || null,
+    // Costo de tinta (Lorcana API: Cost)
+    inkCost: typeof lorcanaCard.Cost === 'number' ? lorcanaCard.Cost : (lorcanaCard.Cost ? Number(lorcanaCard.Cost) : null),
     // Stock inicial en 0 para nuevas cartas
     stock: 0,
     normalStock: 0,

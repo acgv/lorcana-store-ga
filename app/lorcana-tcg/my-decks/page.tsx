@@ -547,10 +547,10 @@ function DeckBuilder() {
                     disabled={availableSets.length === 0 || loadingCards}
                   >
                     <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
-                      <SelectValue placeholder="Todos los sets" />
+                      <SelectValue placeholder={t("allSets")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos los sets</SelectItem>
+                      <SelectItem value="all">{t("allSets")}</SelectItem>
                       {availableSets.length > 0 && availableSets.map(set => (
                         <SelectItem key={set} value={set}>{formatSetLabel(String(set))}</SelectItem>
                       ))}
@@ -565,10 +565,10 @@ function DeckBuilder() {
                     disabled={availableTypes.length === 0 || loadingCards}
                   >
                     <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
-                      <SelectValue placeholder="Todos los tipos" />
+                      <SelectValue placeholder={t("allTypes")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos los tipos</SelectItem>
+                      <SelectItem value="all">{t("allTypes")}</SelectItem>
                       {availableTypes.length > 0 && availableTypes.map(type => (
                         <SelectItem key={type} value={type}>
                           {t(String(type))}
@@ -600,7 +600,7 @@ function DeckBuilder() {
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="all" disabled>No hay colores disponibles</SelectItem>
+                        <SelectItem value="all" disabled>{t("noColorsAvailable")}</SelectItem>
                       )}
                     </SelectContent>
                   </Select>

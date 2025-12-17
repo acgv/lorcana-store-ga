@@ -33,6 +33,7 @@ export interface Card extends BaseProduct {
   rarity: CardRarity
   type: CardType
   number: number
+  inkCost?: number
   foilPrice: number
   // Campos adicionales para el ecosistema completo
   cardNumber?: string // "101/204"

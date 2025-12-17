@@ -8,6 +8,7 @@ create table if not exists public.cards (
   type text not null,
   number integer not null,
   cardNumber text,
+  "inkCost" integer,
   price numeric,
   foilPrice numeric,
   description text,

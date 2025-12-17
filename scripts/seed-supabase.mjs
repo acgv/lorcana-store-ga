@@ -35,7 +35,7 @@ async function main() {
   console.log("🔍 Fetching existing cards from database...")
   const { data: existingCards, error: fetchError } = await supabase
     .from("cards")
-    .select("id, price, foilPrice, normalStock, foilStock")
+    .select("id, price, foilPrice, normalStock, foilStock, inkCost")
   
   if (fetchError) {
     console.error("Error fetching existing cards:", fetchError)
@@ -49,6 +49,7 @@ async function main() {
       foilPrice: card.foilPrice,
       normalStock: card.normalStock,
       foilStock: card.foilStock,
+      inkCost: card.inkCost,
     })
   })
   
@@ -73,6 +74,7 @@ async function main() {
       type: c.type,
       number: Number(c.number) || 0,
       cardNumber: c.cardNumber ?? String(c.number ?? ""),
+      inkCost: c.inkCost ?? null,
       description: c.description ?? null,
       version: c.version ?? "normal",
       language: c.language ?? "en",
@@ -92,6 +94,8 @@ async function main() {
       row.foilPrice = existing.foilPrice
       row.normalStock = existing.normalStock
       row.foilStock = existing.foilStock
+      // Preservar inkCost si ya existe; si no existe, llenar desde JSON (sin pisar precio/stock)
+      row.inkCost = existing.inkCost ?? (c.inkCost ?? null)
       preserved++
       updated++
     }

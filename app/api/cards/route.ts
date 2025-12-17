@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
             // Intentar primero con inkColor, si falla, usar sin ella
             let query = supabase
               .from("cards")
-              .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor")
+              .select("id,name,set,type,rarity,number,cardNumber,inkCost,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor")
               .eq("status", filters.status)
               .limit(limit)
           
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
               console.log(`⚠ GET /api/cards - Error con inkColor, intentando sin ella: ${error.message}`)
               let fallbackQuery = supabase
                 .from("cards")
-                .select("id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description")
+                .select("id,name,set,type,rarity,number,cardNumber,inkCost,price,foilPrice,normalStock,foilStock,image,productType,description")
                 .eq("status", filters.status)
                 .limit(limit)
               
@@ -190,7 +190,7 @@ export async function GET(request: NextRequest) {
             let query = supabase
               .from("cards")
               .select(
-                "id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor",
+                "id,name,set,type,rarity,number,cardNumber,inkCost,price,foilPrice,normalStock,foilStock,image,productType,description,inkColor",
                 page === 0 ? ({ count: "exact" } as any) : undefined
               )
               .eq("status", filters.status)
@@ -216,7 +216,7 @@ export async function GET(request: NextRequest) {
                 let fallbackQuery = supabase
                   .from("cards")
                   .select(
-                    "id,name,set,type,rarity,number,cardNumber,price,foilPrice,normalStock,foilStock,image,productType,description",
+                    "id,name,set,type,rarity,number,cardNumber,inkCost,price,foilPrice,normalStock,foilStock,image,productType,description",
                     page === 0 ? ({ count: "exact" } as any) : undefined
                   )
                   .eq("status", filters.status)
