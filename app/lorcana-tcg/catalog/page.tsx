@@ -8,6 +8,8 @@ import { CardGrid } from "@/components/card-grid"
 import { CardFilters } from "@/components/card-filters"
 import { mockCards } from "@/lib/mock-data"
 import { useLanguage } from "@/components/language-provider"
+import { useCollection } from "@/hooks/use-collection"
+import { useUser } from "@/hooks/use-user"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -18,6 +20,9 @@ function CatalogContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+  const { user } = useUser()
+  const { collection } = useCollection()
+  const [showMissingOnly, setShowMissingOnly] = useState(false)
   
   const [cards, setCards] = useState<any[]>([])
   const [allCards, setAllCards] = useState<any[]>([]) // Todas las cartas para filtrado
@@ -507,6 +512,32 @@ function CatalogContent() {
     return sorted
   }, [allCards, cards, activeSearch, filters.type, filters.set, filters.rarity, filters.minPrice, filters.maxPrice, filters.version, filters.productType, sortBy])
 
+  // Colección: set de IDs "tengo" (status=owned). Se usa para métricas y filtro "Me faltan".
+  const ownedCardIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const item of collection || []) {
+      if (item?.status === "owned" && item?.card_id) ids.add(String(item.card_id))
+    }
+    return ids
+  }, [collection])
+
+  const totalCatalogCards = allCards.length
+  const ownedInCatalogCount = useMemo(() => {
+    if (!allCards || allCards.length === 0) return 0
+    let count = 0
+    for (const c of allCards) {
+      if (c?.id && ownedCardIds.has(String(c.id))) count++
+    }
+    return count
+  }, [allCards, ownedCardIds])
+
+  const missingInCatalogCount = Math.max(0, totalCatalogCards - ownedInCatalogCount)
+
+  const displayedCards = useMemo(() => {
+    if (!showMissingOnly) return filteredCards
+    return filteredCards.filter((c) => c?.id && !ownedCardIds.has(String(c.id)))
+  }, [filteredCards, showMissingOnly, ownedCardIds])
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -546,6 +577,30 @@ function CatalogContent() {
               <h3 className="font-semibold mb-2">{t("legendary")}</h3>
               <p className="text-sm text-muted-foreground">
                 {rarityCounts.legendary} {rarityCounts.legendary === 1 ? t("unitAvailable") : t("unitsAvailable")}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Sección de progreso de colección (Me faltan / Tengo) */}
+        <section className="mb-6">
+          <div className="grid grid-cols-2 gap-4 max-w-2xl">
+            <div className="p-4 bg-card border rounded-lg">
+              <h3 className="font-semibold mb-1">Me faltan</h3>
+              <p className="text-2xl font-bold text-primary">
+                {user ? missingInCatalogCount : "—"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {user ? `de ${totalCatalogCards} cartas del catálogo` : "Inicia sesión para ver tu progreso"}
+              </p>
+            </div>
+            <div className="p-4 bg-card border rounded-lg">
+              <h3 className="font-semibold mb-1">Tengo</h3>
+              <p className="text-2xl font-bold text-accent">
+                {user ? ownedInCatalogCount : "—"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {user ? "cartas únicas en tu colección" : "—"}
               </p>
             </div>
           </div>
@@ -627,11 +682,21 @@ function CatalogContent() {
             {/* Barra de acciones mobile */}
             <div className="flex items-center justify-between mb-4 lg:hidden">
               <div className="text-sm text-muted-foreground">
-                {!loading && `${filteredCards.length} ${filteredCards.length === 1 ? "card" : "cards"}`}
+                {!loading && `${displayedCards.length} ${displayedCards.length === 1 ? "card" : "cards"}`}
               </div>
               
               {/* Botón de filtros mobile */}
-              <Sheet>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={showMissingOnly ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowMissingOnly((v) => !v)}
+                  disabled={!user}
+                  title={!user ? "Inicia sesión para ver las cartas que te faltan" : undefined}
+                >
+                  {showMissingOnly ? "Todas" : "Me faltan"}
+                </Button>
+                <Sheet>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" aria-label={t("openFilters") || "Abrir filtros"}>
                     <SlidersHorizontal className="h-4 w-4 mr-2" />
@@ -656,7 +721,8 @@ function CatalogContent() {
                     />
                   </div>
                 </SheetContent>
-              </Sheet>
+                </Sheet>
+              </div>
             </div>
 
             {loading ? (
@@ -667,11 +733,22 @@ function CatalogContent() {
               <>
                 {/* Contador desktop */}
                 <div className="hidden lg:block mb-4">
-                  <div className="text-sm text-muted-foreground">
-                    {filteredCards.length} {filteredCards.length === 1 ? t("cardFound") : t("cardsFound")} {t("foundText")}
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      {displayedCards.length} {displayedCards.length === 1 ? t("cardFound") : t("cardsFound")} {t("foundText")}
+                    </div>
+                    <Button
+                      variant={showMissingOnly ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setShowMissingOnly((v) => !v)}
+                      disabled={!user}
+                      title={!user ? "Inicia sesión para ver las cartas que te faltan" : undefined}
+                    >
+                      {showMissingOnly ? "Ver todas" : "Ver me faltan"}
+                    </Button>
                   </div>
                 </div>
-                <CardGrid cards={filteredCards} viewMode={viewMode} />
+                <CardGrid cards={displayedCards} viewMode={viewMode} />
               </>
             )}
           </div>
