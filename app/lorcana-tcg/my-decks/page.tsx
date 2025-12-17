@@ -56,7 +56,7 @@ interface SavedDeck {
 function DeckBuilder() {
   const { t } = useLanguage()
   const { user } = useUser()
-  const { collection, loading: collectionLoading } = useCollection()
+  const { collection, loading: collectionLoading, getAuthHeaders } = useCollection()
   const { toast } = useToast()
 
   const setOrder = useMemo(() => {
@@ -111,6 +111,11 @@ function DeckBuilder() {
   const [editingDeckId, setEditingDeckId] = useState<string | null>(null)
   const [availableCards, setAvailableCards] = useState<CardType[]>([])
   const [loadingCards, setLoadingCards] = useState(false)
+  const [aiDeckType, setAiDeckType] = useState<"aggro" | "midrange" | "control">("midrange")
+  const [aiCurve, setAiCurve] = useState<"low" | "balanced" | "high">("balanced")
+  const [aiColors, setAiColors] = useState<string[]>([])
+  const [generatingDeck, setGeneratingDeck] = useState(false)
+  const [aiMissing, setAiMissing] = useState<any[]>([])
 
   const inkColorHex: Record<string, string> = {
     Amber: "#F59E0B",
@@ -140,6 +145,88 @@ function DeckBuilder() {
         ))}
       </span>
     )
+  }
+
+  const toggleAiColor = (color: string) => {
+    setAiColors((prev) => {
+      if (prev.includes(color)) return prev.filter((c) => c !== color)
+      if (prev.length >= 2) return prev
+      return [...prev, color]
+    })
+  }
+
+  const generateDeck = async () => {
+    try {
+      setGeneratingDeck(true)
+      setAiMissing([])
+
+      const headers = await getAuthHeaders()
+      if (!headers?.Authorization) {
+        toast({
+          title: "Inicia sesión",
+          description: "Debes iniciar sesión para generar un mazo",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const res = await fetch("/api/decks/generate", {
+        method: "POST",
+        headers: {
+          Authorization: headers.Authorization,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          deckType: aiDeckType,
+          colors: aiColors,
+          curve: aiCurve,
+        }),
+      })
+
+      const json = await res.json()
+      if (!json?.success) {
+        toast({
+          title: "Error",
+          description: json?.error || "No se pudo generar el mazo",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const generated = json?.data?.deck || []
+      const missing = json?.data?.missingSuggestions || []
+      setAiMissing(missing)
+
+      const nextDeck: DeckCard[] = generated
+        .map((d: any) => {
+          const id = String(d.cardId)
+          const card = availableCards.find((c) => String(c.id).toLowerCase().trim() === id.toLowerCase().trim())
+          if (!card) return null
+          return {
+            cardId: id,
+            card,
+            quantity: Number(d.qty || 0),
+          } as DeckCard
+        })
+        .filter(Boolean) as DeckCard[]
+
+      const totalQty = nextDeck.reduce((acc, d) => acc + (d.quantity || 0), 0)
+      setCurrentDeck(nextDeck)
+
+      toast({
+        title: "Mazo generado",
+        description: `Se generó un mazo con ${totalQty} cartas (objetivo 60).`,
+      })
+    } catch (e) {
+      console.error("Error generating deck:", e)
+      toast({
+        title: "Error",
+        description: "No se pudo generar el mazo",
+        variant: "destructive",
+      })
+    } finally {
+      setGeneratingDeck(false)
+    }
   }
 
   // Cargar mazos guardados
@@ -527,6 +614,85 @@ function DeckBuilder() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Generador de mazos (IA - MVP) */}
+            <div className="rounded-lg border border-primary/20 bg-background/30 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold">Generador de mazos (IA - MVP)</div>
+                  <div className="text-xs text-muted-foreground">
+                    Solo tus cartas “owned”. 60 cartas, máx 4 copias, máximo 2 colores. Si no alcanza, sugiere faltantes.
+                  </div>
+                </div>
+                <Button onClick={generateDeck} disabled={generatingDeck || collectionLoading || loadingCards} className="shrink-0">
+                  {generatingDeck ? "Generando..." : "Generar"}
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-foreground/90">Tipo de mazo</Label>
+                  <Select value={aiDeckType} onValueChange={(v) => setAiDeckType(v as any)} disabled={generatingDeck}>
+                    <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
+                      <SelectValue placeholder="Selecciona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="aggro">Aggro</SelectItem>
+                      <SelectItem value="midrange">Midrange</SelectItem>
+                      <SelectItem value="control">Control</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-foreground/90">Curva de costos</Label>
+                  <Select value={aiCurve} onValueChange={(v) => setAiCurve(v as any)} disabled={generatingDeck}>
+                    <SelectTrigger className="bg-background/50 border-primary/30 hover:border-primary/50 transition-colors w-full">
+                      <SelectValue placeholder="Selecciona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Baja</SelectItem>
+                      <SelectItem value="balanced">Balanceada</SelectItem>
+                      <SelectItem value="high">Alta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-foreground/90">Colores (máx 2)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {["Amber", "Amethyst", "Emerald", "Ruby", "Sapphire", "Steel"].map((c) => {
+                      const selected = aiColors.includes(c)
+                      return (
+                        <Button
+                          key={c}
+                          type="button"
+                          variant={selected ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => toggleAiColor(c)}
+                          disabled={generatingDeck || (!selected && aiColors.length >= 2)}
+                          className="gap-2"
+                        >
+                          {renderColorDots(c)}
+                          {c}
+                        </Button>
+                      )
+                    })}
+                    {aiColors.length === 0 && (
+                      <div className="text-xs text-muted-foreground self-center">
+                        Sin filtro de color (usa cualquier color de tu colección)
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {aiMissing?.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Faltantes sugeridos: {aiMissing.slice(0, 6).map((m: any) => m.name).join(", ")}
+                  {aiMissing.length > 6 ? "..." : ""}
+                </div>
+              )}
+            </div>
             {/* Búsqueda y filtros */}
             <div className="space-y-3">
               <div className="relative">

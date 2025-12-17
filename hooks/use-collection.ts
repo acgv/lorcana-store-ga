@@ -29,6 +29,11 @@ export function useCollection() {
     } as const
   }, [])
 
+  const getAuthToken = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token || null
+  }, [])
+
   const loadCollection = useCallback(async (force = false) => {
     if (!user?.id) return
     if (loadingRef.current) return // Ya está cargando, salir
@@ -198,6 +203,7 @@ export function useCollection() {
     loadCollection, // Exponer para refresh manual
     refresh: manualRefresh, // Forzar recarga invalidando cache
     getAuthHeaders, // Exponer por si alguna vista necesita hacer requests directos
+    getAuthToken,
   }
 }
 
