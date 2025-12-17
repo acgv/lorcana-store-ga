@@ -7,6 +7,7 @@ import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { CardFilters } from "@/components/card-filters"
+import { CardGrid } from "@/components/card-grid"
 import { useLanguage } from "@/components/language-provider"
 import { useUser } from "@/hooks/use-user"
 import { useCollection } from "@/hooks/use-collection"
@@ -51,8 +52,8 @@ function MyCollectionContent() {
   const [loadingCards, setLoadingCards] = useState(true)
   
   // Leer tab y filtros desde URL o usar defaults
-  const tabFromUrl = searchParams.get("tab") as "all" | "owned" | null
-  const [activeTab, setActiveTab] = useState<"all" | "owned">(tabFromUrl || "all")
+  const tabFromUrl = searchParams.get("tab") as "all" | "owned" | "missing" | null
+  const [activeTab, setActiveTab] = useState<"all" | "owned" | "missing">(tabFromUrl || "all")
   const [filters, setFilters] = useState({
     type: searchParams.get("type") || "all",
     set: searchParams.get("set") || "all",
@@ -287,6 +288,18 @@ function MyCollectionContent() {
     return sum + (price * item.quantity)
   }, 0)
 
+  // Calcular "Me faltan" (cartas del catálogo que no están en mi colección)
+  const ownedIds = new Set(
+    collection
+      .filter((i) => i.status === "owned")
+      .map((i) => String(i.card_id))
+  )
+  const totalCatalogCards = allCards.length
+  const totalMissingCards = Math.max(
+    0,
+    allCards.filter((c) => c?.id && !ownedIds.has(String(c.id))).length
+  )
+
 
   // Filter cards for "All Cards" tab
   // NOTE: NO filtramos por stock/version porque esto es para crear colección personal
@@ -356,6 +369,9 @@ function MyCollectionContent() {
         return (Number(a.number) || 0) - (Number(b.number) || 0)
     }
   })
+
+  // Tab "Me faltan" (aplica los mismos filtros y sort del tab "Todas")
+  const missingCards = sortedCards.filter((c) => c?.id && !ownedIds.has(String(c.id)))
 
   // Sort filtered owned items (agrupados)
   const sortedOwnedItems = [...filteredOwnedItems].sort((a, b) => {
@@ -475,12 +491,25 @@ function MyCollectionContent() {
                   </p>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Me faltan</CardTitle>
+                  <AlertCircle className="h-4 w-4 text-accent" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-accent">{totalMissingCards}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    de {totalCatalogCards} cartas del catálogo
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           </div>
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-            <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-2 mb-8">
+            <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-3 mb-8">
               <TabsTrigger value="all" className="gap-2">
                 <List className="h-4 w-4" />
                 {t("allCards")}
@@ -488,6 +517,10 @@ function MyCollectionContent() {
               <TabsTrigger value="owned" className="gap-2">
                 <Package className="h-4 w-4" />
                 {t("owned")} ({totalOwnedCards})
+              </TabsTrigger>
+              <TabsTrigger value="missing" className="gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Me faltan ({totalMissingCards})
               </TabsTrigger>
             </TabsList>
 
@@ -654,6 +687,48 @@ function MyCollectionContent() {
                             ownedFoilQuantity={group.foilQuantity}
                           />
                         ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Tab 3: Missing Cards */}
+            <TabsContent value="missing">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Filters - Desktop */}
+                <div className="hidden lg:block">
+                  <CardFilters
+                    filters={filters}
+                    setFilters={setFilters}
+                    sortBy={sortBy}
+                    setSortBy={setSortBy}
+                    viewMode={viewMode}
+                    setViewMode={setViewMode}
+                  />
+                </div>
+
+                {/* Missing Cards Grid */}
+                <div className="lg:col-span-3">
+                  {loadingCards ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      {t("loadingCards")}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-4 text-sm text-muted-foreground">
+                        {missingCards.length} {missingCards.length === 1 ? t("cardFound") : t("cardsFound")} {t("foundText")}
+                      </div>
+                      <div className="bg-card/50 backdrop-blur-sm border border-primary/20 rounded-xl p-4 md:p-6">
+                        <div className="mb-4 flex items-center justify-between">
+                          <h2 className="text-xl font-semibold">Cartas que me faltan</h2>
+                        </div>
+                        {/* Reutilizamos el mismo render que "Todas" (grid/list) */}
+                        <div className="mt-4">
+                          {/* @ts-ignore: CardGrid acepta CardType compatible */}
+                          <CardGrid cards={missingCards as any} viewMode={viewMode} />
+                        </div>
                       </div>
                     </>
                   )}
