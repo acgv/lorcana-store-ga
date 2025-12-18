@@ -734,6 +734,7 @@ function DeckBuilder() {
                       <SelectItem value="aggro">Aggro</SelectItem>
                       <SelectItem value="midrange">Midrange</SelectItem>
                       <SelectItem value="control">Control</SelectItem>
+                      <SelectItem value="combo">Combo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1151,51 +1152,79 @@ function DeckBuilder() {
                   const isValid = totalCards === 60 && allColors.size <= 2
                   
                   return (
-                    <div className="border-b pb-4 mb-4">
-                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
-                        <div className="space-y-1">
-                          <div className="text-xs text-muted-foreground">Total Cartas</div>
-                          <div className={`font-semibold ${isValid ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className="border-b pb-4 mb-4 space-y-3">
+                      {/* Primera fila: Métricas principales */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-sm">
+                        <div className="space-y-1.5 min-w-0">
+                          <div className="text-xs text-muted-foreground whitespace-nowrap">Total Cartas</div>
+                          <div className={`font-bold text-base ${isValid ? 'text-green-600' : 'text-red-600'}`}>
                             {totalCards}/60
                           </div>
                         </div>
-                        <div className="space-y-1">
-                          <div className="text-xs text-muted-foreground">Colores</div>
-                          <div className="font-semibold flex items-center gap-1">
+                        <div className="space-y-1.5 min-w-0">
+                          <div className="text-xs text-muted-foreground whitespace-nowrap">Colores</div>
+                          <div className="flex items-center gap-1 flex-wrap">
                             {Array.from(allColors).slice(0, 2).map(color => (
-                              <Badge key={color} variant="outline" className="text-xs">
+                              <Badge key={color} variant="outline" className="text-xs whitespace-nowrap">
                                 {color}
                               </Badge>
                             ))}
-                            {allColors.size > 2 && <span className="text-red-600">+{allColors.size - 2}</span>}
+                            {allColors.size > 2 && <span className="text-red-600 text-xs font-semibold">+{allColors.size - 2}</span>}
                           </div>
                         </div>
-                        <div className="space-y-1">
-                          <div className="text-xs text-muted-foreground">Inkables</div>
-                          <div className={`font-semibold ${inkablePercentage >= 50 ? 'text-green-600' : inkablePercentage >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
-                            {inkablePercentage}% ({inkableCount})
+                        <div className="space-y-1.5 min-w-0">
+                          <div className="text-xs text-muted-foreground whitespace-nowrap">Inkables</div>
+                          <div className={`font-bold text-base ${inkablePercentage >= 50 ? 'text-green-600' : inkablePercentage >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                            {inkablePercentage}%
                           </div>
+                          <div className="text-xs text-muted-foreground">({inkableCount} cartas)</div>
                         </div>
-                        <div className="space-y-1">
-                          <div className="text-xs text-muted-foreground">Lore Total</div>
-                          <div className="font-semibold">{totalLore}</div>
+                        <div className="space-y-1.5 min-w-0">
+                          <div className="text-xs text-muted-foreground whitespace-nowrap">Lore Total</div>
+                          <div className="font-bold text-base">{totalLore}</div>
                         </div>
-                        <div className="space-y-1">
-                          <div className="text-xs text-muted-foreground">Curva (0-1)</div>
-                          <div className="font-semibold">{costDistribution.b01}</div>
+                        <div className="space-y-1.5 min-w-0">
+                          <div className="text-xs text-muted-foreground whitespace-nowrap">Curva 0-1</div>
+                          <div className="font-bold text-base">{costDistribution.b01}</div>
                         </div>
-                        <div className="space-y-1">
-                          <div className="text-xs text-muted-foreground">Curva (2-3)</div>
-                          <div className="font-semibold">{costDistribution.b23}</div>
+                        <div className="space-y-1.5 min-w-0">
+                          <div className="text-xs text-muted-foreground whitespace-nowrap">Curva 2-3</div>
+                          <div className="font-bold text-base">{costDistribution.b23}</div>
                         </div>
                       </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <div className="text-xs text-muted-foreground">Tipos:</div>
-                        {Object.entries(typeDistribution).map(([type, count]) => (
-                          <Badge key={type} variant="outline" className="text-xs">
-                            {t(String(type))}: {count}
-                          </Badge>
-                        ))}
+                      {/* Segunda fila: Curva completa y Tipos */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <div className="text-xs text-muted-foreground">Distribución de Costos:</div>
+                          <div className="grid grid-cols-4 gap-2 text-xs">
+                            <div className="text-center p-2 bg-muted rounded">
+                              <div className="font-semibold">{costDistribution.b01}</div>
+                              <div className="text-muted-foreground text-[10px]">0-1</div>
+                            </div>
+                            <div className="text-center p-2 bg-muted rounded">
+                              <div className="font-semibold">{costDistribution.b23}</div>
+                              <div className="text-muted-foreground text-[10px]">2-3</div>
+                            </div>
+                            <div className="text-center p-2 bg-muted rounded">
+                              <div className="font-semibold">{costDistribution.b45}</div>
+                              <div className="text-muted-foreground text-[10px]">4-5</div>
+                            </div>
+                            <div className="text-center p-2 bg-muted rounded">
+                              <div className="font-semibold">{costDistribution.b6p}</div>
+                              <div className="text-muted-foreground text-[10px]">6+</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="text-xs text-muted-foreground">Tipos de Cartas:</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {Object.entries(typeDistribution).map(([type, count]) => (
+                              <Badge key={type} variant="outline" className="text-xs">
+                                {t(String(type))}: {count}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )
@@ -1229,21 +1258,33 @@ function DeckBuilder() {
                                     {i + 1}
                                   </div>
                                 )}
-                                {/* Tooltip compacto en la parte inferior - contenido dentro de la carta con overflow-hidden */}
-                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/90 to-black/80 text-white text-[10px] p-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none max-h-[40%] overflow-hidden">
-                                  <p className="font-semibold truncate mb-0.5 text-[11px] leading-tight px-0.5">{card.name}</p>
-                                  <div className="flex flex-wrap gap-x-1.5 gap-y-0 text-[9px] leading-tight px-0.5">
+                                {/* Tooltip compacto en la parte inferior - contenido dentro de la carta */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-black/90 text-white p-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                                  <p className="font-semibold truncate mb-1 text-xs leading-tight">{card.name}</p>
+                                  <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] leading-tight">
                                     {(card as any).inkCost !== null && (card as any).inkCost !== undefined && (
-                                      <span className="whitespace-nowrap">C:{(card as any).inkCost}</span>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-muted-foreground">Costo:</span>
+                                        <span className="font-semibold">{(card as any).inkCost}</span>
+                                      </div>
                                     )}
                                     {(card as any).inkColor && (
-                                      <span className="whitespace-nowrap truncate max-w-[60px]">{(card as any).inkColor}</span>
+                                      <div className="flex items-center gap-1 truncate">
+                                        <span className="text-muted-foreground">Color:</span>
+                                        <span className="font-semibold truncate">{(card as any).inkColor}</span>
+                                      </div>
                                     )}
                                     {(card as any).lore !== null && (card as any).lore !== undefined && (
-                                      <span className="whitespace-nowrap">L:{(card as any).lore}</span>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-muted-foreground">Lore:</span>
+                                        <span className="font-semibold">{(card as any).lore}</span>
+                                      </div>
                                     )}
                                     {(card as any).strength !== null && (card as any).strength !== undefined && (
-                                      <span className="whitespace-nowrap">{(card as any).strength}/{(card as any).willpower ?? "?"}</span>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-muted-foreground">Stats:</span>
+                                        <span className="font-semibold">{(card as any).strength}/{(card as any).willpower ?? "?"}</span>
+                                      </div>
                                     )}
                                   </div>
                                 </div>

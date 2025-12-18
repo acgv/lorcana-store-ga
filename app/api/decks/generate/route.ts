@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
-type DeckType = "aggro" | "midrange" | "control"
+type DeckType = "aggro" | "midrange" | "control" | "combo"
 type CurveType = "low" | "balanced" | "high"
 
 type GenerateRequest = {
@@ -57,6 +57,7 @@ function typeWeights(deckType: DeckType) {
   // very rough MVP distribution preference
   if (deckType === "aggro") return { character: 1.3, action: 1.0, item: 0.8, location: 0.7, song: 1.0 }
   if (deckType === "control") return { character: 1.0, action: 1.2, item: 1.0, location: 1.1, song: 1.1 }
+  if (deckType === "combo") return { character: 1.1, action: 1.15, item: 1.0, location: 0.9, song: 1.2 }
   return { character: 1.15, action: 1.05, item: 0.95, location: 0.9, song: 1.0 }
 }
 
@@ -118,15 +119,31 @@ function scoreCard(card: any, deckType: DeckType, curve: CurveType) {
         }
       }
     }
+
+    // Combo: prioritize cards that enable synergies (songs, specific characters, actions)
+    if (deckType === "combo") {
+      // Prefer songs (combo enablers)
+      if (t === "song") {
+        score *= 1.25
+      }
+      // Prefer characters with lore abilities or synergies
+      if (t === "character" && lore !== null && lore > 0) {
+        score *= 1.1
+      }
+      // Prefer actions that interact with other cards
+      if (t === "action") {
+        score *= 1.15
+      }
+    }
   }
 
   // Lore value: all decks benefit from lore, but aggro prioritizes it more
   if (t === "character" && card.lore !== null && typeof card.lore === "number") {
-    const loreMultiplier = deckType === "aggro" ? 0.15 : deckType === "control" ? 0.1 : 0.12
+    const loreMultiplier = deckType === "aggro" ? 0.15 : deckType === "control" ? 0.1 : deckType === "combo" ? 0.13 : 0.12
     score *= 1 + (card.lore / 5) * loreMultiplier
   }
 
-  // cost preference: aggro likes cheaper, control likes higher
+  // cost preference: aggro likes cheaper, control likes higher, combo likes mid-range for setup
   if (deckType === "aggro") {
     if (b === "b01") score *= 1.25
     if (b === "b23") score *= 1.15
@@ -135,6 +152,11 @@ function scoreCard(card: any, deckType: DeckType, curve: CurveType) {
     if (b === "b6p") score *= 1.2
     if (b === "b45") score *= 1.1
     if (b === "b01") score *= 0.9
+  } else if (deckType === "combo") {
+    // Combo decks need setup cards (mid-cost) and some finishers
+    if (b === "b23") score *= 1.1
+    if (b === "b45") score *= 1.15
+    if (b === "b01") score *= 1.05 // Some cheap enablers
   }
 
   // small nudge towards meeting curve (handled later by greedy fill)
