@@ -971,19 +971,14 @@ function DeckBuilder() {
                                 .filter(Boolean)
                                 .flat()
                             )).map(color => {
-                              const colorLower = String(color).toLowerCase()
-                              const colorMap: Record<string, string> = {
-                                'amber': 'bg-yellow-500',
-                                'ruby': 'bg-red-600',
-                                'emerald': 'bg-green-500',
-                                'sapphire': 'bg-blue-500',
-                                'steel': 'bg-gray-400',
-                                'amethyst': 'bg-purple-500'
-                              }
-                              const colorClass = colorMap[colorLower] || 'bg-gray-500'
+                              const colorKey = String(color).charAt(0).toUpperCase() + String(color).slice(1).toLowerCase()
                               return (
                                 <Badge key={color} variant="outline" className="text-xs flex items-center gap-1.5 px-2 py-0.5">
-                                  <span className={`w-2 h-2 rounded-full ${colorClass}`} />
+                                  <span 
+                                    className="inline-block h-2.5 w-2.5 rounded-full border border-white/20"
+                                    style={{ backgroundColor: inkColorHex[colorKey] || "#64748B" }}
+                                    aria-hidden="true"
+                                  />
                                   {color}
                                 </Badge>
                               )
@@ -1179,19 +1174,14 @@ function DeckBuilder() {
                           <div className="text-xs text-muted-foreground whitespace-nowrap">Colores</div>
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {Array.from(allColors).slice(0, 2).map(color => {
-                              const colorLower = color.toLowerCase()
-                              const colorMap: Record<string, string> = {
-                                'amber': 'bg-yellow-500',
-                                'ruby': 'bg-red-600',
-                                'emerald': 'bg-green-500',
-                                'sapphire': 'bg-blue-500',
-                                'steel': 'bg-gray-400',
-                                'amethyst': 'bg-purple-500'
-                              }
-                              const colorClass = colorMap[colorLower] || 'bg-gray-500'
+                              const colorKey = String(color).charAt(0).toUpperCase() + String(color).slice(1).toLowerCase()
                               return (
                                 <Badge key={color} variant="outline" className="text-xs whitespace-nowrap flex items-center gap-1.5 px-2 py-0.5">
-                                  <span className={`w-2 h-2 rounded-full ${colorClass}`} />
+                                  <span 
+                                    className="inline-block h-2.5 w-2.5 rounded-full border border-white/20"
+                                    style={{ backgroundColor: inkColorHex[colorKey] || "#64748B" }}
+                                    aria-hidden="true"
+                                  />
                                   {color}
                                 </Badge>
                               )
@@ -1455,19 +1445,14 @@ function DeckBuilder() {
                         {allColors.size > 0 && (
                           <div className="flex flex-wrap gap-1 mb-2">
                             {Array.from(allColors).slice(0, 2).map(color => {
-                              const colorLower = String(color).toLowerCase()
-                              const colorMap: Record<string, string> = {
-                                'amber': 'bg-yellow-500',
-                                'ruby': 'bg-red-600',
-                                'emerald': 'bg-green-500',
-                                'sapphire': 'bg-blue-500',
-                                'steel': 'bg-gray-400',
-                                'amethyst': 'bg-purple-500'
-                              }
-                              const colorClass = colorMap[colorLower] || 'bg-gray-500'
+                              const colorKey = String(color).charAt(0).toUpperCase() + String(color).slice(1).toLowerCase()
                               return (
                                 <Badge key={color} variant="outline" className="text-xs flex items-center gap-1.5 px-2 py-0.5">
-                                  <span className={`w-2 h-2 rounded-full ${colorClass}`} />
+                                  <span 
+                                    className="inline-block h-2.5 w-2.5 rounded-full border border-white/20"
+                                    style={{ backgroundColor: inkColorHex[colorKey] || "#64748B" }}
+                                    aria-hidden="true"
+                                  />
                                   {color}
                                 </Badge>
                               )
