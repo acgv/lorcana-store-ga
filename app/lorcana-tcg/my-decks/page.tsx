@@ -438,29 +438,70 @@ function DeckBuilder() {
     return sortedColors
   }, [availableCards])
 
-  // Validar mazo
+  // Validar mazo con factibilidad completa
   const deckValidation = useMemo(() => {
     const totalCards = currentDeck.reduce((sum, item) => sum + item.quantity, 0)
-    const colors = new Set(
-      currentDeck
-        .map(item => {
-          const cardColor = (item.card as any).inkColor || (item.card as any).color
-          return cardColor ? cardColor.toLowerCase() : null
-        })
-        .filter(color => color !== null)
-    )
+    
+    // Colores únicos
+    const allColors = new Set<string>()
+    currentDeck.forEach(item => {
+      const cardColor = (item.card as any).inkColor || (item.card as any).color
+      if (cardColor) {
+        const colors = String(cardColor).split(',').map(c => c.trim())
+        colors.forEach(c => allColors.add(c))
+      }
+    })
+    
+    // Estadísticas de factibilidad
+    let inkableCount = 0
+    let totalLore = 0
+    const costDistribution: Record<string, number> = { b01: 0, b23: 0, b45: 0, b6p: 0, unknown: 0 }
+    const typeDistribution: Record<string, number> = {}
+    
+    currentDeck.forEach(item => {
+      const card = item.card as any
+      const qty = item.quantity
+      
+      // Inkable
+      const isInkable = card.inkable === true || card.inkable === "true" || card.inkable === 1
+      if (isInkable) inkableCount += qty
+      
+      // Lore
+      if (typeof card.lore === "number") totalLore += card.lore * qty
+      
+      // Cost distribution
+      const cost = typeof card.inkCost === "number" ? card.inkCost : card.inkCost ? Number(card.inkCost) : null
+      if (cost === null || Number.isNaN(cost)) {
+        costDistribution.unknown += qty
+      } else if (cost <= 1) {
+        costDistribution.b01 += qty
+      } else if (cost <= 3) {
+        costDistribution.b23 += qty
+      } else if (cost <= 5) {
+        costDistribution.b45 += qty
+      } else {
+        costDistribution.b6p += qty
+      }
+      
+      // Type distribution
+      const type = card.type || "unknown"
+      typeDistribution[type] = (typeDistribution[type] || 0) + qty
+    })
+    
+    const inkablePercentage = totalCards > 0 ? Math.round((inkableCount / totalCards) * 100) : 0
     
     const errors: string[] = []
     const warnings: string[] = []
 
+    // Errores críticos
     if (totalCards < 60) {
       errors.push(`El mazo tiene ${totalCards} cartas. Debe tener exactamente 60.`)
     } else if (totalCards > 60) {
       errors.push(`El mazo tiene ${totalCards} cartas. Debe tener exactamente 60.`)
     }
 
-    if (colors.size > 2) {
-      errors.push(`El mazo tiene ${colors.size} colores. Máximo 2 permitidos.`)
+    if (allColors.size > 2) {
+      errors.push(`El mazo tiene ${allColors.size} colores. Máximo 2 permitidos.`)
     }
 
     // Verificar máximo 4 copias por carta
@@ -470,7 +511,42 @@ function DeckBuilder() {
       }
     })
 
-    return { errors, warnings, totalCards, colors: colors.size, isValid: errors.length === 0 }
+    // Warnings de factibilidad
+    if (inkablePercentage < 50) {
+      warnings.push(`Solo ${inkablePercentage}% de cartas son inkables (recomendado: ≥50%). Puedes tener problemas de mana.`)
+    } else if (inkablePercentage < 65) {
+      warnings.push(`${inkablePercentage}% de cartas inkables. Considera aumentar a ~65-70% para mejor consistencia.`)
+    }
+
+    if (costDistribution.unknown > 10) {
+      warnings.push(`${costDistribution.unknown} cartas sin costo conocido. Esto puede afectar la curva.`)
+    }
+
+    const lowCostRatio = (costDistribution.b01 + costDistribution.b23) / totalCards
+    if (lowCostRatio < 0.4 && totalCards >= 60) {
+      warnings.push(`Solo ${Math.round(lowCostRatio * 100)}% de cartas de bajo costo (0-3). Considera más cartas tempranas.`)
+    }
+
+    if (totalCards >= 60 && typeDistribution.character < 20) {
+      warnings.push(`Solo ${typeDistribution.character || 0} personajes. Los mazos típicamente tienen 25-40 personajes.`)
+    }
+
+    return { 
+      errors, 
+      warnings, 
+      totalCards, 
+      colors: allColors.size,
+      isValid: errors.length === 0,
+      // Factibilidad
+      stats: {
+        inkableCount,
+        inkablePercentage,
+        totalLore,
+        costDistribution,
+        typeDistribution,
+        colorList: Array.from(allColors),
+      }
+    }
   }, [currentDeck])
 
   // Agregar carta al mazo
@@ -883,7 +959,7 @@ function DeckBuilder() {
                       </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Validación */}
+            {/* Validación y Factibilidad */}
             {deckValidation.errors.length > 0 && (
               <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
@@ -895,6 +971,79 @@ function DeckBuilder() {
                     <li key={i}>• {error}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+            
+            {deckValidation.warnings.length > 0 && (
+              <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  <span className="text-sm font-semibold text-yellow-700">Advertencias:</span>
+                </div>
+                <ul className="text-xs text-yellow-700 space-y-1">
+                  {deckValidation.warnings.map((warning, i) => (
+                    <li key={i}>• {warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Estadísticas de Factibilidad */}
+            {deckValidation.totalCards > 0 && (
+              <div className="p-3 bg-muted/50 border rounded-lg space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold">Factibilidad del Mazo</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <div className="text-muted-foreground">Inkables</div>
+                    <div className="font-semibold">
+                      {deckValidation.stats.inkablePercentage}% 
+                      <span className={`ml-1 ${deckValidation.stats.inkablePercentage >= 50 ? 'text-green-600' : 'text-yellow-600'}`}>
+                        ({deckValidation.stats.inkableCount}/{deckValidation.totalCards})
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Lore Total</div>
+                    <div className="font-semibold">{deckValidation.stats.totalLore}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground">Distribución de Costos:</div>
+                  <div className="grid grid-cols-4 gap-2 text-xs">
+                    <div className="text-center p-2 bg-background rounded">
+                      <div className="font-semibold">{deckValidation.stats.costDistribution.b01}</div>
+                      <div className="text-muted-foreground text-[10px]">0-1</div>
+                    </div>
+                    <div className="text-center p-2 bg-background rounded">
+                      <div className="font-semibold">{deckValidation.stats.costDistribution.b23}</div>
+                      <div className="text-muted-foreground text-[10px]">2-3</div>
+                    </div>
+                    <div className="text-center p-2 bg-background rounded">
+                      <div className="font-semibold">{deckValidation.stats.costDistribution.b45}</div>
+                      <div className="text-muted-foreground text-[10px]">4-5</div>
+                    </div>
+                    <div className="text-center p-2 bg-background rounded">
+                      <div className="font-semibold">{deckValidation.stats.costDistribution.b6p}</div>
+                      <div className="text-muted-foreground text-[10px]">6+</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Tipos de Cartas:</div>
+                  <div className="flex flex-wrap gap-1">
+                    {Object.entries(deckValidation.stats.typeDistribution).map(([type, count]) => (
+                      <Badge key={type} variant="outline" className="text-xs">
+                        {t(String(type))}: {count}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -994,40 +1143,99 @@ function DeckBuilder() {
         {savedDecks.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Mis Mazos Guardados</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <List className="h-5 w-5" />
+                Mis Mazos Guardados ({savedDecks.length})
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {savedDecks.map(deck => (
-                <div
-                  key={deck.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{deck.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {deck.cards.reduce((sum, c) => sum + c.quantity, 0)} cartas • {new Date(deck.updatedAt).toLocaleDateString()}
-                    </p>
+            <CardContent className="space-y-3">
+              {savedDecks.map(deck => {
+                const totalCards = deck.cards.reduce((sum, c) => sum + c.quantity, 0)
+                const allColors = new Set<string>()
+                let inkableCount = 0
+                let totalLore = 0
+                
+                deck.cards.forEach(item => {
+                  const card = item.card as any
+                  const cardColor = card.inkColor || card.color
+                  if (cardColor) {
+                    const colors = String(cardColor).split(',').map((c: string) => c.trim())
+                    colors.forEach((c: string) => allColors.add(c))
+                  }
+                  const isInkable = card.inkable === true || card.inkable === "true" || card.inkable === 1
+                  if (isInkable) inkableCount += item.quantity
+                  if (typeof card.lore === "number") totalLore += card.lore * item.quantity
+                })
+                
+                const inkablePercentage = totalCards > 0 ? Math.round((inkableCount / totalCards) * 100) : 0
+                const isValid = totalCards === 60 && allColors.size <= 2
+
+                return (
+                  <div
+                    key={deck.id}
+                    className="p-4 border rounded-lg hover:bg-muted/50 transition-colors space-y-3"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold truncate">{deck.name}</p>
+                          <Badge variant={isValid ? "default" : "destructive"} className="text-xs">
+                            {totalCards}/60
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          {deck.cards.length} carta(s) única(s) • {allColors.size} color(es) • Actualizado {new Date(deck.updatedAt).toLocaleDateString()}
+                        </p>
+                        
+                        {/* Estadísticas rápidas */}
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="p-2 bg-background rounded">
+                            <div className="text-muted-foreground">Inkables</div>
+                            <div className={`font-semibold ${inkablePercentage >= 50 ? 'text-green-600' : inkablePercentage >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                              {inkablePercentage}%
+                            </div>
+                          </div>
+                          <div className="p-2 bg-background rounded">
+                            <div className="text-muted-foreground">Lore</div>
+                            <div className="font-semibold">{totalLore}</div>
+                          </div>
+                          <div className="p-2 bg-background rounded">
+                            <div className="text-muted-foreground">Colores</div>
+                            <div className="font-semibold">{Array.from(allColors).slice(0, 2).join(', ') || 'N/A'}</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 ml-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => loadDeck(deck)}
+                          title="Editar"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() => deleteDeck(deck.id)}
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {!isValid && (
+                      <div className="text-xs text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        <span>Este mazo no cumple las reglas básicas</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => loadDeck(deck)}
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => deleteDeck(deck.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </CardContent>
           </Card>
         )}
