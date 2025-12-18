@@ -1275,20 +1275,20 @@ function DeckBuilder() {
                                     {i + 1}
                                   </div>
                                 )}
-                                {/* Tooltip minimalista - solo costo y lore */}
-                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/90 to-black/85 text-white p-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                                  <div className="flex items-center justify-center gap-3 text-xs font-semibold">
+                                {/* Tooltip mejorado - costo y lore */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-black/90 text-white p-2.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none rounded-b-lg border-t border-white/10">
+                                  <div className="flex items-center justify-center gap-4 text-sm font-semibold">
                                     {(card as any).inkCost !== null && (card as any).inkCost !== undefined && (
-                                      <span className="flex items-center gap-1">
-                                        <span className="text-muted-foreground/70">Costo:</span>
-                                        {(card as any).inkCost}
-                                      </span>
+                                      <div className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
+                                        <span className="text-white/80 text-xs">Costo</span>
+                                        <span className="text-white font-bold">{(card as any).inkCost}</span>
+                                      </div>
                                     )}
                                     {(card as any).lore !== null && (card as any).lore !== undefined && (
-                                      <span className="flex items-center gap-1">
-                                        <span className="text-muted-foreground/70">Lore:</span>
-                                        {(card as any).lore}
-                                      </span>
+                                      <div className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
+                                        <span className="text-white/80 text-xs">Lore</span>
+                                        <span className="text-white font-bold">{(card as any).lore}</span>
+                                      </div>
                                     )}
                                   </div>
                                 </div>
