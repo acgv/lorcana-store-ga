@@ -1276,19 +1276,19 @@ function DeckBuilder() {
                                   </div>
                                 )}
                                 {/* Tooltip mejorado - costo y lore */}
-                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-black/90 text-white p-2.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none rounded-b-lg border-t border-white/10">
-                                  <div className="flex items-center justify-center gap-4 text-sm font-semibold">
+                                <div className="absolute bottom-0 left-0 right-0 bg-black/90 backdrop-blur-sm text-white px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                                  <div className="flex items-center justify-center gap-3 text-xs">
                                     {(card as any).inkCost !== null && (card as any).inkCost !== undefined && (
-                                      <div className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
-                                        <span className="text-white/80 text-xs">Costo</span>
-                                        <span className="text-white font-bold">{(card as any).inkCost}</span>
-                                      </div>
+                                      <span className="flex items-center gap-1 font-medium">
+                                        <span className="text-white/70">Costo:</span>
+                                        <span className="text-white font-bold text-sm">{(card as any).inkCost}</span>
+                                      </span>
                                     )}
                                     {(card as any).lore !== null && (card as any).lore !== undefined && (
-                                      <div className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
-                                        <span className="text-white/80 text-xs">Lore</span>
-                                        <span className="text-white font-bold">{(card as any).lore}</span>
-                                      </div>
+                                      <span className="flex items-center gap-1 font-medium">
+                                        <span className="text-white/70">Lore:</span>
+                                        <span className="text-white font-bold text-sm">{(card as any).lore}</span>
+                                      </span>
                                     )}
                                   </div>
                                 </div>
