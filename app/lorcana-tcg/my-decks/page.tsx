@@ -535,18 +535,18 @@ function DeckBuilder() {
       warnings.push(`Solo ${typeDistribution.character || 0} personajes. Los mazos típicamente tienen 25-40 personajes.`)
     }
 
-    // Warning si el mazo tiene demasiados personajes (muy poco balance)
+    // Warning si el mazo tiene demasiados personajes (consolidado para evitar duplicados)
     if (totalCards >= 60) {
       const characterPercentage = (typeDistribution.character || 0) / totalCards
-      if (characterPercentage > 0.85) {
-        warnings.push(`El mazo tiene ${Math.round(characterPercentage * 100)}% de personajes. Considera agregar acciones, canciones o items para más versatilidad.`)
-      }
-      // Warning si no hay acciones ni canciones (muy limitado)
       const hasActions = (typeDistribution.action || 0) > 0
       const hasSongs = (typeDistribution.song || 0) > 0
       const hasItems = (typeDistribution.item || 0) > 0
-      if (!hasActions && !hasSongs && !hasItems && totalCards >= 60) {
-        warnings.push(`El mazo solo tiene personajes. Considera agregar acciones, canciones o items para más opciones estratégicas.`)
+      
+      // Solo mostrar un warning, el más relevante
+      if (characterPercentage === 1.0 || (!hasActions && !hasSongs && !hasItems)) {
+        warnings.push(`El mazo solo tiene personajes. Considera agregar acciones, canciones o items para más versatilidad estratégica.`)
+      } else if (characterPercentage > 0.85) {
+        warnings.push(`El mazo tiene ${Math.round(characterPercentage * 100)}% de personajes. Considera agregar más acciones, canciones o items para mejor balance.`)
       }
     }
 

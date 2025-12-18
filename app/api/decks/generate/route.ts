@@ -250,16 +250,28 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
 
   // Create candidate list (only allowed colors)
   const candidates: any[] = []
+  const candidatesByType: Record<string, any[]> = { character: [], action: [], song: [], item: [], location: [] }
+  
   for (const [id, qty] of qtyById.entries()) {
     const card = cardsById.get(id)
     if (!card) continue
     const cardColors = parseColors(card.inkColor)
     if (!isAllowedByColors(cardColors, allowedColors)) continue
-    candidates.push({ ...card, _id: id, _ownedQty: qty })
+    const candidate = { ...card, _id: id, _ownedQty: qty }
+    candidates.push(candidate)
+    const cardType = String(card.type || "character")
+    if (candidatesByType[cardType]) {
+      candidatesByType[cardType].push(candidate)
+    }
   }
 
-  // sort by score (descending)
+  // Sort all candidates by score
   candidates.sort((a, b) => scoreCard(b, params.deckType, params.curve) - scoreCard(a, params.deckType, params.curve))
+  
+  // Sort each type separately for diversity picking
+  for (const type in candidatesByType) {
+    candidatesByType[type].sort((a, b) => scoreCard(b, params.deckType, params.curve) - scoreCard(a, params.deckType, params.curve))
+  }
 
   const targets = curveTargets(params.curve)
   const filled = { b01: 0, b23: 0, b45: 0, b6p: 0 }
@@ -320,7 +332,75 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
     return Math.max(0, target - current)
   }
 
-  // Phase 1: Fill strategically by curve AND type diversity
+  // Helper: add card to deck
+  const addCardToDeck = (c: any, take: number, reason: string) => {
+    const b = bucket(c.inkCost) as keyof typeof filled
+    const cardType = String(c.type || "character")
+    const existing = deck.find((d) => d.cardId === String(c._id))
+    
+    if (existing) {
+      existing.qty += take
+    } else {
+      deck.push({
+        cardId: String(c._id),
+        name: c.name,
+        qty: take,
+        inkCost: c.inkCost ?? null,
+        inkColor: c.inkColor ?? null,
+        type: cardType,
+        reason,
+      })
+    }
+    filled[b] += take
+    typeFilled[cardType] = (typeFilled[cardType] || 0) + take
+  }
+
+  // Phase 1: PRO BUILD - Force type diversity FIRST
+  // For each type, ensure we get at least some cards before filling with characters
+  for (const targetType of Object.keys(typeTargets)) {
+    if (targetType === "character") continue // Handle characters later
+    if (total >= deckSize) break
+    
+    const target = typeTargets[targetType]
+    if (target <= 0) continue
+    const current = typeFilled[targetType] || 0
+    const needed = Math.max(0, target - current)
+    
+    if (needed <= 0) continue
+    const typeCandidates = candidatesByType[targetType] || []
+    
+    // Get the best cards of this type
+    for (const c of typeCandidates) {
+      if (total >= deckSize) break
+      if (needed <= 0) break
+      
+      const available = Math.min(maxCopies, Number(c._ownedQty || 0))
+      if (available <= 0) continue
+      
+      const existing = deck.find((d) => d.cardId === String(c._id))
+      const already = existing?.qty || 0
+      const canAdd = Math.min(available - already, maxCopies - already)
+      if (canAdd <= 0) continue
+      
+      const b = bucket(c.inkCost) as keyof typeof filled
+      const bucketNeed = needsBucket(b)
+      
+      // Prioritize cards that also help with curve
+      let take = 0
+      if (bucketNeed > 0) {
+        take = Math.min(canAdd, needed, bucketNeed, deckSize - total)
+      } else {
+        take = Math.min(canAdd, needed, deckSize - total)
+      }
+      
+      if (take > 0) {
+        addCardToDeck(c, take, `Prioridad: ${targetType} para diversidad PRO`)
+        total += take
+      }
+    }
+  }
+
+  // Phase 2: Fill remaining with balanced approach (curve + type targets)
   for (const c of candidates) {
     if (total >= deckSize) break
     const b = bucket(c.inkCost) as keyof typeof filled
@@ -332,126 +412,77 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
     const available = Math.min(maxCopies, Number(c._ownedQty || 0))
     if (available <= 0) continue
 
-    // Prioritize cards that fill both curve AND type needs
-    let take = 0
     const existing = deck.find((d) => d.cardId === String(c._id))
     const already = existing?.qty || 0
     const canAdd = Math.min(available - already, maxCopies - already)
     if (canAdd <= 0) continue
 
-    // If both bucket and type are needed, prioritize more
+    // Prioritize cards that fill both curve AND type needs
+    let take = 0
     if (bucketNeed > 0 && typeNeed > 0) {
       take = Math.min(canAdd, bucketNeed, typeNeed, deckSize - total)
-    } else if (bucketNeed > 0) {
-      // Bucket needed, but type quota met - allow small amount for curve
-      take = Math.min(canAdd, bucketNeed, deckSize - total)
     } else if (typeNeed > 0) {
-      // Type needed, but bucket quota met - allow for diversity
+      // Type needed - prioritize diversity over curve when type quota not met
       take = Math.min(canAdd, typeNeed, deckSize - total)
+    } else if (bucketNeed > 0) {
+      // Bucket needed, but type quota met - allow for curve
+      take = Math.min(canAdd, bucketNeed, deckSize - total)
     } else {
-      // Both quotas met, but we might still need filler
-      // Only add if we're far from 60 cards
-      if (total < deckSize - 10) {
-        take = Math.min(1, canAdd, deckSize - total) // Just 1 copy as filler
+      // Both quotas met - minimal filler only
+      if (total < deckSize - 5) {
+        take = Math.min(1, canAdd, deckSize - total)
       }
     }
 
     if (take <= 0) continue
-
-    if (existing) {
-      existing.qty += take
-    } else {
-      deck.push({
-        cardId: String(c._id),
-        name: c.name,
-        qty: take,
-        inkCost: c.inkCost ?? null,
-        inkColor: c.inkColor ?? null,
-        type: cardType,
-        reason: "Seleccionada por sinergia, curva y diversidad de tipos",
-      })
-    }
-    filled[b] += take
-    typeFilled[cardType] = (typeFilled[cardType] || 0) + take
+    
+    addCardToDeck(c, take, "Balanceado: curva y tipos")
     total += take
   }
 
-  // Phase 2: Fill remaining slots prioritizing curve and type diversity
+  // Phase 3: Final fill if still short - prioritize type diversity over everything
   if (total < deckSize) {
-    for (const c of candidates) {
+    // First, try to fill missing types
+    for (const targetType of Object.keys(typeTargets)) {
       if (total >= deckSize) break
-      const b = bucket(c.inkCost) as keyof typeof filled
-      const cardType = String(c.type || "character")
+      const needed = needsType(targetType)
+      if (needed <= 0) continue
       
-      const bucketNeed = needsBucket(b)
-      const typeNeed = needsType(cardType)
-      
-      const existing = deck.find((d) => d.cardId === String(c._id))
-      const already = existing?.qty || 0
-      const available = Math.min(maxCopies, Number(c._ownedQty || 0))
-      const remaining = available - already
-      if (remaining <= 0) continue
-
-      // Prioritize cards that help with curve or type balance
-      let take = 0
-      if (bucketNeed > 0 || typeNeed > 0) {
-        take = Math.min(remaining, Math.max(bucketNeed, typeNeed), deckSize - total)
-      } else {
-        take = Math.min(remaining, deckSize - total)
+      const typeCandidates = candidatesByType[targetType] || []
+      for (const c of typeCandidates) {
+        if (total >= deckSize) break
+        if (needed <= 0) break
+        
+        const available = Math.min(maxCopies, Number(c._ownedQty || 0))
+        const existing = deck.find((d) => d.cardId === String(c._id))
+        const already = existing?.qty || 0
+        const remaining = available - already
+        if (remaining <= 0) continue
+        
+        const take = Math.min(remaining, needed, deckSize - total)
+        if (take > 0) {
+          addCardToDeck(c, take, "Relleno: prioridad de tipo para balance PRO")
+          total += take
+        }
       }
-
-      if (take <= 0) continue
-
-      if (existing) {
-        existing.qty += take
-      } else {
-        deck.push({
-          cardId: String(c._id),
-          name: c.name,
-          qty: take,
-          inkCost: c.inkCost ?? null,
-          inkColor: c.inkColor ?? null,
-          type: cardType,
-          reason: "Relleno balanceado para completar 60 cartas",
-        })
-      }
-      filled[b] += take
-      typeFilled[cardType] = (typeFilled[cardType] || 0) + take
-      total += take
     }
-  }
-
-  // Phase 3: Final fill if still short (emergency)
-  if (total < deckSize) {
-    for (const c of candidates) {
-      if (total >= deckSize) break
-      const existing = deck.find((d) => d.cardId === String(c._id))
-      const already = existing?.qty || 0
-      const available = Math.min(maxCopies, Number(c._ownedQty || 0))
-      const remaining = available - already
-      if (remaining <= 0) continue
-      const take = Math.min(remaining, deckSize - total)
-      if (take <= 0) continue
-      
-      const b = bucket(c.inkCost) as keyof typeof filled
-      const cardType = String(c.type || "character")
-      
-      if (existing) {
-        existing.qty += take
-      } else {
-        deck.push({
-          cardId: String(c._id),
-          name: c.name,
-          qty: take,
-          inkCost: c.inkCost ?? null,
-          inkColor: c.inkColor ?? null,
-          type: cardType,
-          reason: "Relleno final para completar 60 cartas",
-        })
+    
+    // Finally, fill any remaining slots
+    if (total < deckSize) {
+      for (const c of candidates) {
+        if (total >= deckSize) break
+        const existing = deck.find((d) => d.cardId === String(c._id))
+        const already = existing?.qty || 0
+        const available = Math.min(maxCopies, Number(c._ownedQty || 0))
+        const remaining = available - already
+        if (remaining <= 0) continue
+        
+        const take = Math.min(remaining, deckSize - total)
+        if (take > 0) {
+          addCardToDeck(c, take, "Relleno final para completar 60 cartas")
+          total += take
+        }
       }
-      filled[b] += take
-      typeFilled[cardType] = (typeFilled[cardType] || 0) + take
-      total += take
     }
   }
 
