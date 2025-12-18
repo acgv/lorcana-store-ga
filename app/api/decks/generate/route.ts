@@ -73,12 +73,12 @@ function scoreCard(card: any, deckType: DeckType, curve: CurveType) {
   let score = cost === null || Number.isNaN(cost) ? 0.6 : 1.0
   score *= tw[t as keyof typeof tw] ?? 1.0
 
-  // Inkable bonus: prefer inkable cards (critical for deck consistency)
+  // Inkable bonus: CRITICAL for deck consistency (PRO requirement: 65-70% inkable)
   const inkable = card.inkable === true || card.inkable === "true" || card.inkable === 1
   if (inkable) {
-    score *= 1.15 // Strong preference for inkable cards
+    score *= 1.4 // VERY strong preference for inkable cards (was 1.15)
   } else if (card.inkable === false || card.inkable === "false" || card.inkable === 0) {
-    score *= 0.75 // Penalize non-inkable (but don't exclude entirely)
+    score *= 0.5 // Strong penalty for non-inkable (was 0.75)
   }
 
   // Stats-based scoring (only for characters)
@@ -355,10 +355,54 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
     typeFilled[cardType] = (typeFilled[cardType] || 0) + take
   }
 
-  // Phase 1: PRO BUILD - Force type diversity FIRST
-  // For each type, ensure we get at least some cards before filling with characters
+  // Phase 1: PRO BUILD - Characters FIRST (they're the core of any deck)
+  // Ensure we get enough characters before adding other types
+  const characterTarget = typeTargets.character || 35
+  const characterCandidates = candidatesByType.character || []
+  let charactersAdded = 0
+  
+  // First, add characters up to target (prioritize inkables)
+  for (const c of characterCandidates) {
+    if (total >= deckSize) break
+    if (charactersAdded >= characterTarget) break
+    
+    // Strongly prefer inkable characters
+    const isInkable = c.inkable === true || c.inkable === "true" || c.inkable === 1
+    if (!isInkable && charactersAdded < characterTarget * 0.7) {
+      // Skip non-inkable if we haven't met 70% of character target (prioritize inkables)
+      continue
+    }
+    
+    const available = Math.min(maxCopies, Number(c._ownedQty || 0))
+    if (available <= 0) continue
+    
+    const existing = deck.find((d) => d.cardId === String(c._id))
+    const already = existing?.qty || 0
+    const canAdd = Math.min(available - already, maxCopies - already)
+    if (canAdd <= 0) continue
+    
+    const b = bucket(c.inkCost) as keyof typeof filled
+    const bucketNeed = needsBucket(b)
+    const stillNeeded = characterTarget - charactersAdded
+    
+    // Take cards that help with curve and character count
+    let take = 0
+    if (bucketNeed > 0) {
+      take = Math.min(canAdd, stillNeeded, bucketNeed, deckSize - total)
+    } else {
+      take = Math.min(canAdd, stillNeeded, deckSize - total)
+    }
+    
+    if (take > 0) {
+      addCardToDeck(c, take, "Prioridad: Personajes (base del mazo)")
+      charactersAdded += take
+      total += take
+    }
+  }
+  
+  // Phase 1.5: Add diversity (actions, songs, items) - but ensure inkables
   for (const targetType of Object.keys(typeTargets)) {
-    if (targetType === "character") continue // Handle characters later
+    if (targetType === "character") continue // Already handled
     if (total >= deckSize) break
     
     const target = typeTargets[targetType]
@@ -369,10 +413,17 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
     if (needed <= 0) continue
     const typeCandidates = candidatesByType[targetType] || []
     
-    // Get the best cards of this type
+    // Get the best cards of this type (prioritize inkables)
     for (const c of typeCandidates) {
       if (total >= deckSize) break
       if (needed <= 0) break
+      
+      // Prefer inkable cards for diversity types too
+      const isInkable = c.inkable === true || c.inkable === "true" || c.inkable === 1
+      if (!isInkable && current < target * 0.5) {
+        // If we're still building the type base, skip non-inkables
+        continue
+      }
       
       const available = Math.min(maxCopies, Number(c._ownedQty || 0))
       if (available <= 0) continue
@@ -385,7 +436,6 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
       const b = bucket(c.inkCost) as keyof typeof filled
       const bucketNeed = needsBucket(b)
       
-      // Prioritize cards that also help with curve
       let take = 0
       if (bucketNeed > 0) {
         take = Math.min(canAdd, needed, bucketNeed, deckSize - total)
@@ -394,20 +444,38 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
       }
       
       if (take > 0) {
-        addCardToDeck(c, take, `Prioridad: ${targetType} para diversidad PRO`)
+        addCardToDeck(c, take, `Diversidad: ${targetType}`)
         total += take
       }
     }
   }
 
-  // Phase 2: Fill remaining with balanced approach (curve + type targets)
+  // Phase 2: Fill remaining slots - prioritize inkables heavily
+  // Calculate current inkable percentage to maintain 65-70% target
+  let currentInkableCount = 0
+  for (const d of deck) {
+    const card = cardsById.get(d.cardId)
+    if (!card) continue
+    const isInkable = card.inkable === true || card.inkable === "true" || card.inkable === 1
+    if (isInkable) currentInkableCount += d.qty
+  }
+  const targetInkableCount = Math.floor(deckSize * 0.67) // 67% target (between 65-70%)
+  const inkableStillNeeded = Math.max(0, targetInkableCount - currentInkableCount)
+  
   for (const c of candidates) {
     if (total >= deckSize) break
     const b = bucket(c.inkCost) as keyof typeof filled
     const cardType = String(c.type || "character")
+    const isInkable = c.inkable === true || c.inkable === "true" || c.inkable === 1
     
     const bucketNeed = needsBucket(b)
     const typeNeed = needsType(cardType)
+    
+    // If we're below inkable target, strongly prefer inkable cards
+    if (!isInkable && inkableStillNeeded > (deckSize - total) * 0.5) {
+      // Skip non-inkable if we need more inkables
+      continue
+    }
     
     const available = Math.min(maxCopies, Number(c._ownedQty || 0))
     if (available <= 0) continue
@@ -417,32 +485,44 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
     const canAdd = Math.min(available - already, maxCopies - already)
     if (canAdd <= 0) continue
 
-    // Prioritize cards that fill both curve AND type needs
+    // Prioritize cards that fill curve, type, AND are inkable
     let take = 0
     if (bucketNeed > 0 && typeNeed > 0) {
       take = Math.min(canAdd, bucketNeed, typeNeed, deckSize - total)
     } else if (typeNeed > 0) {
-      // Type needed - prioritize diversity over curve when type quota not met
       take = Math.min(canAdd, typeNeed, deckSize - total)
     } else if (bucketNeed > 0) {
-      // Bucket needed, but type quota met - allow for curve
       take = Math.min(canAdd, bucketNeed, deckSize - total)
     } else {
-      // Both quotas met - minimal filler only
-      if (total < deckSize - 5) {
-        take = Math.min(1, canAdd, deckSize - total)
+      // Both quotas met - only add if it's inkable and we need more
+      if (isInkable && currentInkableCount < targetInkableCount) {
+        take = Math.min(canAdd, deckSize - total)
+      } else if (total < deckSize - 3) {
+        take = Math.min(1, canAdd, deckSize - total) // Minimal filler
       }
     }
 
     if (take <= 0) continue
     
-    addCardToDeck(c, take, "Balanceado: curva y tipos")
+    addCardToDeck(c, take, "Balanceado: curva, tipos e inkables")
+    if (isInkable) currentInkableCount += take
     total += take
   }
 
-  // Phase 3: Final fill if still short - prioritize type diversity over everything
+  // Phase 3: Final fill if still short - prioritize inkables and type balance
   if (total < deckSize) {
-    // First, try to fill missing types
+    // Recalculate inkable count
+    let finalInkableCount = 0
+    for (const d of deck) {
+      const card = cardsById.get(d.cardId)
+      if (!card) continue
+      const isInkable = card.inkable === true || card.inkable === "true" || card.inkable === 1
+      if (isInkable) finalInkableCount += d.qty
+    }
+    const finalTargetInkable = Math.floor(deckSize * 0.67)
+    const finalInkableNeeded = Math.max(0, finalTargetInkable - finalInkableCount)
+    
+    // First priority: Fill missing types with inkables
     for (const targetType of Object.keys(typeTargets)) {
       if (total >= deckSize) break
       const needed = needsType(targetType)
@@ -453,6 +533,10 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
         if (total >= deckSize) break
         if (needed <= 0) break
         
+        const isInkable = c.inkable === true || c.inkable === "true" || c.inkable === 1
+        // Prefer inkables if we still need them
+        if (!isInkable && finalInkableNeeded > 0) continue
+        
         const available = Math.min(maxCopies, Number(c._ownedQty || 0))
         const existing = deck.find((d) => d.cardId === String(c._id))
         const already = existing?.qty || 0
@@ -461,16 +545,22 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
         
         const take = Math.min(remaining, needed, deckSize - total)
         if (take > 0) {
-          addCardToDeck(c, take, "Relleno: prioridad de tipo para balance PRO")
+          addCardToDeck(c, take, "Relleno: tipos balanceados")
+          if (isInkable) finalInkableCount += take
           total += take
         }
       }
     }
     
-    // Finally, fill any remaining slots
+    // Finally, fill any remaining slots - ONLY inkables if we're below target
     if (total < deckSize) {
       for (const c of candidates) {
         if (total >= deckSize) break
+        const isInkable = c.inkable === true || c.inkable === "true" || c.inkable === 1
+        
+        // If we need more inkables, only add inkable cards
+        if (!isInkable && finalInkableCount < finalTargetInkable) continue
+        
         const existing = deck.find((d) => d.cardId === String(c._id))
         const already = existing?.qty || 0
         const available = Math.min(maxCopies, Number(c._ownedQty || 0))
@@ -479,7 +569,8 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
         
         const take = Math.min(remaining, deckSize - total)
         if (take > 0) {
-          addCardToDeck(c, take, "Relleno final para completar 60 cartas")
+          addCardToDeck(c, take, "Relleno final: completar 60 cartas")
+          if (isInkable) finalInkableCount += take
           total += take
         }
       }
