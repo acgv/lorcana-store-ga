@@ -71,6 +71,61 @@ function scoreCard(card: any, deckType: DeckType, curve: CurveType) {
   let score = cost === null || Number.isNaN(cost) ? 0.6 : 1.0
   score *= tw[t as keyof typeof tw] ?? 1.0
 
+  // Inkable bonus: prefer inkable cards (critical for deck consistency)
+  const inkable = card.inkable === true || card.inkable === "true" || card.inkable === 1
+  if (inkable) {
+    score *= 1.15 // Strong preference for inkable cards
+  } else if (card.inkable === false || card.inkable === "false" || card.inkable === 0) {
+    score *= 0.75 // Penalize non-inkable (but don't exclude entirely)
+  }
+
+  // Stats-based scoring (only for characters)
+  if (t === "character") {
+    const strength = typeof card.strength === "number" ? card.strength : card.strength ? Number(card.strength) : null
+    const willpower = typeof card.willpower === "number" ? card.willpower : card.willpower ? Number(card.willpower) : null
+    const lore = typeof card.lore === "number" ? card.lore : card.lore ? Number(card.lore) : null
+
+    // Aggro: prioritize good stats-to-cost ratio, early lore pressure
+    if (deckType === "aggro") {
+      if (cost !== null && strength !== null && willpower !== null && cost > 0) {
+        const statValue = (strength + willpower) / cost
+        score *= 1 + (statValue / 10) * 0.3 // Bonus for efficient stat-to-cost ratio
+      }
+      if (lore !== null && lore > 0) {
+        score *= 1 + (lore / 10) * 0.2 // Aggro wants lore early
+      }
+      // Penalize high-cost characters in aggro (unless they're very efficient)
+      if (cost !== null && cost >= 6 && (strength === null || strength < 5)) {
+        score *= 0.7
+      }
+    }
+
+    // Control: prioritize high willpower (survivability) and good top-end
+    if (deckType === "control") {
+      if (willpower !== null && willpower >= 5) {
+        score *= 1.2 // Control needs durable bodies
+      }
+      if (cost !== null && cost >= 6 && willpower !== null && willpower >= 4) {
+        score *= 1.15 // Good top-end finishers
+      }
+    }
+
+    // Midrange: balanced approach, prefer efficient mid-cost characters
+    if (deckType === "midrange") {
+      if (cost !== null && cost >= 4 && cost <= 5) {
+        if (strength !== null && willpower !== null && strength + willpower >= 8) {
+          score *= 1.1
+        }
+      }
+    }
+  }
+
+  // Lore value: all decks benefit from lore, but aggro prioritizes it more
+  if (t === "character" && card.lore !== null && typeof card.lore === "number") {
+    const loreMultiplier = deckType === "aggro" ? 0.15 : deckType === "control" ? 0.1 : 0.12
+    score *= 1 + (card.lore / 5) * loreMultiplier
+  }
+
   // cost preference: aggro likes cheaper, control likes higher
   if (deckType === "aggro") {
     if (b === "b01") score *= 1.25
@@ -117,7 +172,7 @@ async function fetchOwnedPool(userId: string) {
     const chunk = ids.slice(i, i + chunkSize)
     const { data: cards, error: cardsErr } = await supabaseAdmin
       .from("cards")
-      .select("id,name,type,set,rarity,inkCost,inkColor")
+      .select("id,name,type,set,rarity,inkCost,inkable,lore,strength,willpower,classifications,inkColor")
       .in("id", chunk)
       .eq("status", "approved")
 
@@ -133,7 +188,7 @@ async function fetchMissingSuggestions(allowedColors: string[], excludeIds: Set<
 
   let query = supabaseAdmin
     .from("cards")
-    .select("id,name,type,inkCost,inkColor,set,rarity")
+    .select("id,name,type,inkCost,inkable,lore,strength,willpower,classifications,inkColor,set,rarity")
     .eq("status", "approved")
     .limit(500)
 
@@ -247,7 +302,32 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
     }
   }
 
-  return { deck, total, curveFilled: filled, allowedColors }
+  // Calculate deck stats
+  let inkableCount = 0
+  let totalLore = 0
+  const typeCounts: Record<string, number> = {}
+
+  for (const d of deck) {
+    const card = cardsById.get(d.cardId)
+    if (!card) continue
+    const isInkable = card.inkable === true || card.inkable === "true" || card.inkable === 1
+    if (isInkable) inkableCount += d.qty
+    if (typeof card.lore === "number") totalLore += card.lore * d.qty
+    typeCounts[card.type || "unknown"] = (typeCounts[card.type || "unknown"] || 0) + d.qty
+  }
+
+  return { 
+    deck, 
+    total, 
+    curveFilled: filled, 
+    allowedColors,
+    stats: {
+      inkableCount,
+      inkablePercentage: total > 0 ? Math.round((inkableCount / total) * 100) : 0,
+      totalLore,
+      typeDistribution: typeCounts,
+    }
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -264,7 +344,7 @@ export async function POST(request: NextRequest) {
     const params: GenerateRequest = { deckType, curve, colors: colors.slice(0, 2) }
 
     const { qtyById, cardsById } = await fetchOwnedPool(auth.userId)
-    const { deck, total, curveFilled, allowedColors } = buildDeckFromPool(params, qtyById, cardsById)
+    const { deck, total, curveFilled, allowedColors, stats } = buildDeckFromPool(params, qtyById, cardsById)
 
     const ownedIds = new Set<string>([...qtyById.keys()])
     const missing = total < 60 ? await fetchMissingSuggestions(allowedColors, ownedIds, 40) : []
@@ -279,6 +359,7 @@ export async function POST(request: NextRequest) {
           totalSelected: total,
           maxCopies: 4,
           curveFilled,
+          stats,
         },
         missingSuggestions: missing,
       },

@@ -35,7 +35,7 @@ async function main() {
   console.log("🔍 Fetching existing cards from database...")
   const { data: existingCards, error: fetchError } = await supabase
     .from("cards")
-    .select("id, price, foilPrice, normalStock, foilStock, inkCost")
+    .select("id, price, foilPrice, normalStock, foilStock, inkCost, inkable, lore, strength, willpower, classifications")
   
   if (fetchError) {
     console.error("Error fetching existing cards:", fetchError)
@@ -50,6 +50,11 @@ async function main() {
       normalStock: card.normalStock,
       foilStock: card.foilStock,
       inkCost: card.inkCost,
+      inkable: card.inkable,
+      lore: card.lore,
+      strength: card.strength,
+      willpower: card.willpower,
+      classifications: card.classifications,
     })
   })
   
@@ -75,6 +80,11 @@ async function main() {
       number: Number(c.number) || 0,
       cardNumber: c.cardNumber ?? String(c.number ?? ""),
       inkCost: c.inkCost ?? null,
+      inkable: c.inkable ?? null,
+      lore: c.lore ?? null,
+      strength: c.strength ?? null,
+      willpower: c.willpower ?? null,
+      classifications: c.classifications ?? null,
       description: c.description ?? null,
       version: c.version ?? "normal",
       language: c.language ?? "en",
@@ -94,8 +104,13 @@ async function main() {
       row.foilPrice = existing.foilPrice
       row.normalStock = existing.normalStock
       row.foilStock = existing.foilStock
-      // Preservar inkCost si ya existe; si no existe, llenar desde JSON (sin pisar precio/stock)
+      // Preservar stats si ya existen; si no existen, llenar desde JSON (sin pisar precio/stock)
       row.inkCost = existing.inkCost ?? (c.inkCost ?? null)
+      row.inkable = existing.inkable ?? (c.inkable ?? null)
+      row.lore = existing.lore ?? (c.lore ?? null)
+      row.strength = existing.strength ?? (c.strength ?? null)
+      row.willpower = existing.willpower ?? (c.willpower ?? null)
+      row.classifications = existing.classifications ?? (c.classifications ?? null)
       preserved++
       updated++
     }

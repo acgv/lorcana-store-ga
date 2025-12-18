@@ -15,6 +15,7 @@
     "db:search-stock": "node scripts/search-stock-in-db.mjs",
     "db:check-colors": "node scripts/check-ink-colors-simple.mjs",
     "db:backfill-ink-cost": "node scripts/backfill-ink-cost.mjs",
+    "db:backfill-deck-stats": "node scripts/backfill-deck-stats.mjs",
     "db:setup": "echo Run this SQL in Supabase SQL editor: scripts/supabase-schema.sql",
     "verify:setup": "node docs/security/verify-setup.mjs"
   },

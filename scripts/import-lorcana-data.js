@@ -131,6 +131,12 @@ function transformCard(lorcanaCard) {
     inkColor: lorcanaCard.Color || null,
     // Costo de tinta (Lorcana API: Cost)
     inkCost: typeof lorcanaCard.Cost === 'number' ? lorcanaCard.Cost : (lorcanaCard.Cost ? Number(lorcanaCard.Cost) : null),
+    // Stats para construcción de mazos
+    inkable: typeof lorcanaCard.Inkable === 'boolean' ? lorcanaCard.Inkable : (lorcanaCard.Inkable === 'true' || lorcanaCard.Inkable === true || lorcanaCard.Inkable === 1),
+    lore: typeof lorcanaCard.Lore === 'number' ? lorcanaCard.Lore : (lorcanaCard.Lore ? Number(lorcanaCard.Lore) : null),
+    strength: typeof lorcanaCard.Strength === 'number' ? lorcanaCard.Strength : (lorcanaCard.Strength ? Number(lorcanaCard.Strength) : null),
+    willpower: typeof lorcanaCard.Willpower === 'number' ? lorcanaCard.Willpower : (lorcanaCard.Willpower ? Number(lorcanaCard.Willpower) : null),
+    classifications: lorcanaCard.Classifications || null,
     // Stock inicial en 0 para nuevas cartas
     stock: 0,
     normalStock: 0,

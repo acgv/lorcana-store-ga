@@ -34,6 +34,11 @@ export interface Card extends BaseProduct {
   type: CardType
   number: number
   inkCost?: number
+  inkable?: boolean
+  lore?: number
+  strength?: number
+  willpower?: number
+  classifications?: string
   foilPrice: number
   // Campos adicionales para el ecosistema completo
   cardNumber?: string // "101/204"
