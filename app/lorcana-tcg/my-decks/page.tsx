@@ -9,6 +9,7 @@ import { useUser } from "@/hooks/use-user"
 import { useCollection } from "@/hooks/use-collection"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -34,7 +35,8 @@ import {
   Trash2,
   Edit,
   Copy,
-  Minus
+  Minus,
+  Eye
 } from "lucide-react"
 import Link from "next/link"
 import type { Card as CardType } from "@/lib/types"
@@ -111,6 +113,8 @@ function DeckBuilder() {
   const [editingDeckId, setEditingDeckId] = useState<string | null>(null)
   const [availableCards, setAvailableCards] = useState<CardType[]>([])
   const [loadingCards, setLoadingCards] = useState(false)
+  const [viewDeckOpen, setViewDeckOpen] = useState(false)
+  const [viewingDeck, setViewingDeck] = useState<SavedDeck | null>(null)
   const [aiDeckType, setAiDeckType] = useState<"aggro" | "midrange" | "control">("midrange")
   const [aiCurve, setAiCurve] = useState<"low" | "balanced" | "high">("balanced")
   const [aiColors, setAiColors] = useState<string[]>([])
@@ -1048,13 +1052,114 @@ function DeckBuilder() {
             )}
 
             {/* Nombre del mazo */}
-            <div>
+            <div className="flex gap-2">
               <Input
                 placeholder="Nombre del mazo..."
                 value={deckName}
                 onChange={(e) => setDeckName(e.target.value)}
+                className="flex-1"
               />
+              {currentDeck.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  title="Ver mazo completo"
+                  onClick={() => {
+                    setViewingDeck(null)
+                    setViewDeckOpen(true)
+                  }}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+              )}
             </div>
+            
+            {/* Dialog compartido para ver mazos (actual o guardados) */}
+            <Dialog open={viewDeckOpen} onOpenChange={(open) => {
+              setViewDeckOpen(open)
+              if (!open) setViewingDeck(null)
+            }}>
+              <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>Vista Completa del Mazo</DialogTitle>
+                  <DialogDescription>
+                    {viewingDeck 
+                      ? `${viewingDeck.name} • ${viewingDeck.cards.reduce((sum, c) => sum + c.quantity, 0)}/60 cartas`
+                      : `${deckName.trim() || "Mazo sin nombre"} • ${deckValidation.totalCards}/60 cartas${deckValidation.stats.colorList.length > 0 ? ` • ${deckValidation.stats.colorList.join(", ")}` : ""}`
+                    }
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex-1 overflow-y-auto">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 p-4">
+                    {(viewingDeck ? viewingDeck.cards : currentDeck).flatMap((item) => {
+                      const copies = []
+                      const quantity = item.quantity
+                      const card = item.card
+                      const cardId = item.cardId
+                      
+                      for (let i = 0; i < quantity; i++) {
+                        copies.push(
+                          <div
+                            key={`${cardId}-${i}`}
+                            className="relative group"
+                          >
+                            {card.image ? (
+                              <div className="aspect-[63/88] relative rounded-lg overflow-hidden border-2 border-border hover:border-primary transition-colors bg-muted shadow-lg hover:shadow-xl">
+                                <Image
+                                  src={card.image}
+                                  alt={card.name}
+                                  fill
+                                  className="object-cover"
+                                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                                />
+                                {quantity > 1 && (
+                                  <div className="absolute top-2 right-2 bg-black/80 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold border-2 border-white/50">
+                                    {i + 1}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="aspect-[63/88] relative rounded-lg overflow-hidden border-2 border-border bg-muted flex items-center justify-center shadow-lg">
+                                <p className="text-xs text-muted-foreground text-center p-2">
+                                  {card.name}
+                                </p>
+                              </div>
+                            )}
+                            {/* Tooltip con info al hover */}
+                            <div className="absolute inset-0 bg-black/90 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col items-center justify-center p-3 text-white text-xs text-center z-10">
+                              <p className="font-semibold mb-2 text-sm">{card.name}</p>
+                              <div className="space-y-1">
+                                {(card as any).inkCost !== null && (card as any).inkCost !== undefined && (
+                                  <p className="text-[11px] opacity-90">
+                                    Costo: {(card as any).inkCost}
+                                  </p>
+                                )}
+                                {(card as any).inkColor && (
+                                  <p className="text-[11px] opacity-90">
+                                    Color: {(card as any).inkColor}
+                                  </p>
+                                )}
+                                {(card as any).lore !== null && (card as any).lore !== undefined && (
+                                  <p className="text-[11px] opacity-90">
+                                    Lore: {(card as any).lore}
+                                  </p>
+                                )}
+                                {(card as any).strength !== null && (card as any).strength !== undefined && (
+                                  <p className="text-[11px] opacity-90">
+                                    Fuerza: {(card as any).strength} / {(card as any).willpower ?? "?"}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      }
+                      return copies
+                    })}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {/* Lista de cartas en el mazo */}
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
@@ -1206,6 +1311,18 @@ function DeckBuilder() {
                         </div>
                       </div>
                       <div className="flex gap-1 ml-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            setViewingDeck(deck)
+                            setViewDeckOpen(true)
+                          }}
+                          title="Ver mazo completo"
+                        >
+                          <Eye className="h-3 w-3" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
