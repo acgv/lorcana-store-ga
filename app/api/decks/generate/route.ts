@@ -39,9 +39,10 @@ function isAllowedByColors(cardColors: string[], allowed: string[]) {
 
 function curveTargets(curve: CurveType) {
   // targets by cost bucket: 0-1, 2-3, 4-5, 6+
-  if (curve === "low") return { b01: 10, b23: 28, b45: 18, b6p: 4 }
-  if (curve === "high") return { b01: 4, b23: 16, b45: 24, b6p: 16 }
-  return { b01: 6, b23: 22, b45: 22, b6p: 10 }
+  // PRO: More low-cost cards for better early game
+  if (curve === "low") return { b01: 12, b23: 30, b45: 15, b6p: 3 }  // 42 low-cost (70%)
+  if (curve === "high") return { b01: 6, b23: 18, b45: 22, b6p: 14 } // 24 low-cost (40%)
+  return { b01: 8, b23: 26, b45: 20, b6p: 6 } // 34 low-cost (57%) - balanced but still aggro-friendly
 }
 
 function bucket(cost: number | null | undefined) {
@@ -262,41 +263,165 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
 
   const targets = curveTargets(params.curve)
   const filled = { b01: 0, b23: 0, b45: 0, b6p: 0 }
+  
+  // Type distribution targets (PRO balance) - adjusted by deck type
+  let typeTargets: Record<string, number>
+  if (params.deckType === "aggro") {
+    typeTargets = {
+      character: 38,  // ~63% characters (aggro needs bodies)
+      action: 12,     // ~20% actions (removal/interaction)
+      song: 6,        // ~10% songs (synergy)
+      item: 3,        // ~5% items
+      location: 1,    // ~2% locations (optional)
+    }
+  } else if (params.deckType === "control") {
+    typeTargets = {
+      character: 32,  // ~53% characters
+      action: 15,     // ~25% actions (removal/control spells)
+      song: 8,        // ~13% songs
+      item: 4,        // ~7% items
+      location: 1,    // ~2% locations
+    }
+  } else if (params.deckType === "combo") {
+    typeTargets = {
+      character: 34,  // ~57% characters (combo pieces)
+      action: 10,     // ~17% actions
+      song: 12,       // ~20% songs (combo enablers)
+      item: 3,        // ~5% items
+      location: 1,    // ~2% locations
+    }
+  } else {
+    // midrange - balanced
+    typeTargets = {
+      character: 35,  // ~58% characters
+      action: 10,     // ~17% actions
+      song: 8,        // ~13% songs
+      item: 5,        // ~8% items
+      location: 2,    // ~3% locations
+    }
+  }
+  const typeFilled: Record<string, number> = { character: 0, action: 0, song: 0, item: 0, location: 0 }
 
   const deck: DeckCard[] = []
   let total = 0
 
-  // greedy fill respecting curve buckets
+  // Helper: check if we need more of this type
+  const needsType = (cardType: string): number => {
+    const type = cardType || "character"
+    const target = typeTargets[type] || 0
+    const current = typeFilled[type] || 0
+    return Math.max(0, target - current)
+  }
+
+  // Helper: check if we need more of this cost bucket
+  const needsBucket = (b: keyof typeof filled): number => {
+    const target = targets[b]
+    const current = filled[b]
+    return Math.max(0, target - current)
+  }
+
+  // Phase 1: Fill strategically by curve AND type diversity
   for (const c of candidates) {
     if (total >= deckSize) break
     const b = bucket(c.inkCost) as keyof typeof filled
-    const bucketTarget = targets[b]
-    const remainingBucketNeed = Math.max(0, bucketTarget - filled[b])
-
+    const cardType = String(c.type || "character")
+    
+    const bucketNeed = needsBucket(b)
+    const typeNeed = needsType(cardType)
+    
     const available = Math.min(maxCopies, Number(c._ownedQty || 0))
     if (available <= 0) continue
 
-    // prefer filling needed buckets first, otherwise allow if still room
+    // Prioritize cards that fill both curve AND type needs
     let take = 0
-    if (remainingBucketNeed > 0) take = Math.min(available, remainingBucketNeed, deckSize - total)
-    else take = Math.min(Math.max(1, Math.floor(available / 2)), deckSize - total) // small sprinkle
+    const existing = deck.find((d) => d.cardId === String(c._id))
+    const already = existing?.qty || 0
+    const canAdd = Math.min(available - already, maxCopies - already)
+    if (canAdd <= 0) continue
+
+    // If both bucket and type are needed, prioritize more
+    if (bucketNeed > 0 && typeNeed > 0) {
+      take = Math.min(canAdd, bucketNeed, typeNeed, deckSize - total)
+    } else if (bucketNeed > 0) {
+      // Bucket needed, but type quota met - allow small amount for curve
+      take = Math.min(canAdd, bucketNeed, deckSize - total)
+    } else if (typeNeed > 0) {
+      // Type needed, but bucket quota met - allow for diversity
+      take = Math.min(canAdd, typeNeed, deckSize - total)
+    } else {
+      // Both quotas met, but we might still need filler
+      // Only add if we're far from 60 cards
+      if (total < deckSize - 10) {
+        take = Math.min(1, canAdd, deckSize - total) // Just 1 copy as filler
+      }
+    }
 
     if (take <= 0) continue
 
-    deck.push({
-      cardId: String(c._id),
-      name: c.name,
-      qty: take,
-      inkCost: c.inkCost ?? null,
-      inkColor: c.inkColor ?? null,
-      type: c.type,
-      reason: "Seleccionada por sinergia básica y curva",
-    })
+    if (existing) {
+      existing.qty += take
+    } else {
+      deck.push({
+        cardId: String(c._id),
+        name: c.name,
+        qty: take,
+        inkCost: c.inkCost ?? null,
+        inkColor: c.inkColor ?? null,
+        type: cardType,
+        reason: "Seleccionada por sinergia, curva y diversidad de tipos",
+      })
+    }
     filled[b] += take
+    typeFilled[cardType] = (typeFilled[cardType] || 0) + take
     total += take
   }
 
-  // If still short, just fill from top candidates regardless of bucket
+  // Phase 2: Fill remaining slots prioritizing curve and type diversity
+  if (total < deckSize) {
+    for (const c of candidates) {
+      if (total >= deckSize) break
+      const b = bucket(c.inkCost) as keyof typeof filled
+      const cardType = String(c.type || "character")
+      
+      const bucketNeed = needsBucket(b)
+      const typeNeed = needsType(cardType)
+      
+      const existing = deck.find((d) => d.cardId === String(c._id))
+      const already = existing?.qty || 0
+      const available = Math.min(maxCopies, Number(c._ownedQty || 0))
+      const remaining = available - already
+      if (remaining <= 0) continue
+
+      // Prioritize cards that help with curve or type balance
+      let take = 0
+      if (bucketNeed > 0 || typeNeed > 0) {
+        take = Math.min(remaining, Math.max(bucketNeed, typeNeed), deckSize - total)
+      } else {
+        take = Math.min(remaining, deckSize - total)
+      }
+
+      if (take <= 0) continue
+
+      if (existing) {
+        existing.qty += take
+      } else {
+        deck.push({
+          cardId: String(c._id),
+          name: c.name,
+          qty: take,
+          inkCost: c.inkCost ?? null,
+          inkColor: c.inkColor ?? null,
+          type: cardType,
+          reason: "Relleno balanceado para completar 60 cartas",
+        })
+      }
+      filled[b] += take
+      typeFilled[cardType] = (typeFilled[cardType] || 0) + take
+      total += take
+    }
+  }
+
+  // Phase 3: Final fill if still short (emergency)
   if (total < deckSize) {
     for (const c of candidates) {
       if (total >= deckSize) break
@@ -307,6 +432,10 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
       if (remaining <= 0) continue
       const take = Math.min(remaining, deckSize - total)
       if (take <= 0) continue
+      
+      const b = bucket(c.inkCost) as keyof typeof filled
+      const cardType = String(c.type || "character")
+      
       if (existing) {
         existing.qty += take
       } else {
@@ -316,10 +445,12 @@ function buildDeckFromPool(params: GenerateRequest, qtyById: Map<string, number>
           qty: take,
           inkCost: c.inkCost ?? null,
           inkColor: c.inkColor ?? null,
-          type: c.type,
-          reason: "Relleno para completar 60 cartas",
+          type: cardType,
+          reason: "Relleno final para completar 60 cartas",
         })
       }
+      filled[b] += take
+      typeFilled[cardType] = (typeFilled[cardType] || 0) + take
       total += take
     }
   }
