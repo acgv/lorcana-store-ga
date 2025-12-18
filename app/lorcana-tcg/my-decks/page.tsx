@@ -535,6 +535,21 @@ function DeckBuilder() {
       warnings.push(`Solo ${typeDistribution.character || 0} personajes. Los mazos típicamente tienen 25-40 personajes.`)
     }
 
+    // Warning si el mazo tiene demasiados personajes (muy poco balance)
+    if (totalCards >= 60) {
+      const characterPercentage = (typeDistribution.character || 0) / totalCards
+      if (characterPercentage > 0.85) {
+        warnings.push(`El mazo tiene ${Math.round(characterPercentage * 100)}% de personajes. Considera agregar acciones, canciones o items para más versatilidad.`)
+      }
+      // Warning si no hay acciones ni canciones (muy limitado)
+      const hasActions = (typeDistribution.action || 0) > 0
+      const hasSongs = (typeDistribution.song || 0) > 0
+      const hasItems = (typeDistribution.item || 0) > 0
+      if (!hasActions && !hasSongs && !hasItems && totalCards >= 60) {
+        warnings.push(`El mazo solo tiene personajes. Considera agregar acciones, canciones o items para más opciones estratégicas.`)
+      }
+    }
+
     return { 
       errors, 
       warnings, 
@@ -1210,10 +1225,28 @@ function DeckBuilder() {
                                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
                                 />
                                 {quantity > 1 && (
-                                  <div className="absolute top-2 right-2 bg-black/80 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold border-2 border-white/50">
+                                  <div className="absolute top-2 right-2 bg-black/80 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold border-2 border-white/50 z-20">
                                     {i + 1}
                                   </div>
                                 )}
+                                {/* Tooltip compacto en la parte inferior - contenido dentro de la carta con overflow-hidden */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/90 to-black/80 text-white text-[10px] p-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none max-h-[40%] overflow-hidden">
+                                  <p className="font-semibold truncate mb-0.5 text-[11px] leading-tight px-0.5">{card.name}</p>
+                                  <div className="flex flex-wrap gap-x-1.5 gap-y-0 text-[9px] leading-tight px-0.5">
+                                    {(card as any).inkCost !== null && (card as any).inkCost !== undefined && (
+                                      <span className="whitespace-nowrap">C:{(card as any).inkCost}</span>
+                                    )}
+                                    {(card as any).inkColor && (
+                                      <span className="whitespace-nowrap truncate max-w-[60px]">{(card as any).inkColor}</span>
+                                    )}
+                                    {(card as any).lore !== null && (card as any).lore !== undefined && (
+                                      <span className="whitespace-nowrap">L:{(card as any).lore}</span>
+                                    )}
+                                    {(card as any).strength !== null && (card as any).strength !== undefined && (
+                                      <span className="whitespace-nowrap">{(card as any).strength}/{(card as any).willpower ?? "?"}</span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             ) : (
                               <div className="aspect-[63/88] relative rounded-lg overflow-hidden border-2 border-border bg-muted flex items-center justify-center shadow-lg">
@@ -1222,24 +1255,6 @@ function DeckBuilder() {
                                 </p>
                               </div>
                             )}
-                            {/* Tooltip compacto en la parte inferior */}
-                            <div className="absolute bottom-0 left-0 right-0 bg-black/90 text-white text-[10px] p-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-b-lg z-10 pointer-events-none">
-                              <p className="font-semibold truncate mb-0.5">{card.name}</p>
-                              <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                                {(card as any).inkCost !== null && (card as any).inkCost !== undefined && (
-                                  <span>Costo: {(card as any).inkCost}</span>
-                                )}
-                                {(card as any).inkColor && (
-                                  <span>Color: {(card as any).inkColor}</span>
-                                )}
-                                {(card as any).lore !== null && (card as any).lore !== undefined && (
-                                  <span>Lore: {(card as any).lore}</span>
-                                )}
-                                {(card as any).strength !== null && (card as any).strength !== undefined && (
-                                  <span>{(card as any).strength}/{(card as any).willpower ?? "?"}</span>
-                                )}
-                              </div>
-                            </div>
                           </div>
                         )
                       }
