@@ -1089,6 +1089,103 @@ function DeckBuilder() {
                     }
                   </DialogDescription>
                 </DialogHeader>
+                
+                {/* Panel de Factibilidad */}
+                {(() => {
+                  const deckToAnalyze = viewingDeck ? viewingDeck.cards : currentDeck
+                  const totalCards = deckToAnalyze.reduce((sum, item) => sum + item.quantity, 0)
+                  const allColors = new Set<string>()
+                  let inkableCount = 0
+                  let totalLore = 0
+                  const costDistribution: Record<string, number> = { b01: 0, b23: 0, b45: 0, b6p: 0, unknown: 0 }
+                  const typeDistribution: Record<string, number> = {}
+                  
+                  deckToAnalyze.forEach(item => {
+                    const card = item.card as any
+                    const qty = item.quantity
+                    
+                    const cardColor = card.inkColor || card.color
+                    if (cardColor) {
+                      const colors = String(cardColor).split(',').map((c: string) => c.trim())
+                      colors.forEach((c: string) => allColors.add(c))
+                    }
+                    
+                    const isInkable = card.inkable === true || card.inkable === "true" || card.inkable === 1
+                    if (isInkable) inkableCount += qty
+                    
+                    if (typeof card.lore === "number") totalLore += card.lore * qty
+                    
+                    const cost = typeof card.inkCost === "number" ? card.inkCost : card.inkCost ? Number(card.inkCost) : null
+                    if (cost === null || Number.isNaN(cost)) {
+                      costDistribution.unknown += qty
+                    } else if (cost <= 1) {
+                      costDistribution.b01 += qty
+                    } else if (cost <= 3) {
+                      costDistribution.b23 += qty
+                    } else if (cost <= 5) {
+                      costDistribution.b45 += qty
+                    } else {
+                      costDistribution.b6p += qty
+                    }
+                    
+                    const type = card.type || "unknown"
+                    typeDistribution[type] = (typeDistribution[type] || 0) + qty
+                  })
+                  
+                  const inkablePercentage = totalCards > 0 ? Math.round((inkableCount / totalCards) * 100) : 0
+                  const isValid = totalCards === 60 && allColors.size <= 2
+                  
+                  return (
+                    <div className="border-b pb-4 mb-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">Total Cartas</div>
+                          <div className={`font-semibold ${isValid ? 'text-green-600' : 'text-red-600'}`}>
+                            {totalCards}/60
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">Colores</div>
+                          <div className="font-semibold flex items-center gap-1">
+                            {Array.from(allColors).slice(0, 2).map(color => (
+                              <Badge key={color} variant="outline" className="text-xs">
+                                {color}
+                              </Badge>
+                            ))}
+                            {allColors.size > 2 && <span className="text-red-600">+{allColors.size - 2}</span>}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">Inkables</div>
+                          <div className={`font-semibold ${inkablePercentage >= 50 ? 'text-green-600' : inkablePercentage >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                            {inkablePercentage}% ({inkableCount})
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">Lore Total</div>
+                          <div className="font-semibold">{totalLore}</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">Curva (0-1)</div>
+                          <div className="font-semibold">{costDistribution.b01}</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">Curva (2-3)</div>
+                          <div className="font-semibold">{costDistribution.b23}</div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <div className="text-xs text-muted-foreground">Tipos:</div>
+                        {Object.entries(typeDistribution).map(([type, count]) => (
+                          <Badge key={type} variant="outline" className="text-xs">
+                            {t(String(type))}: {count}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+                
                 <div className="flex-1 overflow-y-auto">
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 p-4">
                     {(viewingDeck ? viewingDeck.cards : currentDeck).flatMap((item) => {
@@ -1125,29 +1222,21 @@ function DeckBuilder() {
                                 </p>
                               </div>
                             )}
-                            {/* Tooltip con info al hover */}
-                            <div className="absolute inset-0 bg-black/90 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col items-center justify-center p-3 text-white text-xs text-center z-10">
-                              <p className="font-semibold mb-2 text-sm">{card.name}</p>
-                              <div className="space-y-1">
+                            {/* Tooltip compacto en la parte inferior */}
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/90 text-white text-[10px] p-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-b-lg z-10 pointer-events-none">
+                              <p className="font-semibold truncate mb-0.5">{card.name}</p>
+                              <div className="flex flex-wrap gap-x-2 gap-y-0.5">
                                 {(card as any).inkCost !== null && (card as any).inkCost !== undefined && (
-                                  <p className="text-[11px] opacity-90">
-                                    Costo: {(card as any).inkCost}
-                                  </p>
+                                  <span>Costo: {(card as any).inkCost}</span>
                                 )}
                                 {(card as any).inkColor && (
-                                  <p className="text-[11px] opacity-90">
-                                    Color: {(card as any).inkColor}
-                                  </p>
+                                  <span>Color: {(card as any).inkColor}</span>
                                 )}
                                 {(card as any).lore !== null && (card as any).lore !== undefined && (
-                                  <p className="text-[11px] opacity-90">
-                                    Lore: {(card as any).lore}
-                                  </p>
+                                  <span>Lore: {(card as any).lore}</span>
                                 )}
                                 {(card as any).strength !== null && (card as any).strength !== undefined && (
-                                  <p className="text-[11px] opacity-90">
-                                    Fuerza: {(card as any).strength} / {(card as any).willpower ?? "?"}
-                                  </p>
+                                  <span>{(card as any).strength}/{(card as any).willpower ?? "?"}</span>
                                 )}
                               </div>
                             </div>
