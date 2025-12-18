@@ -966,14 +966,28 @@ function DeckBuilder() {
                               currentDeck
                                 .map(item => {
                                   const cardColor = (item.card as any).inkColor || (item.card as any).color
-                                  return cardColor ? cardColor : null
+                                  return cardColor ? String(cardColor).split(',').map((c: string) => c.trim()) : null
                                 })
-                                .filter(color => color !== null)
-                            )).map(color => (
-                              <Badge key={color} variant="outline" className="text-xs">
-                                {color}
-                              </Badge>
-                            ))}
+                                .filter(Boolean)
+                                .flat()
+                            )).map(color => {
+                              const colorLower = String(color).toLowerCase()
+                              const colorMap: Record<string, string> = {
+                                'amber': 'bg-yellow-500',
+                                'ruby': 'bg-red-600',
+                                'emerald': 'bg-green-500',
+                                'sapphire': 'bg-blue-500',
+                                'steel': 'bg-gray-400',
+                                'amethyst': 'bg-purple-500'
+                              }
+                              const colorClass = colorMap[colorLower] || 'bg-gray-500'
+                              return (
+                                <Badge key={color} variant="outline" className="text-xs flex items-center gap-1.5 px-2 py-0.5">
+                                  <span className={`w-2 h-2 rounded-full ${colorClass}`} />
+                                  {color}
+                                </Badge>
+                              )
+                            })}
                           </div>
                         )}
                       </CardDescription>
@@ -1163,12 +1177,25 @@ function DeckBuilder() {
                         </div>
                         <div className="space-y-1.5 min-w-0">
                           <div className="text-xs text-muted-foreground whitespace-nowrap">Colores</div>
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {Array.from(allColors).slice(0, 2).map(color => (
-                              <Badge key={color} variant="outline" className="text-xs whitespace-nowrap">
-                                {color}
-                              </Badge>
-                            ))}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {Array.from(allColors).slice(0, 2).map(color => {
+                              const colorLower = color.toLowerCase()
+                              const colorMap: Record<string, string> = {
+                                'amber': 'bg-yellow-500',
+                                'ruby': 'bg-red-600',
+                                'emerald': 'bg-green-500',
+                                'sapphire': 'bg-blue-500',
+                                'steel': 'bg-gray-400',
+                                'amethyst': 'bg-purple-500'
+                              }
+                              const colorClass = colorMap[colorLower] || 'bg-gray-500'
+                              return (
+                                <Badge key={color} variant="outline" className="text-xs whitespace-nowrap flex items-center gap-1.5 px-2 py-0.5">
+                                  <span className={`w-2 h-2 rounded-full ${colorClass}`} />
+                                  {color}
+                                </Badge>
+                              )
+                            })}
                             {allColors.size > 2 && <span className="text-red-600 text-xs font-semibold">+{allColors.size - 2}</span>}
                           </div>
                         </div>
@@ -1258,33 +1285,20 @@ function DeckBuilder() {
                                     {i + 1}
                                   </div>
                                 )}
-                                {/* Tooltip compacto en la parte inferior - contenido dentro de la carta */}
-                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-black/90 text-white p-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                                  <p className="font-semibold truncate mb-1 text-xs leading-tight">{card.name}</p>
-                                  <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] leading-tight">
+                                {/* Tooltip minimalista - solo costo y lore */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/90 to-black/85 text-white p-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                                  <div className="flex items-center justify-center gap-3 text-xs font-semibold">
                                     {(card as any).inkCost !== null && (card as any).inkCost !== undefined && (
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-muted-foreground">Costo:</span>
-                                        <span className="font-semibold">{(card as any).inkCost}</span>
-                                      </div>
-                                    )}
-                                    {(card as any).inkColor && (
-                                      <div className="flex items-center gap-1 truncate">
-                                        <span className="text-muted-foreground">Color:</span>
-                                        <span className="font-semibold truncate">{(card as any).inkColor}</span>
-                                      </div>
+                                      <span className="flex items-center gap-1">
+                                        <span className="text-muted-foreground/70">Costo:</span>
+                                        {(card as any).inkCost}
+                                      </span>
                                     )}
                                     {(card as any).lore !== null && (card as any).lore !== undefined && (
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-muted-foreground">Lore:</span>
-                                        <span className="font-semibold">{(card as any).lore}</span>
-                                      </div>
-                                    )}
-                                    {(card as any).strength !== null && (card as any).strength !== undefined && (
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-muted-foreground">Stats:</span>
-                                        <span className="font-semibold">{(card as any).strength}/{(card as any).willpower ?? "?"}</span>
-                                      </div>
+                                      <span className="flex items-center gap-1">
+                                        <span className="text-muted-foreground/70">Lore:</span>
+                                        {(card as any).lore}
+                                      </span>
                                     )}
                                   </div>
                                 </div>
@@ -1437,8 +1451,32 @@ function DeckBuilder() {
                           {deck.cards.length} carta(s) única(s) • {allColors.size} color(es) • Actualizado {new Date(deck.updatedAt).toLocaleDateString()}
                         </p>
                         
+                        {/* Colores con puntos */}
+                        {allColors.size > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {Array.from(allColors).slice(0, 2).map(color => {
+                              const colorLower = String(color).toLowerCase()
+                              const colorMap: Record<string, string> = {
+                                'amber': 'bg-yellow-500',
+                                'ruby': 'bg-red-600',
+                                'emerald': 'bg-green-500',
+                                'sapphire': 'bg-blue-500',
+                                'steel': 'bg-gray-400',
+                                'amethyst': 'bg-purple-500'
+                              }
+                              const colorClass = colorMap[colorLower] || 'bg-gray-500'
+                              return (
+                                <Badge key={color} variant="outline" className="text-xs flex items-center gap-1.5 px-2 py-0.5">
+                                  <span className={`w-2 h-2 rounded-full ${colorClass}`} />
+                                  {color}
+                                </Badge>
+                              )
+                            })}
+                          </div>
+                        )}
+                        
                         {/* Estadísticas rápidas */}
-                        <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
                           <div className="p-2 bg-background rounded">
                             <div className="text-muted-foreground">Inkables</div>
                             <div className={`font-semibold ${inkablePercentage >= 50 ? 'text-green-600' : inkablePercentage >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
@@ -1448,10 +1486,6 @@ function DeckBuilder() {
                           <div className="p-2 bg-background rounded">
                             <div className="text-muted-foreground">Lore</div>
                             <div className="font-semibold">{totalLore}</div>
-                          </div>
-                          <div className="p-2 bg-background rounded">
-                            <div className="text-muted-foreground">Colores</div>
-                            <div className="font-semibold">{Array.from(allColors).slice(0, 2).join(', ') || 'N/A'}</div>
                           </div>
                         </div>
                       </div>
