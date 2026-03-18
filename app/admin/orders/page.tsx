@@ -50,6 +50,36 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
 
+  const normalizeOrderItems = (items: any[]): OrderItem[] => {
+    if (!Array.isArray(items)) return []
+
+    return items.map((raw: any) => {
+      const title = String(raw?.title ?? raw?.name ?? raw?.card_name ?? raw?.cardName ?? "Item")
+      const quantity = Number(raw?.quantity ?? raw?.qty ?? 0) || 0
+
+      // MercadoPago style: unit_price
+      // Internal stored orders (payment-processor): price
+      const unitPriceRaw = raw?.unit_price ?? raw?.unitPrice ?? raw?.price ?? raw?.unitPriceCLP
+      const unit_price = Number(unitPriceRaw ?? 0) || 0
+
+      return {
+        id: String(raw?.id ?? raw?.card_id ?? raw?.cardId ?? title),
+        title,
+        quantity,
+        unit_price,
+      }
+    })
+  }
+
+  const normalizeOrders = (rawOrders: any[]): Order[] => {
+    if (!Array.isArray(rawOrders)) return []
+    return rawOrders.map((o: any) => ({
+      ...o,
+      items: normalizeOrderItems(o?.items),
+      total_amount: Number(o?.total_amount ?? o?.total ?? 0) || 0,
+    }))
+  }
+
   useEffect(() => {
     fetchOrders()
   }, [])
@@ -84,8 +114,9 @@ export default function OrdersPage() {
       const data = await response.json()
 
       if (data.success) {
-        setOrders(data.orders)
-        setFilteredOrders(data.orders)
+        const normalized = normalizeOrders(data.orders)
+        setOrders(normalized)
+        setFilteredOrders(normalized)
       } else {
         console.error("Error fetching orders:", data.error)
       }
