@@ -29,6 +29,11 @@ export interface ProcessPaymentParams {
   items: PaymentItem[]
   customerEmail?: string
   status: string
+  // user_id real del usuario autenticado (si se conoce)
+  userId?: string
+  // Documento para despacho/boleta
+  documentType?: string
+  documentNumber?: string
   // Datos reales de Mercado Pago
   mpFeeAmount?: number
   netReceivedAmount?: number
@@ -53,6 +58,9 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
     items, 
     customerEmail, 
     status,
+    userId,
+    documentType,
+    documentNumber,
     mpFeeAmount,
     netReceivedAmount,
     totalPaidAmount,
@@ -183,6 +191,9 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
       const orderWithEnrichedItems = {
         ...baseOrder,
         items: enrichedItems,
+        user_id: userId || null,
+        buyer_document_type: documentType || null,
+        buyer_document_number: documentNumber || null,
         // Datos de envío (si tu tabla orders tiene estas columnas; si no, hacemos fallback)
         shipping_method: shippingMethod || null,
         shipping_address: shippingAddress || null,
@@ -199,13 +210,19 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
           message.includes("shipping_method") ||
           message.includes("shipping_address") ||
           message.includes("shipping_cost") ||
-          message.includes("shipping_phone")
+          message.includes("shipping_phone") ||
+          message.includes("buyer_document_type") ||
+          message.includes("buyer_document_number") ||
+          message.includes("user_id")
 
         if (looksLikeMissingColumn) {
           console.warn("⚠️ Orders table missing shipping columns. Inserting without them.")
           await supabaseAdmin.from("orders").insert({
             ...baseOrder,
             items: enrichedItems,
+            user_id: userId || null,
+            buyer_document_type: documentType || null,
+            buyer_document_number: documentNumber || null,
           })
         } else {
           throw insertError

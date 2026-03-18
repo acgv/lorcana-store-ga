@@ -34,6 +34,7 @@ export interface ShippingData {
     notes?: string
   }
   phone?: string
+  rut?: string
   cost: number
   // Flags para guardar después de la compra
   saveAddress?: boolean
@@ -82,6 +83,7 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
     notes: "",
   })
   const [phone, setPhone] = useState("")
+  const [rut, setRut] = useState("")
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([])
   const [savedPhones, setSavedPhones] = useState<SavedPhone[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
@@ -174,6 +176,7 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
       zone: method === "shipping" ? zone : undefined,
       address: method === "shipping" ? address : undefined,
       phone: phone || undefined,
+      rut: rut || undefined,
       cost: shippingCost,
       saveAddress: isAuthenticated && !selectedAddressId && saveAddress,
       savePhone: isAuthenticated && !selectedPhoneId && savePhone && phone,
@@ -184,7 +187,7 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
   useEffect(() => {
     onShippingChange(getShippingData())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [method, zone, shippingCost, address, phone])
+  }, [method, zone, shippingCost, address, phone, rut])
 
   // Función para seleccionar una dirección guardada
   const handleSelectAddress = (savedAddress: SavedAddress) => {
@@ -565,6 +568,23 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
                   </Label>
                 </div>
               )}
+            </div>
+
+            {/* RUT para envío */}
+            <div className="space-y-2 pt-4 border-t">
+              <Label className="flex items-center gap-2">
+                RUT <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                placeholder="12.345.678-9"
+                value={rut}
+                onChange={(e) => setRut(e.target.value)}
+                required
+                className={!rut ? "border-red-500/50" : ""}
+              />
+              <p className="text-xs text-muted-foreground">
+                Lo usamos solo para el despacho/boleta. (Formato: 12.345.678-9)
+              </p>
             </div>
           </div>
         )}

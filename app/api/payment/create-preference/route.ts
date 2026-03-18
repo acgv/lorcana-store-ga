@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     const saveAddress = shipping?.saveAddress || false
     const savePhone = shipping?.savePhone || false
     const phone = shipping?.phone || undefined
+    const rut = shipping?.rut || undefined
 
     // ✅ Usar el email del usuario autenticado (no confiar en el del body)
     const userEmail = auth.email
@@ -75,9 +76,12 @@ export async function POST(request: NextRequest) {
       shipping, // Pasar datos de envío
       customerEmail,
       origin, // Pasar el dominio de origen
+      userId, // ⭐ user_id autenticado para match en órdenes
       saveAddress, // Pasar flag de guardar dirección
       savePhone, // Pasar flag de guardar teléfono
       phone, // Pasar teléfono
+      documentType: "RUT",
+      documentNumber: rut,
     })
 
     console.log('✅ Preference created:', preference.preferenceId)

@@ -152,6 +152,30 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
         return
       }
 
+      // Validar RUT
+      if (!shippingData.rut || shippingData.rut.trim() === "") {
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: "Por favor ingresa tu RUT para el envío",
+          duration: 5000,
+        })
+        return
+      }
+
+      // Validación básica de formato de RUT (permite con o sin puntos/guion)
+      const rutClean = shippingData.rut.replace(/\./g, "").replace(/-/g, "").trim()
+      const rutRegex = /^\d{7,8}[0-9kK]$/
+      if (!rutRegex.test(rutClean)) {
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: "Formato de RUT inválido. Ej: 12.345.678-9",
+          duration: 5000,
+        })
+        return
+      }
+
       // Validar formato de teléfono si está autenticado (para usuarios no autenticados, validación básica)
       if (isAuthenticated) {
         const phoneRegex = /^\+56\s?9\s?\d{4}\s?\d{4}$/

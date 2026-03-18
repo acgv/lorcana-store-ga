@@ -96,10 +96,13 @@ export interface CreatePreferenceParams {
   items: CardItem[]
   shipping?: any // Datos de envío
   customerEmail?: string
+  userId?: string // user_id autenticado en tu plataforma (para match interno)
   origin?: string // Dominio desde el cual se originó la compra
   saveAddress?: boolean // Guardar dirección después de compra
   savePhone?: boolean // Guardar teléfono después de compra
   phone?: string // Teléfono del cliente
+  documentNumber?: string // RUT u otro documento
+  documentType?: string // "RUT" por defecto
 }
 
 /**
@@ -182,6 +185,11 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
 
     // Agregar metadata de envío y datos de usuario
     preferenceBody.metadata = {}
+
+    // Guardar user_id para poder hacer match interno en el webhook
+    if (params.userId) {
+      preferenceBody.metadata.user_id = params.userId
+    }
     
     if (params.shipping) {
       preferenceBody.metadata.shipping_method = params.shipping.method
@@ -193,6 +201,12 @@ export async function createPaymentPreference(params: CreatePreferenceParams) {
       }
       
       console.log('📦 Shipping info added to metadata')
+    }
+
+    // Documento (RUT) - solo si viene
+    if (params.documentNumber) {
+      preferenceBody.metadata.document_type = params.documentType || "RUT"
+      preferenceBody.metadata.document_number = String(params.documentNumber)
     }
     
     // Agregar flags de guardado y teléfono

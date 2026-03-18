@@ -127,6 +127,9 @@ export async function POST(request: Request) {
                 console.warn('Error parsing shipping address:', e)
               }
             }
+            const platformUserId = metadata.user_id ? String(metadata.user_id) : undefined
+            const documentType = metadata.document_type ? String(metadata.document_type) : undefined
+            const documentNumber = metadata.document_number ? String(metadata.document_number) : undefined
             // Extraer flags de guardado y teléfono
             const saveAddress = metadata.save_address === 'true'
             const savePhone = metadata.save_phone === 'true'
@@ -143,6 +146,10 @@ export async function POST(request: Request) {
                 console.warn('Error fetching user for tracking:', err)
               }
             }
+            // Preferir el user_id de metadata (es el match real del login)
+            if (platformUserId) {
+              userId = platformUserId
+            }
 
             const result = await processConfirmedPayment({
               paymentId: String(paymentId),
@@ -150,6 +157,8 @@ export async function POST(request: Request) {
               items: paymentItems,
               customerEmail: payment.payer?.email,
               status: payment.status || 'unknown',
+              // ⭐ userId ya viene resuelto (metadata.user_id o fallback por email)
+              userId,
               // ⭐ Pasar datos reales de fees
               mpFeeAmount,
               netReceivedAmount,
@@ -162,6 +171,9 @@ export async function POST(request: Request) {
               saveAddress,
               savePhone,
               phone,
+              // ⭐ Documento (RUT)
+              documentType,
+              documentNumber,
             })
 
             console.log('📦 Stock update result:', result)
