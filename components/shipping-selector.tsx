@@ -169,6 +169,40 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
   const shippingCost = getFinalShippingCost(baseShippingCost, cartTotal)
   const freeShipping = shippingCost === 0 || cartTotal >= shippingThresholds.free_shipping_threshold
 
+  const normalizeRut = (rut: string) =>
+    rut.replace(/\./g, "").replace(/-/g, "").replace(/\s+/g, "").toUpperCase()
+
+  // Valida el RUT chileno con dígito verificador (módulo 11)
+  const isValidRut = (rutRaw: string): boolean => {
+    const rut = normalizeRut(rutRaw)
+    if (!/^\d{7,8}[0-9K]$/.test(rut)) return false
+
+    const body = rut.slice(0, -1)
+    const dv = rut.slice(-1)
+
+    let sum = 0
+    let multiplier = 2
+
+    for (let i = body.length - 1; i >= 0; i--) {
+      sum += parseInt(body[i], 10) * multiplier
+      multiplier = multiplier === 7 ? 2 : multiplier + 1
+    }
+
+    const remainder = 11 - (sum % 11)
+    let expectedDV: string
+
+    if (remainder === 11) expectedDV = "0"
+    else if (remainder === 10) expectedDV = "K"
+    else expectedDV = String(remainder)
+
+    return dv === expectedDV
+  }
+
+  const rutError =
+    rut.trim().length > 0 && !isValidRut(rut)
+      ? "RUT inválido: revisa el formato y el dígito verificador."
+      : null
+
   // Función para obtener datos actuales (llamada desde padre al checkout)
   const getShippingData = (): ShippingData => {
     return {
@@ -580,8 +614,9 @@ export function ShippingSelector({ cartTotal, onShippingChange }: ShippingSelect
                 value={rut}
                 onChange={(e) => setRut(e.target.value)}
                 required
-                className={!rut ? "border-red-500/50" : ""}
+                className={!rut || rutError ? "border-red-500/50" : ""}
               />
+              {rutError && <p className="text-xs text-red-600">{rutError}</p>}
               <p className="text-xs text-muted-foreground">
                 Lo usamos solo para el despacho/boleta. (Formato: 12.345.678-9)
               </p>

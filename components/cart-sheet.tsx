@@ -67,6 +67,14 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
     return dv === expectedDV
   }
 
+  const rutIsValidNow = shippingData.rut ? isValidRut(shippingData.rut) : false
+  const rutErrorMessage =
+    !shippingData.rut || shippingData.rut.trim() === ""
+      ? "Ingresa tu RUT para el despacho/boleta."
+      : !rutIsValidNow
+        ? "RUT inválido. Revisa el dígito verificador."
+        : null
+
   const handleCheckout = async () => {
     console.log('🚀 Checkout initiated')
     console.log('📊 Items:', items.length)
@@ -442,7 +450,11 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                     console.log('🔘 Button clicked, calling handleCheckout...')
                     handleCheckout()
                   }}
-                  disabled={processingCheckout || items.length === 0}
+                  disabled={
+                    processingCheckout ||
+                    items.length === 0 ||
+                    (shippingData.method === "shipping" && rutErrorMessage !== null)
+                  }
                   type="button"
                 >
                   {processingCheckout ? (
@@ -457,6 +469,11 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                     </>
                   )}
                 </Button>
+                {shippingData.method === "shipping" && rutErrorMessage && (
+                  <p className="text-xs text-red-600 text-center mt-2">
+                    {rutErrorMessage}
+                  </p>
+                )}
                 {items.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center mt-2">
                     Agrega items al carrito para continuar
