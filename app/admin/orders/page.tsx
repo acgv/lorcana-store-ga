@@ -480,11 +480,26 @@ export default function OrdersPage() {
                           {selectedOrder.shipping_phone}
                         </p>
                       )}
-                      {selectedOrder.shipping_address && (
-                        <pre className="mt-2 whitespace-pre-wrap rounded-md bg-background/50 p-3 text-xs text-muted-foreground">
-{JSON.stringify(selectedOrder.shipping_address, null, 2)}
-                        </pre>
-                      )}
+                      {selectedOrder.shipping_address && (() => {
+                        const addr: any = selectedOrder.shipping_address
+                        const partsLine1 = [addr.street, addr.number].filter(Boolean).join(" ")
+                        const partsLine2 = [addr.commune, addr.city].filter(Boolean).join(", ")
+                        const partsLine3 = [addr.region, addr.postalCode].filter(Boolean).join(" ")
+                        const hasNotes = addr.notes && String(addr.notes).trim().length > 0
+
+                        return (
+                          <div className="mt-2 rounded-md bg-background/50 p-3 text-xs text-muted-foreground space-y-0.5">
+                            {partsLine1 && <p>{partsLine1}</p>}
+                            {partsLine2 && <p>{partsLine2}</p>}
+                            {partsLine3 && <p>{partsLine3}</p>}
+                            {hasNotes && (
+                              <p className="italic">
+                                Notas: {addr.notes}
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
                 )}
