@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Shield, ShieldOff, User, Users, Search } from "lucide-react"
+import { Loader2, Shield, ShieldOff, User, Users, Search, FileEdit } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +21,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { isValidRut } from "@/lib/rut"
 
 interface UserData {
   id: string
@@ -32,6 +41,7 @@ interface UserData {
   roleAssignedAt: string | null
   createdAt: string
   lastSignIn: string | null
+  rut?: string | null
 }
 
 export default function UsersManagementPage() {
@@ -48,6 +58,9 @@ export default function UsersManagementPage() {
   const [showPasswordDialog, setShowPasswordDialog] = useState(false)
   const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null)
   const [passwordUserEmail, setPasswordUserEmail] = useState<string | null>(null)
+  const [rutDialogUser, setRutDialogUser] = useState<UserData | null>(null)
+  const [rutInput, setRutInput] = useState("")
+  const [rutSaving, setRutSaving] = useState(false)
 
   useEffect(() => {
     fetchUsers()
@@ -72,7 +85,12 @@ export default function UsersManagementPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/admin/users")
+      const token =
+        (typeof window !== "undefined" && localStorage.getItem("admin_token")) || null
+      const response = await fetch("/api/admin/users", {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: "include",
+      })
       const data = await response.json()
 
       if (data.success) {
@@ -169,6 +187,63 @@ export default function UsersManagementPage() {
     setActionType(null)
   }
 
+  const openRutDialog = (user: UserData) => {
+    setRutDialogUser(user)
+    setRutInput(user.rut ?? "")
+  }
+
+  const closeRutDialog = () => {
+    setRutDialogUser(null)
+    setRutInput("")
+  }
+
+  const saveRut = async () => {
+    if (!rutDialogUser) return
+    const trimmed = rutInput.trim()
+    if (trimmed !== "" && !isValidRut(trimmed)) {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: "RUT inválido. Revisa el formato y el dígito verificador (ej: 12.345.678-9).",
+      })
+      return
+    }
+    setRutSaving(true)
+    try {
+      const token =
+        (typeof window !== "undefined" && localStorage.getItem("admin_token")) || null
+      const res = await fetch(`/api/admin/users/${rutDialogUser.id}/profile`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ rut: trimmed }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast({ title: t("success"), description: trimmed ? "RUT guardado." : "RUT eliminado." })
+        fetchUsers()
+        closeRutDialog()
+      } else {
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: data.error || "Error al guardar RUT",
+        })
+      }
+    } catch (e) {
+      console.error(e)
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: "Error al guardar RUT",
+      })
+    } finally {
+      setRutSaving(false)
+    }
+  }
+
   const adminCount = users.filter((u) => u.role === "admin").length
   const regularCount = users.length - adminCount
 
@@ -252,6 +327,7 @@ export default function UsersManagementPage() {
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-medium">{t("userName")}</th>
                         <th className="px-4 py-3 text-left text-sm font-medium">{t("userEmail")}</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">RUT</th>
                         <th className="px-4 py-3 text-left text-sm font-medium">{t("userRole")}</th>
                         <th className="px-4 py-3 text-left text-sm font-medium">{t("userSince")}</th>
                         <th className="px-4 py-3 text-right text-sm font-medium">{t("actions")}</th>
@@ -280,6 +356,18 @@ export default function UsersManagementPage() {
                           </td>
                           <td className="px-4 py-3 text-sm text-muted-foreground">
                             {user.email || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="text-muted-foreground">{user.rut || "—"}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="ml-2 h-8 px-2"
+                              onClick={() => openRutDialog(user)}
+                            >
+                              <FileEdit className="h-4 w-4 mr-1" />
+                              {user.rut ? "Editar" : "Cargar"} RUT
+                            </Button>
                           </td>
                           <td className="px-4 py-3">
                             {user.role === "admin" ? (
@@ -423,6 +511,44 @@ export default function UsersManagementPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* RUT dialog */}
+        <Dialog open={!!rutDialogUser} onOpenChange={(open) => !open && closeRutDialog()}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Cargar o editar RUT</DialogTitle>
+              <DialogDescription>
+                Usuario: <strong>{rutDialogUser?.email ?? rutDialogUser?.name ?? "—"}</strong>. El RUT se valida con dígito verificador (ej: 12.345.678-9). Dejar vacío para borrar.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Input
+                placeholder="12.345.678-9"
+                value={rutInput}
+                onChange={(e) => setRutInput(e.target.value)}
+                className={rutInput.trim() && !isValidRut(rutInput) ? "border-red-500" : ""}
+              />
+              {rutInput.trim() && !isValidRut(rutInput) && (
+                <p className="text-xs text-red-600">RUT inválido. Revisa el dígito verificador.</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={closeRutDialog} disabled={rutSaving}>
+                Cancelar
+              </Button>
+              <Button onClick={saveRut} disabled={rutSaving}>
+                {rutSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Guardando…
+                  </>
+                ) : (
+                  "Guardar RUT"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AuthGuard>
   )

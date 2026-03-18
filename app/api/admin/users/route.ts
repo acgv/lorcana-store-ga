@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/db"
+import { verifyAdmin } from "@/lib/auth"
 
-// GET - List all users with their roles
+// GET - List all users with their roles and RUT (user_profiles)
 export async function GET(request: NextRequest) {
   try {
+    const adminCheck = await verifyAdmin(request)
+    if (!adminCheck.success) {
+      return NextResponse.json(
+        { success: false, error: adminCheck.error || "Unauthorized" },
+        { status: adminCheck.status || 401 }
+      )
+    }
     if (!supabaseAdmin) {
       throw new Error("Supabase admin not configured")
     }
@@ -26,9 +34,28 @@ export async function GET(request: NextRequest) {
       throw rolesError
     }
 
-    // Combine users with their roles
+    // Get user_profiles (RUT / document) for all users
+    const userIds = users.users.map((u) => u.id)
+    const { data: profiles } = await supabaseAdmin
+      .from("user_profiles")
+      .select("user_id, document_type, document_number")
+      .in("user_id", userIds)
+
+    const profileByUserId = new Map(
+      (profiles || []).map((p: { user_id: string; document_type: string | null; document_number: string | null }) => [
+        p.user_id,
+        {
+          documentType: p.document_type,
+          documentNumber: p.document_number,
+          rut: p.document_type === "RUT" ? p.document_number : null,
+        },
+      ])
+    )
+
+    // Combine users with their roles and profile (RUT)
     const usersWithRoles = users.users.map((user) => {
       const userRole = roles?.find((r) => r.user_id === user.id)
+      const profile = profileByUserId.get(user.id)
       return {
         id: user.id,
         email: user.email,
@@ -39,6 +66,9 @@ export async function GET(request: NextRequest) {
         roleAssignedAt: userRole?.created_at || null,
         createdAt: user.created_at,
         lastSignIn: user.last_sign_in_at,
+        rut: profile?.rut ?? profile?.documentNumber ?? null,
+        documentType: profile?.documentType ?? null,
+        documentNumber: profile?.documentNumber ?? null,
       }
     })
 
