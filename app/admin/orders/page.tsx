@@ -36,6 +36,7 @@ interface Order {
   external_reference: string
   status: string
   customer_email: string
+  user_email?: string | null
   customer_name?: string
   items: OrderItem[]
   total_amount: number
@@ -335,6 +336,11 @@ export default function OrdersPage() {
                               <div className="text-xs text-muted-foreground">
                                 {order.payment_id.substring(0, 20)}...
                               </div>
+                              {order.user_email && order.user_email !== order.customer_email && (
+                                <div className="text-xs text-muted-foreground">
+                                  Usuario: {order.user_email}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="p-4 text-sm">{order.items.length} {t("items")}</td>
@@ -379,11 +385,19 @@ export default function OrdersPage() {
                   <h3 className="font-semibold mb-2">{t("customer")}</h3>
                   <div className="space-y-1 text-sm">
                     <p>
-                      <span className="text-muted-foreground">{t("email")}:</span> {selectedOrder.customer_email}
+                      <span className="text-muted-foreground">Email (MP):</span>{" "}
+                      {selectedOrder.customer_email}
                     </p>
+                    {selectedOrder.user_email && (
+                      <p>
+                        <span className="text-muted-foreground">Email usuario:</span>{" "}
+                        {selectedOrder.user_email}
+                      </p>
+                    )}
                     {selectedOrder.customer_name && (
                       <p>
-                        <span className="text-muted-foreground">{t("customerName")}:</span> {selectedOrder.customer_name}
+                        <span className="text-muted-foreground">{t("customerName")}:</span>{" "}
+                        {selectedOrder.customer_name}
                       </p>
                     )}
                   </div>
