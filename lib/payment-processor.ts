@@ -6,6 +6,7 @@
 
 import { supabaseAdmin } from './db'
 import { sendOrderConfirmationEmail, sendAdminNotificationEmail } from './email'
+import { getSetInfo } from "./lorcana-sets"
 
 export interface PaymentItem {
   id: string
@@ -13,6 +14,13 @@ export interface PaymentItem {
   quantity: number
   version: 'normal' | 'foil'
   price: number
+  // Metadata extra para fulfillment/envíos
+  set?: string | null
+  setNumber?: number | null
+  setName?: string | null
+  cardNumber?: string | null // "18/204"
+  number?: number | null // 18
+  language?: string | null
 }
 
 export interface ProcessPaymentParams {
@@ -67,6 +75,37 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
   }
 
   try {
+    // Enriquecer items con metadata real de la tabla cards (set, número, etc.)
+    const uniqueIds = Array.from(new Set(items.map(i => i.id).filter(Boolean)))
+    const cardMetaById = new Map<string, any>()
+    if (uniqueIds.length > 0) {
+      const { data: metaRows, error: metaError } = await supabaseAdmin
+        .from("cards")
+        .select("id,set,number,cardNumber,language")
+        .in("id", uniqueIds)
+
+      if (metaError) {
+        console.warn("⚠️ Could not fetch card metadata for order items:", metaError.message)
+      } else {
+        ;(metaRows || []).forEach((row: any) => cardMetaById.set(String(row.id), row))
+      }
+    }
+
+    const enrichedItems: PaymentItem[] = items.map((item) => {
+      const meta = cardMetaById.get(String(item.id))
+      const setSlug = meta?.set ?? null
+      const setInfo = getSetInfo(setSlug)
+      return {
+        ...item,
+        set: setSlug,
+        setNumber: setInfo?.setNumber ?? null,
+        setName: setInfo?.displayName ?? (setSlug ? String(setSlug) : null),
+        number: typeof meta?.number === "number" ? meta.number : (meta?.number ? Number(meta.number) : null),
+        cardNumber: meta?.cardNumber ?? null,
+        language: meta?.language ?? null,
+      }
+    })
+
     // Actualizar stock para cada item
     const updates = []
     
@@ -125,9 +164,9 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
 
     // Crear registro de orden en la tabla orders
     try {
-      const totalAmount = totalPaidAmount || items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-      
-      await supabaseAdmin.from('orders').insert({
+      const totalAmount = totalPaidAmount || enrichedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+
+      const baseOrder = {
         payment_id: paymentId,
         external_reference: externalReference,
         status: 'approved',
@@ -138,7 +177,40 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
         net_received_amount: netReceivedAmount || totalAmount, // ⭐ Monto neto real
         currency: 'CLP',
         paid_at: new Date().toISOString(),
-      })
+      }
+
+      // Preferir guardar items enriquecidos (con set/número) para fulfillment.
+      const orderWithEnrichedItems = {
+        ...baseOrder,
+        items: enrichedItems,
+        // Datos de envío (si tu tabla orders tiene estas columnas; si no, hacemos fallback)
+        shipping_method: shippingMethod || null,
+        shipping_address: shippingAddress || null,
+        shipping_cost: shippingCost || 0,
+        shipping_phone: params.phone || null,
+      } as any
+
+      const { error: insertError } = await supabaseAdmin.from("orders").insert(orderWithEnrichedItems)
+
+      if (insertError) {
+        // Fallback si la tabla no tiene columnas nuevas (shipping_*)
+        const message = insertError.message || ""
+        const looksLikeMissingColumn =
+          message.includes("shipping_method") ||
+          message.includes("shipping_address") ||
+          message.includes("shipping_cost") ||
+          message.includes("shipping_phone")
+
+        if (looksLikeMissingColumn) {
+          console.warn("⚠️ Orders table missing shipping columns. Inserting without them.")
+          await supabaseAdmin.from("orders").insert({
+            ...baseOrder,
+            items: enrichedItems,
+          })
+        } else {
+          throw insertError
+        }
+      }
       
       console.log(`✅ Order created: ${externalReference}`)
       console.log(`   Total paid: $${totalAmount}`)
@@ -244,7 +316,7 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
             orderId: externalReference,
             paymentId,
             customerEmail,
-            items: items.map(item => ({
+            items: enrichedItems.map(item => ({
               name: item.name,
               quantity: item.quantity,
               version: item.version,
@@ -261,7 +333,7 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
             orderId: externalReference,
             paymentId,
             customerEmail,
-            items: items.map(item => ({
+            items: enrichedItems.map(item => ({
               name: item.name,
               quantity: item.quantity,
               version: item.version,

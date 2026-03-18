@@ -22,6 +22,12 @@ interface OrderItem {
   title: string
   quantity: number
   unit_price: number
+  version?: string
+  set?: string | null
+  setNumber?: number | null
+  setName?: string | null
+  cardNumber?: string | null
+  number?: number | null
 }
 
 interface Order {
@@ -36,6 +42,10 @@ interface Order {
   currency: string
   payment_method?: string
   payment_type?: string
+  shipping_method?: string | null
+  shipping_address?: any
+  shipping_cost?: number | null
+  shipping_phone?: string | null
   created_at: string
   updated_at: string
   paid_at?: string
@@ -67,6 +77,12 @@ export default function OrdersPage() {
         title,
         quantity,
         unit_price,
+        version: raw?.version ?? (title.toLowerCase().includes("foil") ? "foil" : "normal"),
+        set: raw?.set ?? null,
+        setNumber: raw?.setNumber ?? raw?.set_number ?? null,
+        setName: raw?.setName ?? raw?.set_name ?? null,
+        cardNumber: raw?.cardNumber ?? raw?.card_number ?? null,
+        number: raw?.number ?? raw?.card_num ?? null,
       }
     })
   }
@@ -408,13 +424,27 @@ export default function OrdersPage() {
                     {selectedOrder.items.map((item, index) => (
                       <div
                         key={index}
-                        className="flex justify-between items-center p-3 bg-muted rounded-md"
+                        className="flex justify-between items-start gap-4 p-3 bg-muted rounded-md"
                       >
                         <div>
-                          <p className="font-medium">{item.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {t("quantity")}: {item.quantity} × ${Math.floor(item.unit_price).toLocaleString()}
-                          </p>
+                          <p className="font-medium leading-tight">{item.title}</p>
+                          <div className="mt-1 text-sm text-muted-foreground space-y-0.5">
+                            <p>
+                              {t("quantity")}: {item.quantity} × ${Math.floor(item.unit_price).toLocaleString()}{" "}
+                              {item.version ? `(${item.version})` : ""}
+                            </p>
+                            {(item.setNumber || item.setName || item.set || item.cardNumber) && (
+                              <p>
+                                Set:{" "}
+                                {item.setNumber ? `${item.setNumber} - ` : ""}
+                                {item.setName || item.set || "—"}
+                                {item.cardNumber ? ` • ${item.cardNumber}` : ""}
+                              </p>
+                            )}
+                            <p className="text-xs">
+                              ID: {item.id}
+                            </p>
+                          </div>
                         </div>
                         <p className="font-semibold">
                           ${Math.floor(item.quantity * item.unit_price).toLocaleString()}
@@ -423,6 +453,41 @@ export default function OrdersPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Shipping / Fulfillment */}
+                {(selectedOrder.shipping_method ||
+                  selectedOrder.shipping_address ||
+                  selectedOrder.shipping_cost ||
+                  selectedOrder.shipping_phone) && (
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold mb-2">Envío</h3>
+                    <div className="space-y-1 text-sm">
+                      {selectedOrder.shipping_method && (
+                        <p>
+                          <span className="text-muted-foreground">Método:</span>{" "}
+                          {selectedOrder.shipping_method}
+                        </p>
+                      )}
+                      {typeof selectedOrder.shipping_cost === "number" && (
+                        <p>
+                          <span className="text-muted-foreground">Costo:</span>{" "}
+                          ${Math.floor(selectedOrder.shipping_cost).toLocaleString()}
+                        </p>
+                      )}
+                      {selectedOrder.shipping_phone && (
+                        <p>
+                          <span className="text-muted-foreground">Teléfono:</span>{" "}
+                          {selectedOrder.shipping_phone}
+                        </p>
+                      )}
+                      {selectedOrder.shipping_address && (
+                        <pre className="mt-2 whitespace-pre-wrap rounded-md bg-background/50 p-3 text-xs text-muted-foreground">
+{JSON.stringify(selectedOrder.shipping_address, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Total */}
                 <div className="border-t pt-4">
