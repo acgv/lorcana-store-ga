@@ -38,6 +38,35 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const finalShippingCost = getFinalShippingCost(shippingData.cost, totalPrice)
   const finalTotal = discountedSubtotal + finalShippingCost
 
+  const normalizeRut = (rut: string) =>
+    rut.replace(/\./g, "").replace(/-/g, "").replace(/\s+/g, "").toUpperCase()
+
+  const isValidRut = (rutRaw: string): boolean => {
+    const rut = normalizeRut(rutRaw)
+    // Debe ser 7 u 8 dígitos + dígito verificador
+    if (!/^\d{7,8}[0-9K]$/.test(rut)) return false
+
+    const body = rut.slice(0, -1)
+    const dv = rut.slice(-1)
+
+    let sum = 0
+    let multiplier = 2
+
+    for (let i = body.length - 1; i >= 0; i--) {
+      sum += parseInt(body[i], 10) * multiplier
+      multiplier = multiplier === 7 ? 2 : multiplier + 1
+    }
+
+    const remainder = 11 - (sum % 11)
+    let expectedDV: string
+
+    if (remainder === 11) expectedDV = "0"
+    else if (remainder === 10) expectedDV = "K"
+    else expectedDV = String(remainder)
+
+    return dv === expectedDV
+  }
+
   const handleCheckout = async () => {
     console.log('🚀 Checkout initiated')
     console.log('📊 Items:', items.length)
@@ -163,14 +192,12 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
         return
       }
 
-      // Validación básica de formato de RUT (permite con o sin puntos/guion)
-      const rutClean = shippingData.rut.replace(/\./g, "").replace(/-/g, "").trim()
-      const rutRegex = /^\d{7,8}[0-9kK]$/
-      if (!rutRegex.test(rutClean)) {
+      // Validación completa de RUT (formato + dígito verificador)
+      if (!isValidRut(shippingData.rut)) {
         toast({
           variant: "destructive",
           title: t("error"),
-          description: "Formato de RUT inválido. Ej: 12.345.678-9",
+          description: "RUT inválido. Revisa el formato y el dígito verificador (Ej: 12.345.678-9).",
           duration: 5000,
         })
         return
