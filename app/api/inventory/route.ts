@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { mockCards } from "@/lib/mock-data"
 import { supabase, supabaseAdmin } from "@/lib/db"
+import { verifyAdmin } from "@/lib/auth"
 import { rateLimitApi, RateLimitPresets } from "@/lib/rate-limit"
 import { calculateStandardFoilPrice, ensureFoilPriceGreater } from "@/lib/price-utils"
 

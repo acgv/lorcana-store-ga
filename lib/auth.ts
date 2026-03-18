@@ -12,8 +12,12 @@ export async function verifyAdmin(
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       // Si no hay token, verificar si hay cookie de sesión
       const cookies = request.cookies
-      const sessionToken = cookies.get("sb-access-token")?.value || 
-                          cookies.get("supabase-auth-token")?.value
+      const sessionToken =
+        // Supabase cookies (si existieran)
+        cookies.get("sb-access-token")?.value ||
+        cookies.get("supabase-auth-token")?.value ||
+        // Admin panel cookie (guardado por /admin/login)
+        cookies.get("admin_token")?.value
       
       if (!sessionToken) {
         return { 

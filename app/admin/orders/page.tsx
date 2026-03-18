@@ -71,7 +71,16 @@ export default function OrdersPage() {
   const fetchOrders = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/orders")
+      // Enviar token explícitamente para que el API pueda validar admin
+      // (especialmente importante si el navegador no envía cookies por tema de dominio)
+      const token =
+        (typeof window !== "undefined" && localStorage.getItem("admin_token")) ||
+        null
+
+      const response = await fetch("/api/orders", {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: "include",
+      })
       const data = await response.json()
 
       if (data.success) {
