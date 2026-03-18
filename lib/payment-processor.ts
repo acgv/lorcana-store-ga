@@ -31,6 +31,8 @@ export interface ProcessPaymentParams {
   status: string
   // user_id real del usuario autenticado (si se conoce)
   userId?: string
+  // Email del usuario en nuestra plataforma (si se conoce)
+  userEmail?: string
   // Documento para despacho/boleta
   documentType?: string
   documentNumber?: string
@@ -59,6 +61,7 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
     customerEmail, 
     status,
     userId,
+    userEmail,
     documentType,
     documentNumber,
     mpFeeAmount,
@@ -179,6 +182,7 @@ export async function processConfirmedPayment(params: ProcessPaymentParams) {
         external_reference: externalReference,
         status: 'approved',
         customer_email: customerEmail,
+        user_email: userEmail || null,
         items: items,
         total_amount: totalAmount,
         mp_fee_amount: mpFeeAmount || 0, // ⭐ Fee real de MP

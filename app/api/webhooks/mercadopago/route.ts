@@ -135,20 +135,34 @@ export async function POST(request: Request) {
             const savePhone = metadata.save_phone === 'true'
             const phone = metadata.phone || undefined
 
-            // Obtener userId del email para tracking
+            // Obtener userId y userEmail de nuestra plataforma para tracking
             let userId: string | undefined
-            if (payment.payer?.email && supabaseAdmin) {
+            let userPlatformEmail: string | undefined
+
+            if (supabaseAdmin) {
               try {
                 const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers()
-                const user = authUsers?.users.find(u => u.email === payment.payer?.email)
-                userId = user?.id
+                // Preferir buscar por metadata.user_id
+                if (platformUserId) {
+                  const userById = authUsers?.users.find(u => u.id === platformUserId)
+                  if (userById) {
+                    userId = userById.id
+                    userPlatformEmail = userById.email || undefined
+                  }
+                }
+                // Si aún no tenemos userId, intentar por email de MP
+                if (!userId && payment.payer?.email) {
+                  const userByEmail = authUsers?.users.find(
+                    u => (u.email || "").toLowerCase() === String(payment.payer?.email).toLowerCase()
+                  )
+                  if (userByEmail) {
+                    userId = userByEmail.id
+                    userPlatformEmail = userByEmail.email || undefined
+                  }
+                }
               } catch (err) {
                 console.warn('Error fetching user for tracking:', err)
               }
-            }
-            // Preferir el user_id de metadata (es el match real del login)
-            if (platformUserId) {
-              userId = platformUserId
             }
 
             const result = await processConfirmedPayment({
@@ -159,6 +173,8 @@ export async function POST(request: Request) {
               status: payment.status || 'unknown',
               // ⭐ userId ya viene resuelto (metadata.user_id o fallback por email)
               userId,
+               // ⭐ Email del usuario en nuestra plataforma (si lo encontramos)
+              userEmail: userPlatformEmail,
               // ⭐ Pasar datos reales de fees
               mpFeeAmount,
               netReceivedAmount,
