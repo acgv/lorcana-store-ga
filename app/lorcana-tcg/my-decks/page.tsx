@@ -1700,15 +1700,23 @@ function MyDecksContent() {
       <Header />
       <main className="flex-1 container mx-auto px-4 py-4 md:py-8">
         {/* Header */}
-        <div className="mb-6 md:mb-8">
-          <h1 className="font-display text-4xl md:text-5xl lg:text-7xl font-black text-balance tracking-tight leading-none mb-2">
-            <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              Mis Mazos
-            </span>
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Aprende a armar mazos y crea los tuyos para jugar Lorcana
-          </p>
+        <div className="mb-6 md:mb-8 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="font-display text-4xl md:text-5xl lg:text-7xl font-black text-balance tracking-tight leading-none mb-2">
+              <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                Mis Mazos
+              </span>
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Aprende a armar mazos y crea los tuyos para jugar Lorcana
+            </p>
+          </div>
+          <Link href="/lorcana-tcg/play">
+            <Button className="gap-2">
+              <Zap className="h-4 w-4" />
+              Jugar vs CPU
+            </Button>
+          </Link>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
