@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -14,7 +15,7 @@ import { useUser } from "@/hooks/use-user"
 import { supabase } from "@/lib/db"
 import type { Card as CardType } from "@/lib/types"
 import type { DeckRow } from "@/lib/deck-hydration"
-import { Sword, Play, RotateCcw, Bot, User2 } from "lucide-react"
+import { Sword, Play, RotateCcw, Bot, User2, Lock } from "lucide-react"
 
 type BattleTurn = {
   turn: number
@@ -30,41 +31,66 @@ type DeckForGame = {
   cards: Array<{ cardId: string; quantity: number }>
 }
 
-const LORE_TARGET = 20
+type GameMode = "manual" | "auto"
 
-function drawCard(cards: CardType[], deck: DeckForGame): CardType {
+const LORE_TARGET = 20
+const HAND_SIZE = 5
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+/** Construye el mazo de 60 (o lo que haya) como lista de cartas del catálogo */
+function buildLibraryFromDeck(allCards: CardType[], deck: DeckForGame): CardType[] {
   const pool: CardType[] = []
-  const byId = new Map(cards.map((c) => [String(c.id).toLowerCase().trim(), c]))
+  const byId = new Map(allCards.map((c) => [String(c.id).toLowerCase().trim(), c]))
 
   for (const row of deck.cards) {
     const c = byId.get(String(row.cardId).toLowerCase().trim())
     if (!c) continue
     const qty = Math.max(1, Math.min(4, Number(row.quantity || 1)))
-    for (let i = 0; i < qty; i++) pool.push(c)
+    for (let i = 0; i < qty; i++) pool.push({ ...c })
   }
 
   if (pool.length === 0) {
-    return {
-      id: "fallback-card",
-      name: "Carta Genérica",
-      image: "/placeholder.svg",
-      price: 0,
-      foilPrice: 0,
-      productType: "card",
-      set: "unknown",
-      rarity: "common",
-      type: "character",
-      number: 0,
-      lore: 1,
-    }
+    return [
+      {
+        id: "fallback",
+        name: "Carta genérica",
+        image: "/placeholder.svg",
+        price: 0,
+        foilPrice: 0,
+        productType: "card" as const,
+        set: "unknown",
+        rarity: "common" as const,
+        type: "character" as const,
+        number: 0,
+        lore: 1,
+      },
+    ]
   }
 
-  return pool[Math.floor(Math.random() * pool.length)]
+  return shuffle(pool)
 }
 
 function loreFromCard(card: CardType): number {
   const lore = typeof card.lore === "number" && card.lore > 0 ? card.lore : 1
   return Math.max(1, Math.min(5, lore))
+}
+
+function drawFromLibrary(lib: CardType[], hand: CardType[], n: number): { lib: CardType[]; hand: CardType[] } {
+  let l = [...lib]
+  let h = [...hand]
+  for (let i = 0; i < n && l.length > 0; i++) {
+    h.push(l[0])
+    l = l.slice(1)
+  }
+  return { lib: l, hand: h }
 }
 
 export default function PlayVsCpuPage() {
@@ -75,19 +101,31 @@ export default function PlayVsCpuPage() {
   const [decks, setDecks] = useState<DeckForGame[]>([])
   const [allCards, setAllCards] = useState<CardType[]>([])
   const [selectedDeckId, setSelectedDeckId] = useState<string>("")
+  const [gameMode, setGameMode] = useState<GameMode>("manual")
+  const [lockedMode, setLockedMode] = useState<GameMode | null>(null)
   const [loadingData, setLoadingData] = useState(false)
+
+  /** Mazo fijado al iniciar partida; no se puede cambiar hasta reiniciar */
+  const [lockedDeckId, setLockedDeckId] = useState<string | null>(null)
+  const [playerLibrary, setPlayerLibrary] = useState<CardType[]>([])
+  const [cpuLibrary, setCpuLibrary] = useState<CardType[]>([])
+  const [playerHand, setPlayerHand] = useState<CardType[]>([])
 
   const [playerLore, setPlayerLore] = useState(0)
   const [cpuLore, setCpuLore] = useState(0)
   const [turn, setTurn] = useState(0)
   const [battleLog, setBattleLog] = useState<BattleTurn[]>([])
-  const [playing, setPlaying] = useState(false)
   const [winner, setWinner] = useState<"player" | "cpu" | null>(null)
 
   const selectedDeck = useMemo(
-    () => decks.find((d) => d.id === selectedDeckId) || null,
-    [decks, selectedDeckId]
+    () => decks.find((d) => d.id === (lockedDeckId || selectedDeckId)) || null,
+    [decks, selectedDeckId, lockedDeckId]
   )
+
+  const matchEnded = lockedDeckId !== null && winner !== null
+
+  const effectiveDeckId = lockedDeckId ?? selectedDeckId
+  const effectiveMode = lockedMode ?? gameMode
 
   useEffect(() => {
     if (!loading && !user) {
@@ -155,24 +193,91 @@ export default function PlayVsCpuPage() {
     }
   }, [user?.id, toast])
 
-  const resetGame = () => {
+  const resetGame = useCallback(() => {
+    setLockedDeckId(null)
+    setLockedMode(null)
+    setPlayerLibrary([])
+    setCpuLibrary([])
+    setPlayerHand([])
     setPlayerLore(0)
     setCpuLore(0)
     setTurn(0)
     setBattleLog([])
-    setPlaying(false)
     setWinner(null)
+  }, [])
+
+  const startMatch = () => {
+    const deck = decks.find((d) => d.id === selectedDeckId)
+    if (!deck || winner) return
+
+    const pLib = buildLibraryFromDeck(allCards, deck)
+    const cLib = buildLibraryFromDeck(allCards, deck)
+
+    const dealtP = drawFromLibrary(pLib, [], HAND_SIZE)
+    const dealtC = drawFromLibrary(cLib, [], HAND_SIZE)
+
+    setLockedDeckId(deck.id)
+    setLockedMode(gameMode)
+    setPlayerLibrary(dealtP.lib)
+    setCpuLibrary(dealtC.lib)
+    setPlayerHand(dealtP.hand)
+    setPlayerLore(0)
+    setCpuLore(0)
+    setTurn(0)
+    setBattleLog([])
+    setWinner(null)
+
+    toast({
+      title: "Partida iniciada",
+      description:
+        effectiveMode === "manual"
+          ? "Elige una carta de tu mano para jugar. El mazo queda fijado hasta reiniciar."
+          : "Modo automático activo: podrás jugar turnos automáticos con una carta al azar.",
+    })
   }
 
-  const playTurn = () => {
-    if (!selectedDeck || winner) return
+  const playCardFromHand = (handIndex: number) => {
+    if (!lockedDeckId || winner !== null) return
+    const deck = decks.find((d) => d.id === lockedDeckId)
+    if (!deck) return
 
-    setPlaying(true)
+    if (handIndex < 0 || handIndex >= playerHand.length) return
 
-    const playerCard = drawCard(allCards, selectedDeck)
-    const cpuCard = drawCard(allCards, selectedDeck)
+    const playerCard = playerHand[handIndex]
     const playerGain = loreFromCard(playerCard)
-    const cpuGain = loreFromCard(cpuCard)
+
+    let newHand = playerHand.filter((_, i) => i !== handIndex)
+    let newLib = [...playerLibrary]
+    if (newLib.length > 0) {
+      newHand.push(newLib[0])
+      newLib = newLib.slice(1)
+    }
+    setPlayerHand(newHand)
+    setPlayerLibrary(newLib)
+
+    let cpuCard: CardType
+    let cpuGain = 0
+    let newCpuLib = [...cpuLibrary]
+    if (newCpuLib.length > 0) {
+      cpuCard = newCpuLib[0]
+      newCpuLib = newCpuLib.slice(1)
+      cpuGain = loreFromCard(cpuCard)
+    } else {
+      cpuCard = {
+        id: "cpu-empty",
+        name: "Mazo agotado",
+        image: "",
+        price: 0,
+        foilPrice: 0,
+        productType: "card",
+        set: "unknown",
+        rarity: "common",
+        type: "character",
+        number: 0,
+        lore: 0,
+      }
+    }
+    setCpuLibrary(newCpuLib)
 
     const nextTurn = turn + 1
     const nextPlayerLore = playerLore + playerGain
@@ -199,15 +304,31 @@ export default function PlayVsCpuPage() {
         title: finalWinner === "player" ? "Ganaste" : "Perdiste",
         description:
           finalWinner === "player"
-            ? "Buen duelo. Puedes jugar otra para mejorar tu estrategia."
+            ? "Buen duelo. Reinicia para jugar otra partida."
             : "La CPU ganó esta ronda. Prueba otro mazo o vuelve a intentarlo.",
       })
+    } else if (newHand.length === 0 && newLib.length === 0) {
+      const finalWinner = nextPlayerLore >= nextCpuLore ? "player" : "cpu"
+      setWinner(finalWinner)
+      toast({
+        title: "Sin cartas",
+        description:
+          finalWinner === "player"
+            ? "Te quedaste sin cartas con más lore. ¡Victoria por lore!"
+            : "Fin del mazo. Gana quien tenga más lore.",
+      })
     }
+  }
 
-    setPlaying(false)
+  const playAutoTurn = () => {
+    if (effectiveMode !== "auto" || playerHand.length === 0 || winner !== null) return
+    const randomIndex = Math.floor(Math.random() * playerHand.length)
+    playCardFromHand(randomIndex)
   }
 
   if (loading || !user) return null
+
+  const deckSelectDisabled = lockedDeckId !== null
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -217,7 +338,7 @@ export default function PlayVsCpuPage() {
           <div>
             <h1 className="font-display text-4xl md:text-5xl font-black">Jugar vs CPU</h1>
             <p className="text-muted-foreground mt-1">
-              Modo practica inicial: carrera de lore usando tus mazos guardados.
+              Dos modos: manual (eliges carta) o automático (juega carta al azar). El mazo se fija al iniciar.
             </p>
           </div>
           <div className="flex gap-2">
@@ -231,14 +352,29 @@ export default function PlayVsCpuPage() {
           <Card className="lg:col-span-1">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Sword className="h-4 w-4" /> Configuracion
+                <Sword className="h-4 w-4" /> Configuración
               </CardTitle>
-              <CardDescription>Selecciona un mazo y empieza la partida.</CardDescription>
+              <CardDescription>
+                Elige mazo y pulsa <strong>Iniciar partida</strong>. Mientras juegas no podrás cambiar de mazo.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <p className="text-sm font-medium">Mazo</p>
-                <Select value={selectedDeckId} onValueChange={setSelectedDeckId}>
+                <p className="text-sm font-medium flex items-center gap-2">
+                  Mazo
+                  {deckSelectDisabled && (
+                    <Badge variant="secondary" className="gap-1 font-normal">
+                      <Lock className="h-3 w-3" /> Fijado
+                    </Badge>
+                  )}
+                </p>
+                <Select
+                  value={effectiveDeckId}
+                  onValueChange={(v) => {
+                    if (!deckSelectDisabled) setSelectedDeckId(v)
+                  }}
+                  disabled={deckSelectDisabled || loadingData}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Elige un mazo" />
                   </SelectTrigger>
@@ -252,28 +388,63 @@ export default function PlayVsCpuPage() {
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Modo</p>
+                <Select
+                  value={effectiveMode}
+                  onValueChange={(v) => {
+                    if (!deckSelectDisabled) setGameMode(v as GameMode)
+                  }}
+                  disabled={deckSelectDisabled || loadingData}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona modo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">Manual (yo elijo carta)</SelectItem>
+                    <SelectItem value="auto">Automático (elige al azar)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               {selectedDeck && (
                 <div className="rounded-md border p-3 text-sm text-muted-foreground">
                   <p>
                     <span className="font-medium text-foreground">{selectedDeck.name}</span>
                   </p>
-                  <p>{selectedDeck.cards.length} cartas unicas</p>
+                  <p>{selectedDeck.cards.length} cartas únicas</p>
                   <p>{selectedDeck.cards.reduce((acc, c) => acc + c.quantity, 0)} cartas totales</p>
                 </div>
               )}
 
-              <div className="flex gap-2">
-                <Button onClick={playTurn} disabled={!selectedDeck || loadingData || playing || !!winner} className="flex-1">
-                  <Play className="h-4 w-4 mr-1" /> Jugar turno
-                </Button>
-                <Button variant="outline" onClick={resetGame}>
-                  <RotateCcw className="h-4 w-4" />
-                </Button>
+              <div className="flex flex-col gap-2">
+                {!lockedDeckId ? (
+                  <Button
+                    onClick={startMatch}
+                    disabled={!selectedDeck || loadingData || decks.length === 0}
+                    className="w-full gap-2"
+                  >
+                    <Play className="h-4 w-4" /> Iniciar partida
+                  </Button>
+                ) : (
+                  <Button variant="outline" onClick={resetGame} className="w-full gap-2">
+                    <RotateCcw className="h-4 w-4" />
+                    {matchEnded ? "Nueva partida (elegir mazo)" : "Abandonar y reiniciar"}
+                  </Button>
+                )}
               </div>
+
+              {lockedDeckId && !matchEnded && (
+                <p className="text-xs text-muted-foreground">
+                  {effectiveMode === "manual"
+                    ? "Robas del mazo al jugar una carta. La CPU juega la carta superior de su mazo."
+                    : "Pulsa jugar turno automático para seleccionar una carta al azar de tu mano."}
+                </p>
+              )}
 
               {decks.length === 0 && !loadingData && (
                 <p className="text-xs text-muted-foreground">
-                  No tienes mazos guardados todavia. Crea uno en Mis Mazos para jugar.
+                  No tienes mazos guardados todavía. Crea uno en Mis Mazos para jugar.
                 </p>
               )}
             </CardContent>
@@ -295,7 +466,10 @@ export default function PlayVsCpuPage() {
                     <Badge>{playerLore}</Badge>
                   </div>
                   <div className="h-2 rounded bg-muted overflow-hidden">
-                    <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(100, (playerLore / LORE_TARGET) * 100)}%` }} />
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${Math.min(100, (playerLore / LORE_TARGET) * 100)}%` }}
+                    />
                   </div>
                 </div>
 
@@ -308,13 +482,21 @@ export default function PlayVsCpuPage() {
                     <Badge variant="secondary">{cpuLore}</Badge>
                   </div>
                   <div className="h-2 rounded bg-muted overflow-hidden">
-                    <div className="h-full bg-accent transition-all" style={{ width: `${Math.min(100, (cpuLore / LORE_TARGET) * 100)}%` }} />
+                    <div
+                      className="h-full bg-accent transition-all"
+                      style={{ width: `${Math.min(100, (cpuLore / LORE_TARGET) * 100)}%` }}
+                    />
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Turno actual: {turn}</p>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <p className="text-sm text-muted-foreground">Turno: {turn}</p>
+                {lockedDeckId && (
+                  <p className="text-xs text-muted-foreground">
+                    Tu mazo: {playerLibrary.length} en biblioteca · Mano: {playerHand.length}
+                  </p>
+                )}
                 {winner && (
                   <Badge variant={winner === "player" ? "default" : "destructive"}>
                     {winner === "player" ? "Victoria" : "Derrota"}
@@ -322,13 +504,73 @@ export default function PlayVsCpuPage() {
                 )}
               </div>
 
+              {lockedDeckId && !winner && effectiveMode === "auto" && (
+                <div className="space-y-2">
+                  <Button onClick={playAutoTurn} className="gap-2">
+                    <Play className="h-4 w-4" /> Jugar turno automático
+                  </Button>
+                </div>
+              )}
+
+              {/* Mano del jugador */}
+              {lockedDeckId && !winner && effectiveMode === "manual" && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Tu mano — elige una carta para jugar</p>
+                  {playerHand.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No tienes cartas en mano.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                      {playerHand.map((c, idx) => (
+                        <button
+                          key={`${c.id}-${idx}`}
+                          type="button"
+                          onClick={() => playCardFromHand(idx)}
+                          className="rounded-lg border bg-card p-2 text-left transition hover:border-primary hover:ring-1 hover:ring-primary/30 focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <div className="relative aspect-[5/7] w-full overflow-hidden rounded-md bg-muted mb-2">
+                            {c.image && String(c.image).trim() !== "" ? (
+                              <Image
+                                src={c.image}
+                                alt={c.name}
+                                fill
+                                className="object-cover"
+                                sizes="120px"
+                                unoptimized={c.image.startsWith("http")}
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-xs text-muted-foreground px-1 text-center">
+                                {c.name}
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs font-medium line-clamp-2">{c.name}</p>
+                          <p className="text-[10px] text-muted-foreground">Lore +{loreFromCard(c)}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!lockedDeckId && (
+                <p className="text-sm text-muted-foreground rounded-lg border border-dashed p-4">
+                  Inicia la partida desde el panel izquierdo. Luego juegas en modo manual o automático.
+                </p>
+              )}
+
               <div className="rounded-lg border">
                 <div className="p-3 border-b">
                   <p className="font-medium">Registro de turnos</p>
                 </div>
                 <div className="max-h-80 overflow-y-auto p-3 space-y-2">
                   {battleLog.length === 0 && (
-                    <p className="text-sm text-muted-foreground">Aun no hay turnos. Presiona "Jugar turno".</p>
+                    <p className="text-sm text-muted-foreground">
+                      {lockedDeckId
+                        ? effectiveMode === "manual"
+                          ? "Toca una carta de tu mano para el primer turno."
+                          : 'Pulsa "Jugar turno automático".'
+                        : 'Aún no hay turnos. Pulsa "Iniciar partida".'}
+                    </p>
                   )}
                   {battleLog.map((item) => (
                     <div key={item.turn} className="rounded border p-2 text-sm">
