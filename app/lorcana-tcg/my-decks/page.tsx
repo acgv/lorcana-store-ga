@@ -40,20 +40,13 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import type { Card as CardType } from "@/lib/types"
-
-interface DeckCard {
-  cardId: string
-  card: CardType
-  quantity: number
-}
-
-interface SavedDeck {
-  id: string
-  name: string
-  cards: DeckCard[]
-  createdAt: string
-  updatedAt: string
-}
+import type { DeckRow, SavedDeck, DeckCard } from "@/lib/deck-hydration"
+import {
+  hydrateDeckRows,
+  buildCardLookup,
+  isServerDeckId,
+  toDeckCardRows,
+} from "@/lib/deck-hydration"
 
 function DeckBuilder() {
   const { t } = useLanguage()
@@ -104,7 +97,9 @@ function DeckBuilder() {
   }, [setOrderIndex, t])
   
   const [currentDeck, setCurrentDeck] = useState<DeckCard[]>([])
-  const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
+  const [savedDecksRaw, setSavedDecksRaw] = useState<DeckRow[]>([])
+  const [decksLoading, setDecksLoading] = useState(false)
+  const [allCardsCatalog, setAllCardsCatalog] = useState<CardType[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedSet, setSelectedSet] = useState<string>("all")
   const [selectedType, setSelectedType] = useState<string>("all")
@@ -120,6 +115,11 @@ function DeckBuilder() {
   const [aiColors, setAiColors] = useState<string[]>([])
   const [generatingDeck, setGeneratingDeck] = useState(false)
   const [aiMissing, setAiMissing] = useState<any[]>([])
+
+  const savedDecks = useMemo(() => {
+    const lookup = buildCardLookup(allCardsCatalog)
+    return hydrateDeckRows(savedDecksRaw, lookup)
+  }, [savedDecksRaw, allCardsCatalog])
 
   const inkColorHex: Record<string, string> = {
     Amber: "#F59E0B",
@@ -233,19 +233,83 @@ function DeckBuilder() {
     }
   }
 
-  // Cargar mazos guardados
+  // Mazos desde Supabase; migración única desde localStorage si la nube está vacía
   useEffect(() => {
-    if (user?.id) {
-      const saved = localStorage.getItem(`decks_${user.id}`)
-      if (saved) {
-        try {
-          setSavedDecks(JSON.parse(saved))
-        } catch (e) {
-          console.error("Error loading saved decks:", e)
+    let cancelled = false
+
+    async function loadDecks() {
+      if (!user?.id) return
+      setDecksLoading(true)
+      try {
+        const headers = await getAuthHeaders()
+        if (!headers?.Authorization) {
+          setSavedDecksRaw([])
+          return
         }
+
+        const res = await fetch("/api/decks", { headers })
+        const json = await res.json()
+        if (!json.success) {
+          throw new Error(json.error || "No se pudieron cargar los mazos")
+        }
+
+        let rows: DeckRow[] = json.data || []
+
+        if (rows.length === 0) {
+          const raw = localStorage.getItem(`decks_${user.id}`)
+          if (raw) {
+            try {
+              const local = JSON.parse(raw) as SavedDeck[]
+              const payload = {
+                decks: local.map((d) => ({
+                  name: d.name,
+                  cards: d.cards.map((c) => ({
+                    cardId: c.cardId,
+                    quantity: c.quantity,
+                  })),
+                })),
+              }
+              const m = await fetch("/api/decks/migrate", {
+                method: "POST",
+                headers: {
+                  ...headers,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+              })
+              const mj = await m.json()
+              if (mj.success) {
+                rows = mj.data || []
+                localStorage.removeItem(`decks_${user.id}`)
+              } else if (m.status !== 409) {
+                console.warn("Migración de mazos locales:", mj.error || mj)
+              }
+            } catch (e) {
+              console.error("Error migrando mazos locales:", e)
+            }
+          }
+        }
+
+        if (!cancelled) setSavedDecksRaw(rows)
+      } catch (e) {
+        console.error(e)
+        if (!cancelled) {
+          toast({
+            title: "Mazos",
+            description: e instanceof Error ? e.message : "No se pudieron cargar los mazos",
+            variant: "destructive",
+          })
+        }
+      } finally {
+        if (!cancelled) setDecksLoading(false)
       }
     }
-  }, [user?.id])
+
+    loadDecks()
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id, getAuthHeaders, toast])
 
   // Cargar cartas disponibles de la colección
   useEffect(() => {
@@ -266,6 +330,7 @@ function DeckBuilder() {
         if (collectionCardIds.length === 0) {
           console.log("⚠️ No hay cartas en la colección")
           setAvailableCards([])
+          setAllCardsCatalog([])
           setLoadingCards(false)
           return
         }
@@ -277,6 +342,7 @@ function DeckBuilder() {
         const data = await response.json()
         
         if (data.success && data.data) {
+          setAllCardsCatalog(data.data)
           console.log("📦 Cards loaded from API:", data.data.length)
           
           // Debug: Verificar si la API devolvió inkColor en alguna carta
@@ -617,8 +683,8 @@ function DeckBuilder() {
     setCurrentDeck(newDeck)
   }
 
-  // Guardar mazo
-  const saveDeck = () => {
+  // Guardar mazo (Supabase)
+  const saveDeck = async () => {
     if (!deckName.trim()) {
       toast({
         title: "Nombre requerido",
@@ -637,37 +703,78 @@ function DeckBuilder() {
       return
     }
 
-    const newDeck: SavedDeck = {
-      id: editingDeckId || `deck_${Date.now()}`,
-      name: deckName.trim(),
-      cards: currentDeck,
-      createdAt: editingDeckId 
-        ? savedDecks.find(d => d.id === editingDeckId)?.createdAt || new Date().toISOString()
-        : new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    const headers = await getAuthHeaders()
+    if (!headers?.Authorization) {
+      toast({
+        title: "Inicia sesión",
+        description: "Debes iniciar sesión para guardar mazos",
+        variant: "destructive"
+      })
+      return
     }
 
-    let updatedDecks: SavedDeck[]
-    if (editingDeckId) {
-      updatedDecks = savedDecks.map(d => d.id === editingDeckId ? newDeck : d)
-    } else {
-      updatedDecks = [...savedDecks, newDeck]
+    const cards = toDeckCardRows(
+      currentDeck.map((c) => ({ cardId: c.cardId, quantity: c.quantity }))
+    )
+    if (cards.length === 0) {
+      toast({
+        title: "Mazo vacío",
+        description: "Agrega al menos una carta",
+        variant: "destructive"
+      })
+      return
     }
 
-    setSavedDecks(updatedDecks)
-    if (user?.id) {
-      localStorage.setItem(`decks_${user.id}`, JSON.stringify(updatedDecks))
+    const name = deckName.trim()
+    const updating = Boolean(editingDeckId && isServerDeckId(editingDeckId))
+
+    try {
+      if (updating && editingDeckId) {
+        const res = await fetch(`/api/decks/${editingDeckId}`, {
+          method: "PATCH",
+          headers: {
+            ...headers,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name, cards }),
+        })
+        const json = await res.json()
+        if (!json.success) {
+          throw new Error(json.error || "No se pudo actualizar")
+        }
+        setSavedDecksRaw((prev) => prev.map((d) => (d.id === editingDeckId ? json.data : d)))
+      } else {
+        const res = await fetch("/api/decks", {
+          method: "POST",
+          headers: {
+            ...headers,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name, cards }),
+        })
+        const json = await res.json()
+        if (!json.success) {
+          throw new Error(json.error || "No se pudo guardar")
+        }
+        setSavedDecksRaw((prev) => [json.data as DeckRow, ...prev])
+      }
+
+      toast({
+        title: "Mazo guardado",
+        description: `"${name}" se guardó en tu cuenta`,
+      })
+
+      setCurrentDeck([])
+      setDeckName("")
+      setEditingDeckId(null)
+    } catch (e) {
+      console.error(e)
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "No se pudo guardar el mazo",
+        variant: "destructive",
+      })
     }
-
-    toast({
-      title: "Mazo guardado",
-      description: `"${newDeck.name}" ha sido guardado exitosamente`
-    })
-
-    // Limpiar
-    setCurrentDeck([])
-    setDeckName("")
-    setEditingDeckId(null)
   }
 
   // Cargar mazo para editar
@@ -678,16 +785,41 @@ function DeckBuilder() {
   }
 
   // Eliminar mazo
-  const deleteDeck = (deckId: string) => {
-    const updatedDecks = savedDecks.filter(d => d.id !== deckId)
-    setSavedDecks(updatedDecks)
-    if (user?.id) {
-      localStorage.setItem(`decks_${user.id}`, JSON.stringify(updatedDecks))
+  const deleteDeck = async (deckId: string) => {
+    if (!isServerDeckId(deckId)) {
+      setSavedDecksRaw((prev) => prev.filter((d) => d.id !== deckId))
+      toast({
+        title: "Mazo eliminado",
+        description: "El mazo ha sido eliminado",
+      })
+      return
     }
-    toast({
-      title: "Mazo eliminado",
-      description: "El mazo ha sido eliminado"
-    })
+
+    const headers = await getAuthHeaders()
+    if (!headers?.Authorization) return
+
+    try {
+      const res = await fetch(`/api/decks/${deckId}`, {
+        method: "DELETE",
+        headers,
+      })
+      const json = await res.json()
+      if (!json.success) {
+        throw new Error(json.error || "No se pudo eliminar")
+      }
+      setSavedDecksRaw((prev) => prev.filter((d) => d.id !== deckId))
+      toast({
+        title: "Mazo eliminado",
+        description: "El mazo ha sido eliminado",
+      })
+    } catch (e) {
+      console.error(e)
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "No se pudo eliminar el mazo",
+        variant: "destructive",
+      })
+    }
   }
 
   // Nuevo mazo
@@ -1394,7 +1526,14 @@ function DeckBuilder() {
         </Card>
 
         {/* Mazos guardados */}
-        {savedDecks.length > 0 && (
+        {decksLoading && (
+          <Card>
+            <CardContent className="py-6">
+              <p className="text-sm text-muted-foreground text-center">Sincronizando mazos con tu cuenta…</p>
+            </CardContent>
+          </Card>
+        )}
+        {!decksLoading && savedDecks.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
