@@ -6,6 +6,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useLanguage } from "@/components/language-provider"
 import { useUser } from "@/hooks/use-user"
+import { supabase } from "@/lib/db"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -17,7 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { 
   User, MapPin, Phone, Loader2, Plus, Edit2, Trash2, Save, X, 
-  Home, Briefcase, Smartphone, Building
+  Home, Briefcase, Smartphone, Building, Sparkles, Trophy, Flame
 } from "lucide-react"
 import {
   Dialog,
@@ -63,6 +64,25 @@ interface UserPhone {
   is_verified: boolean
 }
 
+interface GameStats {
+  totalGames: number
+  wins: number
+  winRate: number
+  bestWinStreak: number
+  inkedCards: number
+  dailyCorrect: number
+  xp: number
+  level: number
+}
+
+interface GameBadge {
+  id: string
+  name: string
+  description: string
+  rarity: "common" | "rare" | "epic" | "legendary"
+  unlocked: boolean
+}
+
 export default function MyProfilePage() {
   const { t } = useLanguage()
   const router = useRouter()
@@ -72,6 +92,8 @@ export default function MyProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [addresses, setAddresses] = useState<UserAddress[]>([])
   const [phones, setPhones] = useState<UserPhone[]>([])
+  const [gameStats, setGameStats] = useState<GameStats | null>(null)
+  const [gameBadges, setGameBadges] = useState<GameBadge[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -114,6 +136,20 @@ export default function MyProfilePage() {
       const phonesData = await phonesRes.json()
       if (phonesData.success) {
         setPhones(phonesData.data || [])
+      }
+
+      // Load game progression profile (auth token required)
+      const { data: authData } = await supabase.auth.getSession()
+      const token = authData.session?.access_token
+      if (token) {
+        const gameRes = await fetch("/api/user/game-profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const gameData = await gameRes.json()
+        if (gameData.success) {
+          setGameStats(gameData.data.stats || null)
+          setGameBadges(gameData.data.badges || [])
+        }
       }
     } catch (error) {
       console.error("Error loading user data:", error)
@@ -189,6 +225,79 @@ export default function MyProfilePage() {
             Gestiona tu información personal, direcciones y teléfonos
           </p>
         </div>
+
+        <Card className="mb-6 bg-gradient-to-b from-card to-card/60">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Progreso Lorcana GA
+            </CardTitle>
+            <CardDescription>Tu avance, nivel e insignias únicas de la comunidad.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {gameStats ? (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">Nivel</p>
+                    <p className="text-2xl font-bold">{gameStats.level}</p>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">XP</p>
+                    <p className="text-2xl font-bold">{gameStats.xp}</p>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">Victorias</p>
+                    <p className="text-2xl font-bold">{gameStats.wins}</p>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">Win Rate</p>
+                    <p className="text-2xl font-bold">{gameStats.winRate}%</p>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">Racha</p>
+                    <p className="text-2xl font-bold">{gameStats.bestWinStreak}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">Insignias</p>
+                    <Badge variant="secondary">
+                      {gameBadges.filter((b) => b.unlocked).length}/{gameBadges.length}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {gameBadges.map((b) => (
+                      <div
+                        key={b.id}
+                        className={[
+                          "rounded-md border p-3",
+                          b.unlocked ? "bg-primary/10 border-primary/40" : "opacity-60",
+                        ].join(" ")}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="font-medium text-sm">{b.name}</p>
+                          <span className="text-xs uppercase text-muted-foreground">{b.rarity}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{b.description}</p>
+                        <div className="mt-2">
+                          {b.unlocked ? (
+                            <Badge className="gap-1"><Trophy className="h-3 w-3" /> Desbloqueada</Badge>
+                          ) : (
+                            <Badge variant="outline" className="gap-1"><Flame className="h-3 w-3" /> Bloqueada</Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Aún no hay progreso suficiente para mostrar.</p>
+            )}
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
