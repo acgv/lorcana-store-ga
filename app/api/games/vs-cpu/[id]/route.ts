@@ -37,7 +37,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   const { data: turns, error: turnsErr } = await supabaseAdmin
     .from("vs_cpu_game_turns")
     .select(
-      "turn_index, action, is_legal, illegal_reason, ink_before, ink_cost, ink_used, player_card_id, player_card_name, player_lore_gain, cpu_card_id, cpu_card_name, cpu_lore_gain"
+      "turn_index, action, is_legal, illegal_reason, ink_before, ink_cost, ink_used, player_card_id, player_card_name, player_lore_gain, cpu_card_id, cpu_card_name, cpu_lore_gain, engine_actor, engine_action, engine_events"
     )
     .eq("session_id", id)
     .order("turn_index", { ascending: true })

@@ -39,6 +39,8 @@ export interface Card extends BaseProduct {
   strength?: number
   willpower?: number
   classifications?: string
+  /** Color de tinta (Amber, Ruby, …) — import / API Lorcana. */
+  inkColor?: string | null
   foilPrice: number
   // Campos adicionales para el ecosistema completo
   cardNumber?: string // "101/204"

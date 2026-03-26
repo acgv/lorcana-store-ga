@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useCallback, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -13,25 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { useUser } from "@/hooks/use-user"
 import { supabase } from "@/lib/db"
-import type { Card as CardType } from "@/lib/types"
+import type { Card as CatalogCard } from "@/lib/types"
 import type { DeckRow } from "@/lib/deck-hydration"
-import { Sword, Play, RotateCcw, Bot, User2, Lock } from "lucide-react"
-
-type BattleTurn = {
-  turn: number
-  action: "play" | "pass" | "illegal_attempt"
-  isLegal: boolean
-  reason?: string | null
-  inkBefore: number
-  inkCost: number
-  inkUsed: number
-  playerCardName: string
-  playerCardId: string
-  playerLore: number
-  cpuCardName: string
-  cpuCardId: string
-  cpuLore: number
-}
+import type { ApplyResult, GameAction, GameEvent, GameState } from "@/lib/lorcana-game"
+import { applyAction, buildDefinitionMap, startGame } from "@/lib/lorcana-game"
+import { Bot, Lock, Play, RotateCcw, Sword, User2 } from "lucide-react"
 
 type DeckForGame = {
   id: string
@@ -39,73 +25,36 @@ type DeckForGame = {
   cards: Array<{ cardId: string; quantity: number }>
 }
 
-type GameMode = "manual" | "auto"
-
-const LORE_TARGET = 20
-const HAND_SIZE = 5
-const MAX_INK = 10
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
+type FlyAnim = {
+  id: string
+  src: string
+  alt: string
+  left: number
+  top: number
+  width: number
+  height: number
+  dx: number
+  dy: number
+  phase: "start" | "end"
 }
 
-/** Construye el mazo de 60 (o lo que haya) como lista de cartas del catálogo */
-function buildLibraryFromDeck(allCards: CardType[], deck: DeckForGame): CardType[] {
-  const pool: CardType[] = []
-  const byId = new Map(allCards.map((c) => [String(c.id).toLowerCase().trim(), c]))
-
-  for (const row of deck.cards) {
-    const c = byId.get(String(row.cardId).toLowerCase().trim())
-    if (!c) continue
-    const qty = Math.max(1, Math.min(4, Number(row.quantity || 1)))
-    for (let i = 0; i < qty; i++) pool.push({ ...c })
-  }
-
-  if (pool.length === 0) {
-    return [
-      {
-        id: "fallback",
-        name: "Carta genérica",
-        image: "/placeholder.svg",
-        price: 0,
-        foilPrice: 0,
-        productType: "card" as const,
-        set: "unknown",
-        rarity: "common" as const,
-        type: "character" as const,
-        number: 0,
-        lore: 1,
-      },
-    ]
-  }
-
-  return shuffle(pool)
+function sleep(ms: number) {
+  return new Promise<void>((r) => setTimeout(r, ms))
 }
 
-function loreFromCard(card: CardType): number {
-  const lore = typeof card.lore === "number" && card.lore > 0 ? card.lore : 1
-  return Math.max(1, Math.min(5, lore))
-}
-
-function inkCostFromCard(card: CardType): number {
-  const raw = typeof card.inkCost === "number" ? card.inkCost : card.inkCost ? Number(card.inkCost) : 0
-  if (Number.isNaN(raw)) return 0
-  return Math.max(0, Math.floor(raw))
-}
-
-function drawFromLibrary(lib: CardType[], hand: CardType[], n: number): { lib: CardType[]; hand: CardType[] } {
-  let l = [...lib]
-  let h = [...hand]
-  for (let i = 0; i < n && l.length > 0; i++) {
-    h.push(l[0])
-    l = l.slice(1)
+function phaseHint(phase: GameState["phase"]): string {
+  switch (phase) {
+    case "begin":
+      return "Preparando y robando…"
+    case "ink":
+      return "Puedes entintar 1 carta (opcional)."
+    case "main":
+      return "Juega cartas, haz quest o challenge. Luego termina turno."
+    case "end":
+      return "Cerrando turno…"
+    default:
+      return ""
   }
-  return { lib: l, hand: h }
 }
 
 export default function PlayVsCpuPage() {
@@ -114,55 +63,115 @@ export default function PlayVsCpuPage() {
   const { user, loading } = useUser()
 
   const [decks, setDecks] = useState<DeckForGame[]>([])
-  const [allCards, setAllCards] = useState<CardType[]>([])
+  const [allCards, setAllCards] = useState<CatalogCard[]>([])
   const [selectedDeckId, setSelectedDeckId] = useState<string>("")
-  const [gameMode, setGameMode] = useState<GameMode>("manual")
-  const [lockedMode, setLockedMode] = useState<GameMode | null>(null)
   const [loadingData, setLoadingData] = useState(false)
 
-  /** Mazo fijado al iniciar partida; no se puede cambiar hasta reiniciar */
   const [lockedDeckId, setLockedDeckId] = useState<string | null>(null)
-  const [playerLibrary, setPlayerLibrary] = useState<CardType[]>([])
-  const [cpuLibrary, setCpuLibrary] = useState<CardType[]>([])
-  const [playerHand, setPlayerHand] = useState<CardType[]>([])
+  const [game, setGame] = useState<GameState | null>(null)
+  const [events, setEvents] = useState<GameEvent[]>([])
+  const [engineTurns, setEngineTurns] = useState<Array<{ index: number; actor: "player" | "cpu" | "system"; action: GameAction; events: GameEvent[] }>>([])
+  const [cpuThinking, setCpuThinking] = useState(false)
+  const cpuAbortRef = useRef(false)
+  const savedReplayRef = useRef(false)
 
-  const [playerLore, setPlayerLore] = useState(0)
-  const [cpuLore, setCpuLore] = useState(0)
-  const [turn, setTurn] = useState(0)
-  const [inkAvailable, setInkAvailable] = useState(1)
-  const [battleLog, setBattleLog] = useState<BattleTurn[]>([])
-  const [winner, setWinner] = useState<"player" | "cpu" | null>(null)
-
-  const [turnAnimating, setTurnAnimating] = useState(false)
-  const cpuFlipTimeoutRef = useRef<number | null>(null)
-
-  /** Visual: cartas “en mesa” (jugador cara arriba y CPU voltea) */
-  const [mesaPlayerCard, setMesaPlayerCard] = useState<CardType | null>(null)
-  const [mesaCpuCard, setMesaCpuCard] = useState<CardType | null>(null)
-  const [mesaCpuFaceUp, setMesaCpuFaceUp] = useState(false)
-  const [mesaPlayerLoreGain, setMesaPlayerLoreGain] = useState(0)
-  const [mesaCpuLoreGain, setMesaCpuLoreGain] = useState(0)
-
-  /** Persistencia del replay */
-  const [savingGame, setSavingGame] = useState(false)
-  const [savedGameId, setSavedGameId] = useState<string | null>(null)
-  const savedGameAttemptedRef = useRef(false)
+  const [pendingChallengeAttacker, setPendingChallengeAttacker] = useState<number | null>(null)
+  const [pendingChallengeDefender, setPendingChallengeDefender] = useState<number | null>(null)
+  const [highlightInstanceIds, setHighlightInstanceIds] = useState<Record<string, "quest" | "challenge" | "banish">>({})
+  const [damageFlash, setDamageFlash] = useState<Record<string, number>>({})
+  const [discardPulse, setDiscardPulse] = useState<{ player: boolean; cpu: boolean }>({ player: false, cpu: false })
+  const [banishTray, setBanishTray] = useState<Array<{ instanceId: string; definitionId: string; player: 0 | 1 }>>([])
+  const [flyAnims, setFlyAnims] = useState<FlyAnim[]>([])
+  const processedEventCountRef = useRef(0)
+  const inPlayElRef = useRef<Record<string, HTMLDivElement | null>>({})
+  const discardPlayerElRef = useRef<HTMLDivElement | null>(null)
+  const discardCpuElRef = useRef<HTMLDivElement | null>(null)
 
   const selectedDeck = useMemo(
     () => decks.find((d) => d.id === (lockedDeckId || selectedDeckId)) || null,
-    [decks, selectedDeckId, lockedDeckId]
+    [decks, lockedDeckId, selectedDeckId]
   )
 
-  const matchEnded = lockedDeckId !== null && winner !== null
-
   const effectiveDeckId = lockedDeckId ?? selectedDeckId
-  const effectiveMode = lockedMode ?? gameMode
+  const deckSelectDisabled = lockedDeckId !== null
+
+  const cardById = useMemo(() => {
+    return new Map(allCards.map((c) => [String(c.id).toLowerCase().trim(), c]))
+  }, [allCards])
+
+  const uiPlayer = game?.players[0] ?? null
+  const uiCpu = game?.players[1] ?? null
+
+  const cpuExertedDefenders = useMemo(() => {
+    if (!uiCpu) return []
+    return uiCpu.inPlay.map((c, idx) => ({ c, idx })).filter((x) => !x.c.ready)
+  }, [uiCpu])
+
+  const extractInstanceIds = useCallback((e: GameEvent): string[] => {
+    switch (e.type) {
+      case "QUEST_LORE":
+        return [e.instanceId]
+      case "CHALLENGED":
+        return [e.attackerInstanceId, e.defenderInstanceId]
+      case "CARD_BANISHED":
+        return [e.instanceId]
+      case "INKED": {
+        return [e.instanceId]
+      }
+      default:
+        return []
+    }
+  }, [])
+
+  const formatEvent = useCallback(
+    (e: GameEvent): string => {
+      if (!game) return e.type
+      const defName = (definitionId: string) => game.definitions.get(definitionId)?.name ?? definitionId
+
+      switch (e.type) {
+        case "TURN_BEGIN":
+          return `Inicio de turno: ${e.player === 0 ? "Jugador" : "CPU"}`
+        case "DRAW":
+          return e.skippedFirst
+            ? `Robo omitido (jugador inicial)`
+            : e.instanceId
+              ? `${e.player === 0 ? "Jugador" : "CPU"} roba 1 carta`
+              : `${e.player === 0 ? "Jugador" : "CPU"} no puede robar (mazo vacío)`
+        case "INKED": {
+          const inst = game.instances.get(e.instanceId)
+          return `${e.player === 0 ? "Jugador" : "CPU"} entinta: ${inst ? defName(inst.definitionId) : "carta"}`
+        }
+        case "CARD_PLAYED": {
+          return `${e.player === 0 ? "Jugador" : "CPU"} juega: ${defName(e.definitionId)}`
+        }
+        case "QUEST_LORE": {
+          return `${e.player === 0 ? "Jugador" : "CPU"} hace quest con ${defName(e.definitionId)} (+${e.loreGained} lore)`
+        }
+        case "CHALLENGED": {
+          const atkInst = game.instances.get(e.attackerInstanceId)
+          const defInst = game.instances.get(e.defenderInstanceId)
+          const atkName = atkInst ? defName(atkInst.definitionId) : "atacante"
+          const defNameStr = defInst ? defName(defInst.definitionId) : "defensor"
+          return `Challenge: ${atkName} ↔ ${defNameStr} (daño ${e.defenderDamage}/${e.attackerDamage})`
+        }
+        case "CARD_BANISHED": {
+          const inst = game.instances.get(e.instanceId)
+          return `${e.player === 0 ? "Jugador" : "CPU"} pierde (banish): ${inst ? defName(inst.definitionId) : "carta"}`
+        }
+        case "TURN_END":
+          return `Fin de turno: ${e.player === 0 ? "Jugador" : "CPU"}`
+        case "GAME_OVER":
+          return `Partida terminada: gana ${e.winner === 0 ? "Jugador" : "CPU"}`
+        default:
+          return e.type
+      }
+    },
+    [game]
+  )
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/lorcana-tcg/login")
-    }
-  }, [loading, user, router])
+    if (!loading && !user) router.push("/lorcana-tcg/login")
+  }, [loading, router, user])
 
   useEffect(() => {
     let cancelled = false
@@ -170,7 +179,6 @@ export default function PlayVsCpuPage() {
     async function loadData() {
       if (!user?.id) return
       setLoadingData(true)
-
       try {
         if (!supabase) throw new Error("Supabase no está configurado")
         const session = await supabase.auth.getSession()
@@ -178,9 +186,7 @@ export default function PlayVsCpuPage() {
         if (!token) throw new Error("No hay sesión activa")
 
         const [decksRes, cardsRes] = await Promise.all([
-          fetch("/api/decks", {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+          fetch("/api/decks", { headers: { Authorization: `Bearer ${token}` } }),
           fetch(`/api/cards?t=${Date.now()}`, { cache: "no-store" }),
         ])
 
@@ -191,19 +197,17 @@ export default function PlayVsCpuPage() {
         if (!cardsJson.success) throw new Error(cardsJson.error || "No se pudo cargar catálogo")
 
         const loadedDecks = (decksJson.data || []) as DeckRow[]
-        if (!cancelled) {
-          setDecks(
-            loadedDecks.map((d) => ({
-              id: d.id,
-              name: d.name,
-              cards: d.cards,
-            }))
-          )
-          setAllCards(cardsJson.data || [])
-          if (loadedDecks.length > 0) {
-            setSelectedDeckId((prev) => prev || loadedDecks[0].id)
-          }
-        }
+        if (cancelled) return
+
+        setDecks(
+          loadedDecks.map((d) => ({
+            id: d.id,
+            name: d.name,
+            cards: d.cards,
+          }))
+        )
+        setAllCards(cardsJson.data || [])
+        if (loadedDecks.length > 0) setSelectedDeckId((prev) => prev || loadedDecks[0].id)
       } catch (e) {
         console.error(e)
         if (!cancelled) {
@@ -222,400 +226,394 @@ export default function PlayVsCpuPage() {
     return () => {
       cancelled = true
     }
-  }, [user?.id, toast])
-
-  useEffect(() => {
-    return () => {
-      if (cpuFlipTimeoutRef.current) {
-        window.clearTimeout(cpuFlipTimeoutRef.current)
-        cpuFlipTimeoutRef.current = null
-      }
-    }
-  }, [])
+  }, [toast, user?.id])
 
   const resetGame = useCallback(() => {
+    cpuAbortRef.current = true
+    savedReplayRef.current = false
     setLockedDeckId(null)
-    setLockedMode(null)
-    savedGameAttemptedRef.current = false
-    setSavedGameId(null)
-    setSavingGame(false)
-    setPlayerLibrary([])
-    setCpuLibrary([])
-    setPlayerHand([])
-    setPlayerLore(0)
-    setCpuLore(0)
-    setTurn(0)
-    setInkAvailable(1)
-    setBattleLog([])
-    setWinner(null)
-
-    setTurnAnimating(false)
-    if (cpuFlipTimeoutRef.current) {
-      window.clearTimeout(cpuFlipTimeoutRef.current)
-      cpuFlipTimeoutRef.current = null
-    }
-    setMesaPlayerCard(null)
-    setMesaCpuCard(null)
-    setMesaCpuFaceUp(false)
-    setMesaPlayerLoreGain(0)
-    setMesaCpuLoreGain(0)
+    setGame(null)
+    setEvents([])
+    setEngineTurns([])
+    setCpuThinking(false)
+    setPendingChallengeAttacker(null)
+    setPendingChallengeDefender(null)
+    setHighlightInstanceIds({})
+    setBanishTray([])
+    setFlyAnims([])
+    processedEventCountRef.current = 0
   }, [])
 
-  const startMatch = () => {
+  const appendApply = useCallback(
+    (res: ApplyResult) => {
+      if (!res.ok) {
+        toast({ title: "Movimiento inválido", description: res.error, variant: "destructive" })
+        return false
+      }
+      setGame(res.state)
+      setEvents((prev) => [...prev, ...res.events])
+      return true
+    },
+    [toast]
+  )
+
+  const startMatch = useCallback(() => {
+    if (!selectedDeckId) return
     const deck = decks.find((d) => d.id === selectedDeckId)
-    if (!deck || winner) return
+    if (!deck) return
+    if (allCards.length === 0) {
+      toast({ title: "Juego", description: "Catálogo no cargado", variant: "destructive" })
+      return
+    }
 
-    const pLib = buildLibraryFromDeck(allCards, deck)
-    const cLib = buildLibraryFromDeck(allCards, deck)
+    cpuAbortRef.current = false
+    const defs = buildDefinitionMap(allCards)
+    const started = startGame({
+      definitions: defs,
+      deck0: deck.cards,
+      deck1: deck.cards,
+      firstPlayer: 0,
+      loreToWin: 20,
+    })
 
-    const dealtP = drawFromLibrary(pLib, [], HAND_SIZE)
-    const dealtC = drawFromLibrary(cLib, [], HAND_SIZE)
+    if (!started.ok) {
+      toast({ title: "No se pudo iniciar", description: started.error, variant: "destructive" })
+      return
+    }
 
     setLockedDeckId(deck.id)
-    setLockedMode(gameMode)
-    setPlayerLibrary(dealtP.lib)
-    setCpuLibrary(dealtC.lib)
-    setPlayerHand(dealtP.hand)
-    setPlayerLore(0)
-    setCpuLore(0)
-    setTurn(0)
-    setInkAvailable(1)
-    setBattleLog([])
-    setWinner(null)
+    setGame(started.state)
+    setEvents(started.events)
+    setEngineTurns([{ index: 1, actor: "system", action: { type: "SKIP_INK" } as any, events: started.events }])
+    savedReplayRef.current = false
+    toast({ title: "Partida iniciada", description: "Motor Lorcana activo (MVP): ink, play, quest y challenge." })
+  }, [allCards, decks, selectedDeckId, toast])
 
-    toast({
-      title: "Partida iniciada",
-      description:
-        effectiveMode === "manual"
-          ? "Elige una carta de tu mano para jugar. El mazo queda fijado hasta reiniciar."
-          : "Modo automático activo: podrás jugar turnos automáticos con una carta al azar.",
-    })
-  }
-
-  const playCardFromHand = (handIndex: number) => {
-    if (!lockedDeckId || winner !== null) return
-    if (turnAnimating || savingGame) return
-    if (handIndex < 0 || handIndex >= playerHand.length) return
-
-    const deck = decks.find((d) => d.id === lockedDeckId)
-    if (!deck) return
-
-    const playerCard = playerHand[handIndex]
-    const playerInkCost = inkCostFromCard(playerCard)
-    const legal = playerInkCost <= inkAvailable
-    const reason = legal
-      ? null
-      : `Jugada inválida: esta carta cuesta ${playerInkCost} ink, pero tienes ${inkAvailable}.`
-
-    // Tutor: no permitimos jugar cartas ilegales (pero sí registramos el intento).
-    if (!legal) {
-      const illegalEntry: BattleTurn = {
-        turn: turn + 1,
-        action: "illegal_attempt",
-        isLegal: false,
-        reason,
-        inkBefore: inkAvailable,
-        inkCost: playerInkCost,
-        inkUsed: 0,
-        playerCardName: playerCard.name,
-        playerCardId: String(playerCard.id),
-        playerLore: 0,
-        cpuCardName: "—",
-        cpuCardId: "",
-        cpuLore: 0,
+  const applyAndLog = useCallback(
+    (actor: "player" | "cpu", state: GameState, action: GameAction): ApplyResult => {
+      const res = applyAction(state, action)
+      if (res.ok) {
+        setGame(res.state)
+        setEvents((prev) => [...prev, ...res.events])
+        setEngineTurns((prev) => [
+          ...prev,
+          { index: prev.length + 1, actor, action, events: res.events },
+        ])
       }
+      return res
+    },
+    []
+  )
 
-      setBattleLog((prev) => [illegalEntry, ...prev])
-      toast({ title: "Carta ilegal", description: reason || "No es legal", variant: "destructive" })
-      return
-    }
-
-    // Legal play
-    const playerGain = loreFromCard(playerCard)
-
-    let newHand = playerHand.filter((_, i) => i !== handIndex)
-    let newLib = [...playerLibrary]
-    if (newLib.length > 0) {
-      newHand.push(newLib[0])
-      newLib = newLib.slice(1)
-    }
-    setPlayerHand(newHand)
-    setPlayerLibrary(newLib)
-
-    let cpuCard: CardType
-    let cpuGain = 0
-    let newCpuLib = [...cpuLibrary]
-    if (newCpuLib.length > 0) {
-      cpuCard = newCpuLib[0]
-      newCpuLib = newCpuLib.slice(1)
-      cpuGain = loreFromCard(cpuCard)
-    } else {
-      cpuCard = {
-        id: "cpu-empty",
-        name: "Mazo agotado",
-        image: "",
-        price: 0,
-        foilPrice: 0,
-        productType: "card",
-        set: "unknown",
-        rarity: "common",
-        type: "character",
-        number: 0,
-        lore: 0,
+  const playerAction = useCallback(
+    (action: GameAction) => {
+      if (!game) return
+      if (game.winner !== null) return
+      if (game.activePlayer !== 0) return
+      if (cpuThinking) return
+      if (action.type !== "CHALLENGE") {
+        setPendingChallengeAttacker(null)
+        setPendingChallengeDefender(null)
       }
-    }
-    setCpuLibrary(newCpuLib)
+      const res = applyAndLog("player", game, action)
+      if (!res.ok) {
+        toast({ title: "Movimiento inválido", description: res.error, variant: "destructive" })
+      }
+    },
+    [applyAndLog, cpuThinking, game, toast]
+  )
 
-    // Visual: jugador en mesa, CPU boca abajo y luego volteamos
-    setMesaPlayerCard(playerCard)
-    setMesaPlayerLoreGain(playerGain)
-    setMesaCpuCard(cpuCard)
-    setMesaCpuLoreGain(cpuGain)
-    setMesaCpuFaceUp(false)
-    setTurnAnimating(true)
-    if (cpuFlipTimeoutRef.current) {
-      window.clearTimeout(cpuFlipTimeoutRef.current)
-      cpuFlipTimeoutRef.current = null
-    }
-    cpuFlipTimeoutRef.current = window.setTimeout(() => {
-      setMesaCpuFaceUp(true)
-      setTurnAnimating(false)
-    }, 650)
+  const cpuTurn = useCallback(async () => {
+    if (!game) return
+    if (game.winner !== null) return
+    if (game.activePlayer !== 1) return
+    if (cpuThinking) return
 
-    const nextTurn = turn + 1
-    const nextPlayerLore = playerLore + playerGain
-    const nextCpuLore = cpuLore + cpuGain
+    setCpuThinking(true)
+    try {
+      let s: GameState = game
+      for (let guard = 0; guard < 30; guard++) {
+        if (cpuAbortRef.current) return
+        if (s.winner !== null) break
+        if (s.activePlayer !== 1) break
 
-    const inkAfterSpend = inkAvailable - playerInkCost
-    const nextInk = Math.min(MAX_INK, inkAfterSpend + 1) // ganamos 1 ink al pasar al siguiente turno
-    setInkAvailable(nextInk)
-
-    const nextTurnEntry: BattleTurn = {
-      turn: nextTurn,
-      action: "play",
-      isLegal: true,
-      reason: null,
-      inkBefore: inkAvailable,
-      inkCost: playerInkCost,
-      inkUsed: playerInkCost,
-      playerCardName: playerCard.name,
-      playerCardId: String(playerCard.id),
-      playerLore: playerGain,
-      cpuCardName: cpuCard.name,
-      cpuCardId: String(cpuCard.id),
-      cpuLore: cpuGain,
-    }
-
-    const nextBattleLog = [nextTurnEntry, ...battleLog]
-
-    setTurn(nextTurn)
-    setPlayerLore(nextPlayerLore)
-    setCpuLore(nextCpuLore)
-    setBattleLog(nextBattleLog)
-
-    // Guardar replay: solo cuando hay un resultado final
-    if (nextPlayerLore >= LORE_TARGET || nextCpuLore >= LORE_TARGET) {
-      const finalWinner = nextPlayerLore >= nextCpuLore ? "player" : "cpu"
-      setWinner(finalWinner)
-      toast({
-        title: finalWinner === "player" ? "Ganaste" : "Perdiste",
-        description:
-          finalWinner === "player"
-            ? "Buen duelo. Reinicia para jugar otra partida."
-            : "La CPU ganó esta ronda. Prueba otro mazo o vuelve a intentarlo.",
-      })
-
-      if (!savedGameAttemptedRef.current && lockedDeckId) {
-        savedGameAttemptedRef.current = true
-        void (async () => {
-          try {
-            setSavingGame(true)
-            const session = await supabase.auth.getSession()
-            const token = session.data.session?.access_token
-            if (!token) throw new Error("No hay sesión activa")
-
-            const res = await fetch("/api/games/vs-cpu/finish", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                deckId: lockedDeckId,
-                deckName: deck.name,
-                mode: effectiveMode,
-                result: finalWinner,
-                turns: [...nextBattleLog].reverse().map((t) => ({
-                  turnIndex: t.turn,
-                  action: t.action,
-                  isLegal: t.isLegal,
-                  reason: t.reason ?? null,
-                  inkBefore: t.inkBefore,
-                  inkCost: t.inkCost,
-                  inkUsed: t.inkUsed,
-                  playerCardId: t.playerCardId || null,
-                  playerCardName: t.playerCardName || null,
-                  playerLoreGain: t.playerLore,
-                  cpuCardId: t.cpuCardId || null,
-                  cpuCardName: t.cpuCardName || null,
-                  cpuLoreGain: t.cpuLore,
-                })),
-              }),
-            })
-
-            const json = await res.json()
-            if (!json.success) throw new Error(json.error || "No se pudo guardar la partida")
-            setSavedGameId(json.data.id)
-            toast({
-              title: "Partida guardada",
-              description: "Ahora puedes ver el replay en tu historial.",
-            })
-          } catch (e) {
-            console.error(e)
-            toast({
-              title: "Error al guardar",
-              description: e instanceof Error ? e.message : "No se pudo guardar el replay",
-              variant: "destructive",
-            })
-          } finally {
-            setSavingGame(false)
+        if (s.phase === "ink") {
+          const hand = s.players[1].hand
+          let did = false
+          for (let i = 0; i < hand.length; i++) {
+            const tryInk = applyAndLog("cpu", s, { type: "INK_FROM_HAND", handIndex: i })
+            if (tryInk.ok) {
+              s = tryInk.state
+              did = true
+              break
+            }
           }
-        })()
-      }
-    } else if (newHand.length === 0 && newLib.length === 0) {
-      const finalWinner = nextPlayerLore >= nextCpuLore ? "player" : "cpu"
-      setWinner(finalWinner)
-      toast({
-        title: "Sin cartas",
-        description:
-          finalWinner === "player"
-            ? "Te quedaste sin cartas con más lore. ¡Victoria por lore!"
-            : "Fin del mazo. Gana quien tenga más lore.",
-      })
-
-      if (!savedGameAttemptedRef.current && lockedDeckId) {
-        savedGameAttemptedRef.current = true
-        void (async () => {
-          try {
-            setSavingGame(true)
-            const session = await supabase.auth.getSession()
-            const token = session.data.session?.access_token
-            if (!token) throw new Error("No hay sesión activa")
-
-            const res = await fetch("/api/games/vs-cpu/finish", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                deckId: lockedDeckId,
-                deckName: deck.name,
-                mode: effectiveMode,
-                result: finalWinner,
-                turns: [...nextBattleLog].reverse().map((t) => ({
-                  turnIndex: t.turn,
-                  action: t.action,
-                  isLegal: t.isLegal,
-                  reason: t.reason ?? null,
-                  inkBefore: t.inkBefore,
-                  inkCost: t.inkCost,
-                  inkUsed: t.inkUsed,
-                  playerCardId: t.playerCardId || null,
-                  playerCardName: t.playerCardName || null,
-                  playerLoreGain: t.playerLore,
-                  cpuCardId: t.cpuCardId || null,
-                  cpuCardName: t.cpuCardName || null,
-                  cpuLoreGain: t.cpuLore,
-                })),
-              }),
-            })
-
-            const json = await res.json()
-            if (!json.success) throw new Error(json.error || "No se pudo guardar la partida")
-            setSavedGameId(json.data.id)
-            toast({
-              title: "Partida guardada",
-              description: "Ahora puedes ver el replay en tu historial.",
-            })
-          } catch (e) {
-            console.error(e)
-            toast({
-              title: "Error al guardar",
-              description: e instanceof Error ? e.message : "No se pudo guardar el replay",
-              variant: "destructive",
-            })
-          } finally {
-            setSavingGame(false)
+          if (!did) {
+            const skip = applyAndLog("cpu", s, { type: "SKIP_INK" })
+            if (!skip.ok) break
+            s = skip.state
           }
-        })()
+          await sleep(250)
+          continue
+        }
+
+        if (s.phase === "main") {
+          // Quest (mejor lore primero)
+          const inPlay = s.players[1].inPlay
+          let bestIdx: number | null = null
+          let bestLore = -1
+          for (let i = 0; i < inPlay.length; i++) {
+            const c = inPlay[i]
+            if (c.drying || !c.ready) continue
+            const def = s.definitions.get(c.definitionId)
+            const lore = def && typeof def.lore === "number" ? def.lore : 0
+            if (lore > bestLore) {
+              bestLore = lore
+              bestIdx = i
+            }
+          }
+          if (bestIdx !== null && bestLore > 0) {
+            const q = applyAndLog("cpu", s, { type: "QUEST", inPlayIndex: bestIdx })
+            if (q.ok) {
+              s = q.state
+              await sleep(250)
+              continue
+            }
+          }
+
+          // Play (primer legal)
+          const hand = s.players[1].hand
+          let played = false
+          for (let i = 0; i < hand.length; i++) {
+            const p = applyAndLog("cpu", s, { type: "PLAY_FROM_HAND", handIndex: i })
+            if (p.ok) {
+              s = p.state
+              played = true
+              await sleep(250)
+              break
+            }
+          }
+          if (played) continue
+
+          const end = applyAndLog("cpu", s, { type: "END_MAIN" })
+          if (!end.ok) break
+          s = end.state
+          await sleep(250)
+          continue
+        }
+
+        break
+      }
+    } finally {
+      setCpuThinking(false)
+    }
+  }, [applyAndLog, cpuThinking, game])
+
+  useEffect(() => {
+    void cpuTurn()
+  }, [cpuTurn])
+
+  useEffect(() => {
+    if (!game) return
+    const prevCount = processedEventCountRef.current
+    if (events.length <= prevCount) return
+
+    const newEvents = events.slice(prevCount)
+    processedEventCountRef.current = events.length
+
+    const nextHighlights: Record<string, "quest" | "challenge" | "banish"> = {}
+    const nextDamageFlash: Record<string, number> = {}
+    const nextTray: Array<{ instanceId: string; definitionId: string; player: 0 | 1 }> = []
+    let pulsePlayerDiscard = false
+    let pulseCpuDiscard = false
+    const nextFly: FlyAnim[] = []
+
+    for (const e of newEvents) {
+      if (e.type === "QUEST_LORE") {
+        nextHighlights[e.instanceId] = "quest"
+      }
+      if (e.type === "CHALLENGED") {
+        nextHighlights[e.attackerInstanceId] = "challenge"
+        nextHighlights[e.defenderInstanceId] = "challenge"
+        nextDamageFlash[e.attackerInstanceId] = Date.now()
+        nextDamageFlash[e.defenderInstanceId] = Date.now()
+      }
+      if (e.type === "CARD_BANISHED") {
+        // Para “en vivo”: mostrar un tray con la carta que fue banish.
+        const inst = game.instances.get(e.instanceId)
+        if (inst) {
+          nextTray.push({ instanceId: e.instanceId, definitionId: inst.definitionId, player: e.player })
+
+          // Animación: volar desde mesa → descarte.
+          const fromEl = inPlayElRef.current[e.instanceId]
+          const toEl = e.player === 0 ? discardPlayerElRef.current : discardCpuElRef.current
+          const def = game.definitions.get(inst.definitionId)
+          const cat = def ? cardById.get(def.id) : null
+          const src = cat?.image || "/placeholder.svg"
+          const alt = def?.name || "Carta"
+          if (fromEl && toEl) {
+            const fr = fromEl.getBoundingClientRect()
+            const tr = toEl.getBoundingClientRect()
+            const startCx = fr.left + fr.width / 2
+            const startCy = fr.top + fr.height / 2
+            const endCx = tr.left + tr.width / 2
+            const endCy = tr.top + tr.height / 2
+            nextFly.push({
+              id: `${e.instanceId}_${Date.now()}`,
+              src,
+              alt,
+              left: fr.left,
+              top: fr.top,
+              width: Math.max(56, Math.min(120, fr.width)),
+              height: Math.max(78, Math.min(168, fr.height)),
+              dx: endCx - startCx,
+              dy: endCy - startCy,
+              phase: "start",
+            })
+          }
+        }
+        nextHighlights[e.instanceId] = "banish"
+        if (e.player === 0) pulsePlayerDiscard = true
+        if (e.player === 1) pulseCpuDiscard = true
       }
     }
-  }
 
-  const passTurn = () => {
-    if (!lockedDeckId || winner !== null) return
-    if (turnAnimating || savingGame) return
-
-    const nextTurn = turn + 1
-    const nextInk = Math.min(MAX_INK, inkAvailable + 1)
-    setInkAvailable(nextInk)
-    setTurn(nextTurn)
-
-    // Limpieza visual del “último turno” al pasar
-    setMesaPlayerCard(null)
-    setMesaCpuCard(null)
-    setMesaCpuFaceUp(false)
-
-    const passEntry: BattleTurn = {
-      turn: nextTurn,
-      action: "pass",
-      isLegal: true,
-      reason: null,
-      inkBefore: inkAvailable,
-      inkCost: 0,
-      inkUsed: 0,
-      playerCardName: "—",
-      playerCardId: "",
-      playerLore: 0,
-      cpuCardName: "—",
-      cpuCardId: "",
-      cpuLore: 0,
+    if (Object.keys(nextHighlights).length > 0) {
+      setHighlightInstanceIds((prev) => ({ ...prev, ...nextHighlights }))
+      window.setTimeout(() => {
+        setHighlightInstanceIds((prev) => {
+          const copy = { ...prev }
+          for (const k of Object.keys(nextHighlights)) delete copy[k]
+          return copy
+        })
+      }, 900)
     }
 
-    setBattleLog((prev) => [passEntry, ...prev])
-  }
-
-  const playAutoTurn = () => {
-    if (effectiveMode !== "auto" || playerHand.length === 0 || winner !== null) return
-    const legalIndices: number[] = []
-    for (let i = 0; i < playerHand.length; i++) {
-      const cost = inkCostFromCard(playerHand[i])
-      if (cost <= inkAvailable) legalIndices.push(i)
+    if (Object.keys(nextDamageFlash).length > 0) {
+      setDamageFlash((prev) => ({ ...prev, ...nextDamageFlash }))
+      window.setTimeout(() => {
+        setDamageFlash((prev) => {
+          const copy = { ...prev }
+          for (const k of Object.keys(nextDamageFlash)) delete copy[k]
+          return copy
+        })
+      }, 900)
     }
 
-    if (legalIndices.length === 0) {
-      passTurn()
-      return
+    if (pulsePlayerDiscard || pulseCpuDiscard) {
+      setDiscardPulse({ player: pulsePlayerDiscard, cpu: pulseCpuDiscard })
+      window.setTimeout(() => setDiscardPulse({ player: false, cpu: false }), 600)
     }
 
-    const randomIndex = legalIndices[Math.floor(Math.random() * legalIndices.length)]
-    playCardFromHand(randomIndex)
-  }
+    if (nextTray.length > 0) {
+      setBanishTray((prev) => [...nextTray, ...prev].slice(0, 6))
+      window.setTimeout(() => {
+        setBanishTray((prev) => prev.filter((x) => !nextTray.some((n) => n.instanceId === x.instanceId)))
+      }, 1800)
+    }
+
+    if (nextFly.length > 0) {
+      setFlyAnims((prev) => [...prev, ...nextFly])
+      // Cambiar a fase end en el siguiente frame (para disparar transición CSS).
+      requestAnimationFrame(() => {
+        setFlyAnims((prev) =>
+          prev.map((a) => (nextFly.some((n) => n.id === a.id) ? { ...a, phase: "end" } : a))
+        )
+      })
+      window.setTimeout(() => {
+        setFlyAnims((prev) => prev.filter((a) => !nextFly.some((n) => n.id === a.id)))
+      }, 750)
+    }
+  }, [events, game])
+
+  useEffect(() => {
+    if (!game || !lockedDeckId || !selectedDeck) return
+    if (game.winner === null) return
+    if (savedReplayRef.current) return
+    if (engineTurns.length === 0) return
+
+    savedReplayRef.current = true
+    void (async () => {
+      try {
+        const { data } = await supabase.auth.getSession()
+        const token = data.session?.access_token
+        if (!token) throw new Error("No hay sesión activa")
+
+        const res = await fetch("/api/games/vs-cpu/finish-engine", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            deckId: lockedDeckId,
+            deckName: selectedDeck.name,
+            result: game.winner === 0 ? "player" : "cpu",
+            engineTurns: engineTurns.map((t) => ({
+              index: t.index,
+              actor: t.actor,
+              action: t.action,
+              events: t.events,
+            })),
+          }),
+        })
+
+        const json = await res.json()
+        if (!json.success) throw new Error(json.error || "No se pudo guardar el replay")
+        toast({ title: "Replay guardado", description: "Puedes verlo en Mis Partidas." })
+      } catch (e) {
+        console.error(e)
+        savedReplayRef.current = false
+        toast({
+          title: "Error al guardar replay",
+          description: e instanceof Error ? e.message : "No se pudo guardar el replay",
+          variant: "destructive",
+        })
+      }
+    })()
+  }, [engineTurns, game, lockedDeckId, selectedDeck, toast])
 
   if (loading || !user) return null
-
-  const deckSelectDisabled = lockedDeckId !== null
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-6 md:py-8 space-y-6">
+        {/* Overlay: animaciones "carta vuela" */}
+        {flyAnims.length > 0 && (
+          <div className="fixed inset-0 pointer-events-none z-50">
+            {flyAnims.map((a) => (
+              <div
+                key={a.id}
+                style={{
+                  position: "fixed",
+                  left: a.left,
+                  top: a.top,
+                  width: a.width,
+                  height: a.height,
+                  transformOrigin: "center center",
+                  transform:
+                    a.phase === "end"
+                      ? `translate(${a.dx}px, ${a.dy}px) scale(0.25) rotate(-6deg)`
+                      : "translate(0px, 0px) scale(1) rotate(0deg)",
+                  opacity: a.phase === "end" ? 0.15 : 1,
+                  transition: "transform 650ms ease, opacity 650ms ease",
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
+                }}
+              >
+                <Image src={a.src} alt={a.alt} fill className="object-cover" sizes="120px" unoptimized={a.src.startsWith("http")} />
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h1 className="font-display text-4xl md:text-5xl font-black">Jugar vs CPU</h1>
             <p className="text-muted-foreground mt-1">
-              Dos modos: manual (eliges carta) o automático (juega carta al azar). El mazo se fija al iniciar.
+              Partida con motor Lorcana (MVP): fases, inkwell, jugar cartas, quest y challenge.
             </p>
           </div>
           <div className="flex gap-2">
@@ -631,9 +629,7 @@ export default function PlayVsCpuPage() {
               <CardTitle className="flex items-center gap-2">
                 <Sword className="h-4 w-4" /> Configuración
               </CardTitle>
-              <CardDescription>
-                Elige mazo y pulsa <strong>Iniciar partida</strong>. Mientras juegas no podrás cambiar de mazo.
-              </CardDescription>
+              <CardDescription>Elige mazo y pulsa iniciar. El mazo queda fijado hasta reiniciar.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -665,25 +661,6 @@ export default function PlayVsCpuPage() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Modo</p>
-                <Select
-                  value={effectiveMode}
-                  onValueChange={(v) => {
-                    if (!deckSelectDisabled) setGameMode(v as GameMode)
-                  }}
-                  disabled={deckSelectDisabled || loadingData}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona modo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual">Manual (yo elijo carta)</SelectItem>
-                    <SelectItem value="auto">Automático (elige al azar)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               {selectedDeck && (
                 <div className="rounded-md border p-3 text-sm text-muted-foreground">
                   <p>
@@ -706,23 +683,34 @@ export default function PlayVsCpuPage() {
                 ) : (
                   <Button variant="outline" onClick={resetGame} className="w-full gap-2">
                     <RotateCcw className="h-4 w-4" />
-                    {matchEnded ? "Nueva partida (elegir mazo)" : "Abandonar y reiniciar"}
+                    Reiniciar
                   </Button>
                 )}
               </div>
 
-              {lockedDeckId && !matchEnded && (
-                <p className="text-xs text-muted-foreground">
-                  {effectiveMode === "manual"
-                    ? "Tutor MVP: solo puedes jugar cartas con inkCost <= Ink disponible. Si una carta es ilegal, no se juega (pero se registra)."
-                    : "Tutor MVP (auto): elige una carta legal (inkCost <= Ink disponible). Si no hay legales, pasas turno."}
-                </p>
-              )}
-
-              {decks.length === 0 && !loadingData && (
-                <p className="text-xs text-muted-foreground">
-                  No tienes mazos guardados todavía. Crea uno en Mis Mazos para jugar.
-                </p>
+              {game && uiPlayer && uiCpu && (
+                <div className="rounded-lg border p-3 text-sm space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Fase</span>
+                    <span className="font-semibold">{game.phase}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Turno de</span>
+                    <span className="font-semibold">{game.activePlayer === 0 ? "Jugador" : "CPU"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Lore</span>
+                    <span className="font-semibold">
+                      {uiPlayer.lore} - {uiCpu.lore}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Tinta lista</span>
+                    <span className="font-semibold">
+                      {uiPlayer.inkwell.filter((c) => !c.exerted).length} / {uiPlayer.inkwell.length}
+                    </span>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -730,283 +718,523 @@ export default function PlayVsCpuPage() {
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>Partida</CardTitle>
-              <CardDescription>Objetivo: llegar a {LORE_TARGET} lore primero.</CardDescription>
+              <CardDescription>Tu turno: ink → main (play/quest/challenge) → end.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Mesa (visual del último turno) */}
-              <div className="rounded-lg border bg-muted/30 p-4">
-                <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-                  <p className="font-medium">Mesa</p>
-                  {turnAnimating && (
-                    <Badge variant="secondary" className="gap-1">
-                      Resolviendo turno…
-                    </Badge>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Tu carta</p>
-                    {mesaPlayerCard ? (
-                      <div className="rounded-lg border bg-card p-2">
-                        <div className="relative aspect-[5/7] w-full overflow-hidden rounded-md bg-muted mb-2">
-                          {mesaPlayerCard.image && String(mesaPlayerCard.image).trim() !== "" ? (
-                            <Image
-                              src={mesaPlayerCard.image}
-                              alt={mesaPlayerCard.name}
-                              fill
-                              className="object-cover"
-                              sizes="240px"
-                              unoptimized={mesaPlayerCard.image.startsWith("http")}
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-xs text-muted-foreground px-2 text-center">
-                              {mesaPlayerCard.name}
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-xs font-medium line-clamp-2">{mesaPlayerCard.name}</p>
-                        <p className="text-[10px] text-muted-foreground">Lore +{mesaPlayerLoreGain}</p>
-                      </div>
-                    ) : (
-                      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                        Juega tu primera carta para verla aquí.
-                      </div>
-                    )}
+            <CardContent className="space-y-6">
+              {!game || !uiPlayer || !uiCpu ? (
+                <p className="text-sm text-muted-foreground rounded-lg border border-dashed p-4">
+                  Inicia la partida desde el panel izquierdo.
+                </p>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant={game.activePlayer === 0 ? "default" : "secondary"} className="gap-1">
+                        <User2 className="h-3 w-3" /> Jugador
+                      </Badge>
+                      <Badge variant={game.activePlayer === 1 ? "default" : "secondary"} className="gap-1">
+                        <Bot className="h-3 w-3" /> CPU
+                      </Badge>
+                      {cpuThinking && <Badge variant="secondary">CPU…</Badge>}
+                      {game.winner !== null && <Badge>Ganador: {game.winner === 0 ? "Jugador" : "CPU"}</Badge>}
+                    </div>
+
+                    <div className="flex gap-2">
+                      {game.phase === "ink" && game.activePlayer === 0 && (
+                        <Button variant="secondary" onClick={() => playerAction({ type: "SKIP_INK" })}>
+                          Saltar tinta
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        disabled={game.activePlayer !== 0 || game.phase !== "main" || cpuThinking || game.winner !== null}
+                        onClick={() => playerAction({ type: "END_MAIN" })}
+                      >
+                        Terminar turno
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Carta CPU</p>
-                    {mesaCpuCard ? (
-                      <div className="rounded-lg border bg-card p-2">
-                        <div className="relative aspect-[5/7] w-full overflow-hidden rounded-md bg-muted mb-2">
-                          {mesaCpuFaceUp ? (
-                            mesaCpuCard.image && String(mesaCpuCard.image).trim() !== "" ? (
-                              <Image
-                                src={mesaCpuCard.image}
-                                alt={mesaCpuCard.name}
-                                fill
-                                className="object-cover"
-                                sizes="240px"
-                                unoptimized={mesaCpuCard.image.startsWith("http")}
-                              />
-                            ) : (
-                              <div className="flex h-full items-center justify-center text-xs text-muted-foreground px-2 text-center">
-                                {mesaCpuCard.name}
+                  <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">Siguiente paso:</span> {phaseHint(game.phase)}
+                  </div>
+
+                  {banishTray.length > 0 && (
+                    <div className="rounded-lg border bg-card p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="font-medium">Banish (en vivo)</p>
+                        <p className="text-xs text-muted-foreground">Cartas recién desterradas</p>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        {banishTray.map((b) => {
+                          const def = game.definitions.get(b.definitionId)
+                          const card = def ? cardById.get(def.id) : null
+                          return (
+                            <div
+                              key={b.instanceId}
+                              className="w-[72px] animate-in fade-in zoom-in duration-200"
+                              title={`${b.player === 0 ? "Jugador" : "CPU"}: ${def?.name || "Carta"}`}
+                            >
+                              <div className="relative aspect-[5/7] w-full overflow-hidden rounded-md border bg-muted">
+                                <Image
+                                  src={card?.image || "/placeholder.svg"}
+                                  alt={def?.name || "Carta"}
+                                  fill
+                                  className="object-cover"
+                                  sizes="72px"
+                                  unoptimized={Boolean(card?.image?.startsWith("http"))}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold">Tu mano</h3>
+                        <div className="text-xs text-muted-foreground">{uiPlayer.hand.length} cartas</div>
+                      </div>
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                        {uiPlayer.hand.map((instId, idx) => {
+                          const inst = game.instances.get(instId)
+                          const def = inst ? game.definitions.get(inst.definitionId) : null
+                          const card = def ? cardById.get(def.id) : null
+                          return (
+                            <div key={instId} className="rounded-lg border overflow-hidden">
+                              <div className="relative aspect-[5/7] w-full bg-muted">
+                                <Image
+                                  src={card?.image || "/placeholder.svg"}
+                                  alt={def?.name || "Carta"}
+                                  fill
+                                  className="object-cover"
+                                  sizes="160px"
+                                  unoptimized={Boolean(card?.image?.startsWith("http"))}
+                                />
+                              </div>
+                              <div className="p-2 space-y-2">
+                                <div className="text-xs font-semibold line-clamp-2">{def?.name || "Carta"}</div>
+                                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                  <span>Coste: {def?.inkCost ?? "?"}</span>
+                                  {def?.inkable ? <Badge variant="secondary">Inkable</Badge> : <Badge variant="outline">No ink</Badge>}
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1"
+                                    disabled={game.activePlayer !== 0 || game.phase !== "ink" || cpuThinking || game.winner !== null}
+                                    onClick={() => playerAction({ type: "INK_FROM_HAND", handIndex: idx })}
+                                  >
+                                    Entintar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="flex-1"
+                                    disabled={game.activePlayer !== 0 || game.phase !== "main" || cpuThinking || game.winner !== null}
+                                    onClick={() => playerAction({ type: "PLAY_FROM_HAND", handIndex: idx })}
+                                  >
+                                    Jugar
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold">Tu inkwell</h3>
+                          <div className="text-xs text-muted-foreground">
+                            Lista: {uiPlayer.inkwell.filter((c) => !c.exerted).length}/{uiPlayer.inkwell.length}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {uiPlayer.inkwell.map((c) => (
+                            <Badge key={c.instanceId} variant={c.exerted ? "outline" : "secondary"}>
+                              {c.exerted ? "Exerted" : "Ready"}
+                            </Badge>
+                          ))}
+                          {uiPlayer.inkwell.length === 0 && <div className="text-sm text-muted-foreground">Sin tinta aún.</div>}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold">Tu mesa</h3>
+                          <div className="text-xs text-muted-foreground">{uiPlayer.inPlay.length} en juego</div>
+                        </div>
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                          {uiPlayer.inPlay.map((ipc, idx) => {
+                            const def = game.definitions.get(ipc.definitionId)
+                            const card = def ? cardById.get(def.id) : null
+                            const challengeArmed = pendingChallengeAttacker === idx
+                            const hl = highlightInstanceIds[ipc.instanceId]
+                            const canQuest =
+                              game.activePlayer === 0 &&
+                              game.phase === "main" &&
+                              !cpuThinking &&
+                              game.winner === null &&
+                              !ipc.drying &&
+                              ipc.ready &&
+                              (def?.type === "character" || def?.type === "location") &&
+                              typeof def?.lore === "number" &&
+                              def.lore > 0
+                            const questWhy = ipc.drying
+                              ? "Está secando"
+                              : !ipc.ready
+                                ? "Está exerted"
+                                : !(def?.type === "character" || def?.type === "location")
+                                  ? "No puede hacer quest"
+                                  : !def?.lore
+                                    ? "No tiene lore"
+                                    : ""
+
+                            const canChallengeBase =
+                              game.activePlayer === 0 &&
+                              game.phase === "main" &&
+                              !cpuThinking &&
+                              game.winner === null &&
+                              !ipc.drying &&
+                              ipc.ready
+                            const hasExertedDefender = cpuExertedDefenders.length > 0
+                            const dmgPulse = Boolean(damageFlash[ipc.instanceId])
+                            return (
+                              <div
+                                key={ipc.instanceId}
+                                ref={(el) => {
+                                  inPlayElRef.current[ipc.instanceId] = el
+                                }}
+                                className={[
+                                  "rounded-lg border overflow-hidden transition",
+                                  hl === "quest" ? "ring-2 ring-emerald-500" : "",
+                                  hl === "challenge" ? "ring-2 ring-amber-500" : "",
+                                ].join(" ")}
+                              >
+                                <div className="relative aspect-[5/7] w-full bg-muted">
+                                  <Image
+                                    src={card?.image || "/placeholder.svg"}
+                                    alt={def?.name || "Carta"}
+                                    fill
+                                    className="object-cover"
+                                    sizes="160px"
+                                    unoptimized={Boolean(card?.image?.startsWith("http"))}
+                                  />
+                                </div>
+                                <div className="p-2 space-y-2">
+                                  <div className="text-xs font-semibold line-clamp-2">{def?.name || "Carta"}</div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {ipc.drying && <Badge variant="outline">Secando</Badge>}
+                                    {!ipc.ready && <Badge variant="outline">Exerted</Badge>}
+                                    {typeof def?.strength === "number" && typeof def?.willpower === "number" && (
+                                      <Badge variant="secondary" className={dmgPulse ? "animate-pulse" : ""}>
+                                        {def.strength}/{def.willpower} ({ipc.damage})
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      className="flex-1"
+                                      disabled={!canQuest}
+                                      title={!canQuest ? questWhy || "No es posible ahora" : "Hacer quest"}
+                                      onClick={() => playerAction({ type: "QUEST", inPlayIndex: idx })}
+                                    >
+                                      Quest
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={challengeArmed ? "default" : "outline"}
+                                      className="flex-1"
+                                      disabled={
+                                        !canChallengeBase || uiCpu.inPlay.length === 0 || !hasExertedDefender
+                                      }
+                                      title={
+                                        !canChallengeBase
+                                          ? ipc.drying
+                                            ? "Está secando"
+                                            : !ipc.ready
+                                              ? "Está exerted"
+                                              : "No es posible ahora"
+                                          : !hasExertedDefender
+                                            ? "No hay defensores exerted disponibles"
+                                            : "Selecciona un defensor exerted y confirma"
+                                      }
+                                      onClick={() => {
+                                        setPendingChallengeAttacker((prev) => (prev === idx ? null : idx))
+                                        setPendingChallengeDefender(null)
+                                      }}
+                                    >
+                                      {challengeArmed ? "Elegido" : "Challenge"}
+                                    </Button>
+                                  </div>
+
+                                  {challengeArmed && (
+                                    <div className="space-y-2 rounded-md border p-2 bg-muted/30">
+                                      <p className="text-[11px] text-muted-foreground">
+                                        Elige un defensor <span className="font-medium text-foreground">exerted</span> de la CPU.
+                                      </p>
+                                      <Select
+                                        value={pendingChallengeDefender === null ? "" : String(pendingChallengeDefender)}
+                                        onValueChange={(v) => setPendingChallengeDefender(v ? Number(v) : null)}
+                                      >
+                                        <SelectTrigger className="h-8">
+                                          <SelectValue placeholder="Defensor (CPU)" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {uiCpu.inPlay.map((cpuCard, cpuIdx) => {
+                                            const cpuDef = game.definitions.get(cpuCard.definitionId)
+                                            const label = `${cpuDef?.name || "Carta"} ${cpuCard.ready ? "(ready)" : "(exerted)"}`
+                                            const disabled = cpuCard.ready // debe estar exerted
+                                            return (
+                                              <SelectItem key={cpuCard.instanceId} value={String(cpuIdx)} disabled={disabled}>
+                                                {label}
+                                              </SelectItem>
+                                            )
+                                          })}
+                                        </SelectContent>
+                                      </Select>
+
+                                      <div className="flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          className="flex-1"
+                                          disabled={pendingChallengeDefender === null}
+                                          onClick={() => {
+                                            if (pendingChallengeDefender === null) return
+                                            playerAction({
+                                              type: "CHALLENGE",
+                                              attackerIndex: idx,
+                                              defenderIndex: pendingChallengeDefender,
+                                            })
+                                            setPendingChallengeAttacker(null)
+                                            setPendingChallengeDefender(null)
+                                          }}
+                                        >
+                                          Confirmar challenge
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => {
+                                            setPendingChallengeAttacker(null)
+                                            setPendingChallengeDefender(null)
+                                          }}
+                                        >
+                                          Cancelar
+                                        </Button>
+                                      </div>
+
+                                      {uiCpu.inPlay.every((c) => c.ready) && (
+                                        <p className="text-[11px] text-muted-foreground">
+                                          La CPU no tiene personajes exerted ahora mismo (no hay desafío legal).
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )
-                          ) : (
-                            <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-accent/20 to-background/40 flex items-center justify-center text-sm font-semibold text-primary">
-                              CPU
-                            </div>
-                          )}
+                          })}
                         </div>
-                        <p className="text-xs font-medium line-clamp-2">
-                          {mesaCpuFaceUp ? mesaCpuCard.name : "Carta boca abajo"}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {mesaCpuFaceUp ? `Lore +${mesaCpuLoreGain}` : "Se voltea en automático"}
-                        </p>
                       </div>
-                    ) : (
-                      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                        La CPU mostrará su carta al jugar.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-lg border p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <User2 className="h-4 w-4" />
-                      <span className="font-medium">Tu lore</span>
-                    </div>
-                    <Badge>{playerLore}</Badge>
-                  </div>
-                  <div className="h-2 rounded bg-muted overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all"
-                      style={{ width: `${Math.min(100, (playerLore / LORE_TARGET) * 100)}%` }}
-                    />
-                  </div>
-                </div>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold">CPU (para aprender)</h3>
+                          <div className="text-xs text-muted-foreground">
+                            Inkwell {uiCpu.inkwell.length} · Mesa {uiCpu.inPlay.length} · Descarte {uiCpu.discard.length}
+                          </div>
+                        </div>
 
-                <div className="rounded-lg border p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Bot className="h-4 w-4" />
-                      <span className="font-medium">CPU lore</span>
-                    </div>
-                    <Badge variant="secondary">{cpuLore}</Badge>
-                  </div>
-                  <div className="h-2 rounded bg-muted overflow-hidden">
-                    <div
-                      className="h-full bg-accent transition-all"
-                      style={{ width: `${Math.min(100, (cpuLore / LORE_TARGET) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
+                        <div className="rounded-lg border p-3 space-y-3">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground">Inkwell CPU</p>
+                            <div className="flex flex-wrap gap-2">
+                              {uiCpu.inkwell.map((c) => (
+                                <Badge key={c.instanceId} variant={c.exerted ? "outline" : "secondary"}>
+                                  {c.exerted ? "Exerted" : "Ready"}
+                                </Badge>
+                              ))}
+                              {uiCpu.inkwell.length === 0 && (
+                                <div className="text-sm text-muted-foreground">Sin tinta aún.</div>
+                              )}
+                            </div>
+                          </div>
 
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm text-muted-foreground">Turno: {turn}</p>
-                  <Badge variant="secondary">Ink: {inkAvailable}/{MAX_INK}</Badge>
-                </div>
-                {lockedDeckId && (
-                  <p className="text-xs text-muted-foreground">
-                    Tu mazo: {playerLibrary.length} en biblioteca · Mano: {playerHand.length}
-                  </p>
-                )}
-                {winner && (
-                  <Badge variant={winner === "player" ? "default" : "destructive"}>
-                    {winner === "player" ? "Victoria" : "Derrota"}
-                  </Badge>
-                )}
-                {winner && savedGameId && (
-                  <Link href="/lorcana-tcg/my-games">
-                    <Button variant="secondary" size="sm">
-                      Ver replay
-                    </Button>
-                  </Link>
-                )}
-              </div>
-
-              {lockedDeckId && !winner && effectiveMode === "auto" && (
-                <div className="space-y-2">
-                  <Button
-                    onClick={playAutoTurn}
-                    className="gap-2"
-                    disabled={turnAnimating || savingGame}
-                  >
-                    <Play className="h-4 w-4" /> Jugar turno automático
-                  </Button>
-                </div>
-              )}
-
-              {lockedDeckId && !winner && effectiveMode === "manual" && (
-                <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    onClick={passTurn}
-                    disabled={turnAnimating || savingGame}
-                    className="w-full gap-2"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Pasar turno
-                  </Button>
-                </div>
-              )}
-
-              {/* Mano del jugador */}
-              {lockedDeckId && !winner && effectiveMode === "manual" && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Tu mano — elige una carta para jugar</p>
-                  {playerHand.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No tienes cartas en mano.</p>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                      {playerHand.map((c, idx) => (
-                        <button
-                          key={`${c.id}-${idx}`}
-                          type="button"
-                          onClick={() => playCardFromHand(idx)}
-                          disabled={turnAnimating || savingGame || winner !== null}
-                          aria-disabled={turnAnimating || savingGame || winner !== null}
-                          className={`rounded-lg border bg-card p-2 text-left transition hover:border-primary hover:ring-1 hover:ring-primary/30 focus:outline-none focus:ring-2 focus:ring-primary ${
-                            inkCostFromCard(c) > inkAvailable ? "border-destructive/60 bg-destructive/10" : ""
-                          }`}
-                        >
-                          <div className="relative aspect-[5/7] w-full overflow-hidden rounded-md bg-muted mb-2">
-                            {c.image && String(c.image).trim() !== "" ? (
-                              <Image
-                                src={c.image}
-                                alt={c.name}
-                                fill
-                                className="object-cover"
-                                sizes="120px"
-                                unoptimized={c.image.startsWith("http")}
-                              />
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground">Mesa CPU</p>
+                            {uiCpu.inPlay.length === 0 ? (
+                              <div className="text-sm text-muted-foreground">Sin cartas en juego.</div>
                             ) : (
-                              <div className="flex h-full items-center justify-center text-xs text-muted-foreground px-1 text-center">
-                                {c.name}
+                              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                                {uiCpu.inPlay.map((ipc) => {
+                                  const def = game.definitions.get(ipc.definitionId)
+                                  const card = def ? cardById.get(def.id) : null
+                                  const hl = highlightInstanceIds[ipc.instanceId]
+                                  const dmgPulse = Boolean(damageFlash[ipc.instanceId])
+                                  return (
+                                    <div
+                                      key={ipc.instanceId}
+                                      className={[
+                                        "rounded-lg border overflow-hidden transition",
+                                        hl === "challenge" ? "ring-2 ring-amber-500" : "",
+                                      ].join(" ")}
+                                    >
+                                      <div className="relative aspect-[5/7] w-full bg-muted">
+                                        <Image
+                                          src={card?.image || "/placeholder.svg"}
+                                          alt={def?.name || "Carta"}
+                                          fill
+                                          className="object-cover"
+                                          sizes="160px"
+                                          unoptimized={Boolean(card?.image?.startsWith("http"))}
+                                        />
+                                      </div>
+                                      <div className="p-2 space-y-1">
+                                        <div className="text-xs font-semibold line-clamp-2">{def?.name || "Carta"}</div>
+                                        <div className="flex flex-wrap gap-1">
+                                          {ipc.drying && <Badge variant="outline">Secando</Badge>}
+                                          {!ipc.ready && <Badge variant="outline">Exerted</Badge>}
+                                          {typeof def?.strength === "number" && typeof def?.willpower === "number" && (
+                                            <Badge variant="secondary" className={dmgPulse ? "animate-pulse" : ""}>
+                                              {def.strength}/{def.willpower} ({ipc.damage})
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
                               </div>
                             )}
                           </div>
-                          <p className="text-xs font-medium line-clamp-2">{c.name}</p>
-                          <p className="text-[10px] text-muted-foreground">Lore +{loreFromCard(c)}</p>
-                          <p
-                            className={`text-[10px] ${
-                              inkCostFromCard(c) > inkAvailable ? "text-destructive" : "text-muted-foreground"
-                            }`}
-                          >
-                            Ink costo {inkCostFromCard(c)} / {inkAvailable}
-                          </p>
-                        </button>
-                      ))}
+
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground">Descarte CPU</p>
+                            {uiCpu.discard.length === 0 ? (
+                              <div className="text-sm text-muted-foreground">Vacío.</div>
+                            ) : (
+                              <div
+                                ref={(el) => {
+                                  discardCpuElRef.current = el
+                                }}
+                                className={["flex gap-2 flex-wrap", discardPulse.cpu ? "animate-pulse" : ""].join(" ")}
+                              >
+                                {uiCpu.discard.slice(-6).reverse().map((instId) => {
+                                  const inst = game.instances.get(instId)
+                                  const def = inst ? game.definitions.get(inst.definitionId) : null
+                                  const card = def ? cardById.get(def.id) : null
+                                  return (
+                                    <div key={instId} className="w-[56px]" title={def?.name || "Carta"}>
+                                      <div className="relative aspect-[5/7] w-full overflow-hidden rounded-md border bg-muted">
+                                        <Image
+                                          src={card?.image || "/placeholder.svg"}
+                                          alt={def?.name || "Carta"}
+                                          fill
+                                          className="object-cover"
+                                          sizes="56px"
+                                          unoptimized={Boolean(card?.image?.startsWith("http"))}
+                                        />
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
 
-              {!lockedDeckId && (
-                <p className="text-sm text-muted-foreground rounded-lg border border-dashed p-4">
-                  Inicia la partida desde el panel izquierdo. Luego juegas en modo manual o automático.
-                </p>
-              )}
+                  <div className="rounded-lg border p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold">Tu descarte</h3>
+                      <div className="text-xs text-muted-foreground">{uiPlayer.discard.length} cartas</div>
+                    </div>
+                    {uiPlayer.discard.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">Vacío.</div>
+                    ) : (
+                      <div
+                        ref={(el) => {
+                          discardPlayerElRef.current = el
+                        }}
+                        className={["flex gap-2 flex-wrap", discardPulse.player ? "animate-pulse" : ""].join(" ")}
+                      >
+                        {uiPlayer.discard.slice(-6).reverse().map((instId) => {
+                          const inst = game.instances.get(instId)
+                          const def = inst ? game.definitions.get(inst.definitionId) : null
+                          const card = def ? cardById.get(def.id) : null
+                          return (
+                            <div key={instId} className="w-[56px]" title={def?.name || "Carta"}>
+                              <div className="relative aspect-[5/7] w-full overflow-hidden rounded-md border bg-muted">
+                                <Image
+                                  src={card?.image || "/placeholder.svg"}
+                                  alt={def?.name || "Carta"}
+                                  fill
+                                  className="object-cover"
+                                  sizes="56px"
+                                  unoptimized={Boolean(card?.image?.startsWith("http"))}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
 
-              <div className="rounded-lg border">
-                <div className="p-3 border-b">
-                  <p className="font-medium">Registro de turnos</p>
-                </div>
-                <div className="max-h-80 overflow-y-auto p-3 space-y-2">
-                  {battleLog.length === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      {lockedDeckId
-                        ? effectiveMode === "manual"
-                          ? "Toca una carta de tu mano para el primer turno."
-                          : 'Pulsa "Jugar turno automático".'
-                        : 'Aún no hay turnos. Pulsa "Iniciar partida".'}
-                    </p>
-                  )}
-                  {battleLog.map((item) => (
-                    <div key={item.turn} className="rounded border p-2 text-sm">
-                      <p className="font-medium">Turno {item.turn}</p>
-                      {item.action === "illegal_attempt" ? (
-                        <p className="text-destructive font-medium">Incorrecto</p>
-                      ) : item.action === "pass" ? (
-                        <p className="text-muted-foreground font-medium">Pasó</p>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Registro (eventos del motor)</h3>
+                    <div className="max-h-64 overflow-auto rounded-lg border p-3 text-sm space-y-1">
+                      {events.length === 0 ? (
+                        <div className="text-muted-foreground">Sin eventos.</div>
                       ) : (
-                        <p className="text-foreground font-medium">Correcto</p>
-                      )}
-
-                      <p>Tu carta: {item.playerCardName}</p>
-                      {item.action === "play" && (
-                        <p className="text-xs text-muted-foreground">
-                          +{item.playerLore} lore (jugador)
-                        </p>
-                      )}
-
-                      <p>CPU: {item.cpuCardName}</p>
-                      {item.action === "play" && (
-                        <p className="text-xs text-muted-foreground">
-                          +{item.cpuLore} lore (CPU)
-                        </p>
-                      )}
-
-                      <p className="text-[11px] text-muted-foreground mt-1">
-                        Ink: {item.inkCost} costo · {item.inkUsed} usado (tenías {item.inkBefore})
-                      </p>
-
-                      {item.action === "illegal_attempt" && item.reason && (
-                        <p className="text-xs text-destructive mt-1">{item.reason}</p>
+                        [...events]
+                          .slice(-50)
+                          .reverse()
+                          .map((e, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              className="w-full text-left rounded px-2 py-1 hover:bg-muted/50 transition text-muted-foreground"
+                              onClick={() => {
+                                const ids = extractInstanceIds(e)
+                                if (ids.length === 0) return
+                                const first = ids[0]
+                                const el = inPlayElRef.current[first]
+                                if (el) {
+                                  el.scrollIntoView({ behavior: "smooth", block: "center" })
+                                }
+                                const mark: Record<string, "quest" | "challenge" | "banish"> = {}
+                                for (const id of ids) {
+                                  mark[id] = e.type === "QUEST_LORE" ? "quest" : e.type === "CARD_BANISHED" ? "banish" : "challenge"
+                                }
+                                setHighlightInstanceIds((prev) => ({ ...prev, ...mark }))
+                                window.setTimeout(() => {
+                                  setHighlightInstanceIds((prev) => {
+                                    const copy = { ...prev }
+                                    for (const k of Object.keys(mark)) delete copy[k]
+                                    return copy
+                                  })
+                                }, 900)
+                              }}
+                            >
+                              <span className="font-medium text-foreground">{formatEvent(e)}</span>
+                            </button>
+                          ))
                       )}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -1015,3 +1243,4 @@ export default function PlayVsCpuPage() {
     </div>
   )
 }
+

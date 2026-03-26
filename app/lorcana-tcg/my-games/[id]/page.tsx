@@ -26,6 +26,9 @@ type Turn = {
   cpu_card_id: string | null
   cpu_card_name: string | null
   cpu_lore_gain: number
+  engine_actor?: string | null
+  engine_action?: any
+  engine_events?: any
 }
 
 type Session = {
@@ -138,34 +141,63 @@ export default function VsCpuGameDetailsPage() {
                     <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
                       <p className="font-medium">Turno {t.turn_index}</p>
                       <p className="text-xs text-muted-foreground">
-                        {t.action === "illegal_attempt" ? (
+                        {t.engine_action ? (
+                          <span className="text-foreground">Motor</span>
+                        ) : t.action === "illegal_attempt" ? (
                           <span className="text-destructive">Incorrecto</span>
                         ) : t.action === "pass" ? (
                           <span>Pasó</span>
                         ) : (
                           <span className="text-foreground">Correcto</span>
                         )}{" "}
-                        · +{t.player_lore_gain} lore (jugador) · +{t.cpu_lore_gain} lore (CPU)
+                        {t.engine_action ? (
+                          <span>
+                            · actor: {t.engine_actor || "?"} · acción: {(t.engine_action as any)?.type || "?"}
+                          </span>
+                        ) : (
+                          <span>
+                            · +{t.player_lore_gain} lore (jugador) · +{t.cpu_lore_gain} lore (CPU)
+                          </span>
+                        )}
                       </p>
                     </div>
-                    {t.action === "illegal_attempt" && t.illegal_reason && (
+                    {!t.engine_action && t.action === "illegal_attempt" && t.illegal_reason && (
                       <p className="text-xs text-destructive mb-2">{t.illegal_reason}</p>
                     )}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="rounded-md border bg-muted/20 p-2">
-                        <p className="text-sm font-medium">Tu carta</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{t.player_card_name || "—"}</p>
-                        <p className="text-xs mt-1">Lore: +{t.player_lore_gain}</p>
-                        <p className="text-[11px] text-muted-foreground mt-1">
-                          Ink: {t.ink_cost ?? 0} (tenías {t.ink_before ?? 0})
-                        </p>
+                    {t.engine_action ? (
+                      <div className="rounded-md border bg-muted/20 p-2 space-y-2">
+                        <p className="text-sm font-medium">Eventos</p>
+                        {Array.isArray(t.engine_events) && t.engine_events.length > 0 ? (
+                          <div className="space-y-1">
+                            {t.engine_events.slice(0, 10).map((e: any, idx: number) => (
+                              <p key={idx} className="text-xs text-muted-foreground">
+                                {e?.type || "EVENT"}{" "}
+                                {e?.player != null ? `P${Number(e.player) + 1}` : ""}
+                                {e?.loreGained != null ? ` (+${e.loreGained} lore)` : ""}
+                              </p>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Sin eventos.</p>
+                        )}
                       </div>
-                      <div className="rounded-md border bg-muted/20 p-2">
-                        <p className="text-sm font-medium">Carta CPU</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{t.cpu_card_name || "—"}</p>
-                        <p className="text-xs mt-1">Lore: +{t.cpu_lore_gain}</p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="rounded-md border bg-muted/20 p-2">
+                          <p className="text-sm font-medium">Tu carta</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{t.player_card_name || "—"}</p>
+                          <p className="text-xs mt-1">Lore: +{t.player_lore_gain}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            Ink: {t.ink_cost ?? 0} (tenías {t.ink_before ?? 0})
+                          </p>
+                        </div>
+                        <div className="rounded-md border bg-muted/20 p-2">
+                          <p className="text-sm font-medium">Carta CPU</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{t.cpu_card_name || "—"}</p>
+                          <p className="text-xs mt-1">Lore: +{t.cpu_lore_gain}</p>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ))
               )}
