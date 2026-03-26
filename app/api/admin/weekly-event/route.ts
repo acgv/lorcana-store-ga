@@ -130,3 +130,92 @@ export async function PATCH(request: NextRequest) {
 
   return NextResponse.json({ success: true })
 }
+
+export async function PUT(request: NextRequest) {
+  const adminCheck = await verifyAdmin(request)
+  if (!adminCheck.success) {
+    return NextResponse.json({ success: false, error: adminCheck.error }, { status: adminCheck.status || 401 })
+  }
+  if (!supabaseAdmin) {
+    return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 })
+  }
+
+  const body = await request.json()
+  const seasonId = String(body?.seasonId || "").trim()
+  const name = String(body?.name || "").trim()
+  const description = String(body?.description || "").trim()
+  const rewardXp = Number(body?.rewardXp || 0)
+  const rewardBadgeId = String(body?.rewardBadgeId || "").trim() || null
+  const startsAt = body?.startsAt ? new Date(body.startsAt).toISOString() : null
+  const endsAt = body?.endsAt ? new Date(body.endsAt).toISOString() : null
+  const isActive = typeof body?.isActive === "boolean" ? body.isActive : undefined
+  const goals = (Array.isArray(body?.goals) ? body.goals : []) as GoalInput[]
+
+  if (!seasonId) return NextResponse.json({ success: false, error: "seasonId required" }, { status: 400 })
+  if (!name) return NextResponse.json({ success: false, error: "name is required" }, { status: 400 })
+  if (!goals.length) return NextResponse.json({ success: false, error: "at least one goal is required" }, { status: 400 })
+
+  if (isActive === true) {
+    await supabaseAdmin.from("weekly_event_seasons").update({ is_active: false }).neq("id", seasonId)
+  }
+
+  const updateData: Record<string, unknown> = {
+    name,
+    description: description || null,
+    reward_xp: Math.max(0, Math.floor(rewardXp || 0)),
+    reward_badge_id: rewardBadgeId,
+    starts_at: startsAt || new Date().toISOString(),
+    ends_at: endsAt,
+  }
+  if (typeof isActive === "boolean") updateData.is_active = isActive
+
+  const { error: updateSeasonError } = await supabaseAdmin
+    .from("weekly_event_seasons")
+    .update(updateData)
+    .eq("id", seasonId)
+
+  if (updateSeasonError) {
+    return NextResponse.json({ success: false, error: updateSeasonError.message }, { status: 500 })
+  }
+
+  const { error: deleteGoalsError } = await supabaseAdmin
+    .from("weekly_event_goals")
+    .delete()
+    .eq("season_id", seasonId)
+  if (deleteGoalsError) {
+    return NextResponse.json({ success: false, error: deleteGoalsError.message }, { status: 500 })
+  }
+
+  const rows = goals.map((g, idx) => ({
+    season_id: seasonId,
+    code: String(g.code || "").trim() || `goal_${idx + 1}`,
+    label: String(g.label || "").trim() || `Meta ${idx + 1}`,
+    target: Math.max(1, Math.floor(Number(g.target) || 1)),
+    sort_order: Number.isFinite(g.sortOrder) ? Number(g.sortOrder) : idx,
+  }))
+  const { error: insertGoalsError } = await supabaseAdmin.from("weekly_event_goals").insert(rows)
+  if (insertGoalsError) {
+    return NextResponse.json({ success: false, error: insertGoalsError.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
+}
+
+export async function DELETE(request: NextRequest) {
+  const adminCheck = await verifyAdmin(request)
+  if (!adminCheck.success) {
+    return NextResponse.json({ success: false, error: adminCheck.error }, { status: adminCheck.status || 401 })
+  }
+  if (!supabaseAdmin) {
+    return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 })
+  }
+
+  const url = new URL(request.url)
+  const seasonId = String(url.searchParams.get("seasonId") || "").trim()
+  if (!seasonId) return NextResponse.json({ success: false, error: "seasonId required" }, { status: 400 })
+
+  const { error } = await supabaseAdmin.from("weekly_event_seasons").delete().eq("id", seasonId)
+  if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+
+  return NextResponse.json({ success: true })
+}

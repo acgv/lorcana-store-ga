@@ -7,10 +7,13 @@ export async function GET() {
       return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 })
     }
 
+    const nowIso = new Date().toISOString()
     const { data: season, error: seasonError } = await supabaseAdmin
       .from("weekly_event_seasons")
       .select("id, name, description, reward_xp, reward_badge_id, starts_at, ends_at")
       .eq("is_active", true)
+      .lte("starts_at", nowIso)
+      .or(`ends_at.is.null,ends_at.gte.${nowIso}`)
       .order("starts_at", { ascending: false })
       .limit(1)
       .maybeSingle()
