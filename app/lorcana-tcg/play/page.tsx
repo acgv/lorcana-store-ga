@@ -374,6 +374,21 @@ export default function PlayVsCpuPage() {
     }
   }, [applyAndLog, cpuThinking, game, runPlayerSequence])
 
+  // Auto-play: si el modo del jugador es auto, ejecuta jugadas solo en tu turno.
+  useEffect(() => {
+    if (playerMode !== "auto") return
+    if (!game) return
+    if (game.winner !== null) return
+    if (cpuThinking) return
+    if (game.activePlayer !== 0) return
+
+    const t = window.setTimeout(() => {
+      playAutoForPlayer()
+    }, 300)
+
+    return () => window.clearTimeout(t)
+  }, [cpuThinking, game, playAutoForPlayer, playerMode])
+
   const playerAction = useCallback(
     (action: GameAction) => {
       if (!game) {
@@ -703,15 +718,15 @@ export default function PlayVsCpuPage() {
         </div>
 
         {/* Config arriba para dar más espacio a la partida */}
-        <Card>
+        <Card className="bg-gradient-to-b from-card to-card/60">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sword className="h-4 w-4" /> Configuración
               </CardTitle>
               <CardDescription>Elige mazo y pulsa iniciar. El mazo queda fijado hasta reiniciar.</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-              <div className="lg:col-span-2 space-y-2">
+            <CardContent className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+              <div className="md:col-span-6 space-y-2">
                 <p className="text-sm font-medium flex items-center gap-2">
                   Mazo
                   {deckSelectDisabled && (
@@ -750,7 +765,7 @@ export default function PlayVsCpuPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
+              <div className="md:col-span-3 space-y-2">
                 <p className="text-sm font-medium">Modo jugador</p>
                 <Select
                   value={playerMode}
@@ -767,9 +782,14 @@ export default function PlayVsCpuPage() {
                     <SelectItem value="auto">Auto (asistente)</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  {playerMode === "auto"
+                    ? "El asistente ejecuta tus jugadas automáticamente en tu turno."
+                    : "Tú decides cada acción (entintar, jugar, quest, challenge)."}
+                </p>
               </div>
 
-              <div className="space-y-2 flex flex-col justify-end">
+              <div className="md:col-span-3 space-y-2 flex flex-col justify-end">
                 {!lockedDeckId ? (
                   <Button onClick={startMatch} disabled={!selectedDeck || loadingData || decks.length === 0} className="w-full gap-2">
                     <Play className="h-4 w-4" /> Iniciar partida
