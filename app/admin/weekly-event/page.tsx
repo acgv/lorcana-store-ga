@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, Pencil, Trash2, Trophy } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { CalendarDays, Info, Loader2, Pencil, Trash2, Trophy } from "lucide-react"
 
 type Season = {
   id: string
@@ -197,6 +198,13 @@ export default function AdminWeeklyEventPage() {
     return map
   }, [goals])
 
+  const selectedStartPreview = startsAt
+    ? new Date(startsAt).toLocaleString("es-CL", { dateStyle: "full", timeStyle: "short" })
+    : "Se activa inmediatamente al guardarla."
+  const selectedEndPreview = endsAt
+    ? new Date(endsAt).toLocaleString("es-CL", { dateStyle: "full", timeStyle: "short" })
+    : "Sin fecha de término (queda activa hasta que la desactives o cambies temporada)."
+
   return (
     <AuthGuard>
       <div className="min-h-screen bg-background">
@@ -212,10 +220,46 @@ export default function AdminWeeklyEventPage() {
             <CardContent className="space-y-3">
               <Input placeholder="Nombre temporada (ej: Season 1 - Abril)" value={name} onChange={(e) => setName(e.target.value)} />
               <Textarea placeholder="Descripción corta" value={description} onChange={(e) => setDescription(e.target.value)} />
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <Input placeholder="XP recompensa" value={rewardXp} onChange={(e) => setRewardXp(e.target.value)} />
-                <Input type="datetime-local" placeholder="Inicio" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
-                <Input type="datetime-local" placeholder="Fin" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label>XP recompensa</Label>
+                  <Input placeholder="120" value={rewardXp} onChange={(e) => setRewardXp(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="flex items-center gap-1">
+                    <CalendarDays className="h-3.5 w-3.5" /> Fecha y hora de inicio
+                  </Label>
+                  <Input
+                    type="datetime-local"
+                    value={startsAt}
+                    onChange={(e) => setStartsAt(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="flex items-center gap-1">
+                    <CalendarDays className="h-3.5 w-3.5" /> Fecha y hora de término (opcional)
+                  </Label>
+                  <Input
+                    type="datetime-local"
+                    value={endsAt}
+                    onChange={(e) => setEndsAt(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-md border bg-muted/20 p-3 text-xs space-y-2">
+                <p className="flex items-center gap-1 font-medium">
+                  <Info className="h-3.5 w-3.5" /> Vista rápida de programación
+                </p>
+                <p>
+                  <span className="font-medium">Inicio:</span> {selectedStartPreview}
+                </p>
+                <p>
+                  <span className="font-medium">Fin:</span> {selectedEndPreview}
+                </p>
+                <p className="text-muted-foreground">
+                  Las fechas usan la hora local del navegador al guardarse.
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <Button
