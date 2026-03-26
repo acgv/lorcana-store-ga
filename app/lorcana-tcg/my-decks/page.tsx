@@ -36,7 +36,9 @@ import {
   Edit,
   Copy,
   Minus,
-  Eye
+  Eye,
+  Crown,
+  Lock
 } from "lucide-react"
 import Link from "next/link"
 import type { Card as CardType } from "@/lib/types"
@@ -123,6 +125,13 @@ function DeckBuilder() {
     const lookup = buildCardLookup(allCardsCatalog)
     return hydrateDeckRows(savedDecksRaw, lookup)
   }, [savedDecksRaw, allCardsCatalog])
+
+  const isEditing = Boolean(editingDeckId)
+  const deckLimitReached =
+    !isEditing &&
+    !accessInfo?.isPro &&
+    accessInfo?.maxDecks != null &&
+    savedDecksRaw.length >= accessInfo.maxDecks
 
   const inkColorHex: Record<string, string> = {
     Amber: "#F59E0B",
@@ -1591,22 +1600,39 @@ function DeckBuilder() {
             </div>
 
             {/* Botones de acción */}
-            <div className="flex gap-2">
-              <Button
-                onClick={saveDeck}
-                disabled={!deckValidation.isValid || !deckName.trim()}
-                className="flex-1 gap-2"
-              >
-                <Save className="h-4 w-4" />
-                {editingDeckId ? "Actualizar" : "Guardar"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={newDeck}
-                disabled={currentDeck.length === 0}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+            <div className="space-y-2">
+              {deckLimitReached && (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2.5 flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
+                  <p className="text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1">
+                    <Lock className="h-3.5 w-3.5 shrink-0" />
+                    Límite Free alcanzado: máximo {accessInfo?.maxDecks ?? 2} mazos.
+                  </p>
+                  <Link href="/lorcana-tcg/my-decks#mock-subscription">
+                    <Button size="sm" variant="default" className="gap-1 text-xs h-7">
+                      <Crown className="h-3 w-3" /> Suscribirme a Pro
+                    </Button>
+                  </Link>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  onClick={saveDeck}
+                  disabled={!deckValidation.isValid || !deckName.trim() || deckLimitReached}
+                  className="flex-1 gap-2"
+                  title={deckLimitReached ? `Límite Free: máximo ${accessInfo?.maxDecks ?? 2} mazos` : undefined}
+                >
+                  <Save className="h-4 w-4" />
+                  {editingDeckId ? "Actualizar" : "Guardar"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={newDeck}
+                  disabled={currentDeck.length === 0}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
             </div>
           </CardContent>
         </Card>
