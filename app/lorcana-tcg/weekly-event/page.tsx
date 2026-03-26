@@ -16,6 +16,8 @@ type Stats = {
   wins: number
   bestWinStreak: number
   dailyCorrect: number
+  weeklyCompleted: boolean
+  xp: number
 }
 
 type WeeklyGoal = {
@@ -98,6 +100,18 @@ export default function WeeklyEventPage() {
             </div>
             <div className="h-2 rounded bg-muted overflow-hidden">
               <div className="h-full bg-primary" style={{ width: `${Math.round((completed / Math.max(1, goals.length)) * 100)}%` }} />
+            </div>
+            <div className="rounded-md border p-3 bg-muted/20">
+              <p className="text-sm font-medium">Recompensa semanal</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Al completar 3/3 metas desbloqueas la insignia <span className="font-semibold text-foreground">Campeón Semanal</span> y ganas{" "}
+                <span className="font-semibold text-foreground">+120 XP</span>.
+              </p>
+              <div className="mt-2">
+                <Badge variant={stats?.weeklyCompleted ? "default" : "outline"}>
+                  {stats?.weeklyCompleted ? "Recompensa activa" : "Pendiente"}
+                </Badge>
+              </div>
             </div>
           </CardContent>
         </Card>

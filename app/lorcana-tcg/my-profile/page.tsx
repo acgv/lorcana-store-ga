@@ -72,6 +72,7 @@ interface GameStats {
   bestWinStreak: number
   inkedCards: number
   dailyCorrect: number
+  weeklyCompleted: boolean
   xp: number
   level: number
 }

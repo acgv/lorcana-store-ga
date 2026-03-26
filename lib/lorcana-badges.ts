@@ -7,6 +7,7 @@ export type PlayerGameStats = {
   bestWinStreak: number
   inkedCards: number
   dailyCorrect: number
+  weeklyCompleted: boolean
   xp: number
   level: number
 }
@@ -69,10 +70,24 @@ export const LORCANA_BADGES: BadgeDefinition[] = [
     image: "/badges/realm-legend-ga.svg",
     unlock: (s) => s.level >= 10,
   },
+  {
+    id: "weekly-champion-ga",
+    name: "Campeón Semanal",
+    description: "Completa 3/3 metas del evento semanal.",
+    rarity: "epic",
+    image: "/badges/weekly-champion-ga.svg",
+    unlock: (s) => s.weeklyCompleted,
+  },
 ]
 
 export function computeXp(stats: Omit<PlayerGameStats, "xp" | "level">): { xp: number; level: number } {
-  const xp = stats.totalGames * 5 + stats.wins * 25 + stats.dailyCorrect * 15 + stats.bestWinStreak * 10
+  const weeklyBonusXp = stats.weeklyCompleted ? 120 : 0
+  const xp =
+    stats.totalGames * 5 +
+    stats.wins * 25 +
+    stats.dailyCorrect * 15 +
+    stats.bestWinStreak * 10 +
+    weeklyBonusXp
   const level = Math.max(1, Math.floor(xp / 100) + 1)
   return { xp, level }
 }

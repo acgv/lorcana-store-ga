@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
       bestWinStreak,
       inkedCards,
       dailyCorrect,
+      weeklyCompleted: wins >= 5 && bestWinStreak >= 3 && dailyCorrect >= 3,
     }
     const xpInfo = computeXp(baseStats)
     const stats: PlayerGameStats = {
