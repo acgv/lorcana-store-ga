@@ -57,6 +57,20 @@ function phaseHint(phase: GameState["phase"]): string {
   }
 }
 
+type TutorialProgress = {
+  ink: boolean
+  play: boolean
+  questOrChallenge: boolean
+  endTurn: boolean
+}
+
+const EMPTY_TUTORIAL_PROGRESS: TutorialProgress = {
+  ink: false,
+  play: false,
+  questOrChallenge: false,
+  endTurn: false,
+}
+
 export default function PlayVsCpuPage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -69,6 +83,8 @@ export default function PlayVsCpuPage() {
   const [playerMode, setPlayerMode] = useState<"manual" | "auto">("manual")
   const [autoStyle, setAutoStyle] = useState<"step" | "continuous">("step")
   const [autoDelayMs, setAutoDelayMs] = useState(900)
+  const [tutorialEnabled, setTutorialEnabled] = useState(true)
+  const [tutorialProgress, setTutorialProgress] = useState<TutorialProgress>(EMPTY_TUTORIAL_PROGRESS)
 
   const [lockedDeckId, setLockedDeckId] = useState<string | null>(null)
   const [game, setGame] = useState<GameState | null>(null)
@@ -86,6 +102,7 @@ export default function PlayVsCpuPage() {
   const [banishTray, setBanishTray] = useState<Array<{ instanceId: string; definitionId: string; player: 0 | 1 }>>([])
   const [flyAnims, setFlyAnims] = useState<FlyAnim[]>([])
   const processedEventCountRef = useRef(0)
+  const tutorialProcessedCountRef = useRef(0)
   const inPlayElRef = useRef<Record<string, HTMLDivElement | null>>({})
   const discardPlayerElRef = useRef<HTMLDivElement | null>(null)
   const discardCpuElRef = useRef<HTMLDivElement | null>(null)
@@ -113,6 +130,19 @@ export default function PlayVsCpuPage() {
     if (!uiCpu) return []
     return uiCpu.inPlay.map((c, idx) => ({ c, idx })).filter((x) => !x.c.ready)
   }, [uiCpu])
+
+  const tutorialItems = useMemo(
+    () => [
+      { key: "ink", label: "Entinta 1 carta", done: tutorialProgress.ink },
+      { key: "play", label: "Juega 1 carta", done: tutorialProgress.play },
+      { key: "questOrChallenge", label: "Haz Quest o Challenge", done: tutorialProgress.questOrChallenge },
+      { key: "endTurn", label: "Termina tu turno", done: tutorialProgress.endTurn },
+    ],
+    [tutorialProgress]
+  )
+  const tutorialCompletedCount = tutorialItems.filter((x) => x.done).length
+  const tutorialPercent = Math.round((tutorialCompletedCount / tutorialItems.length) * 100)
+  const tutorialNextLabel = tutorialItems.find((x) => !x.done)?.label ?? "Tutorial completado"
 
   const extractInstanceIds = useCallback((e: GameEvent): string[] => {
     switch (e.type) {
@@ -248,10 +278,12 @@ export default function PlayVsCpuPage() {
     setHighlightInstanceIds({})
     setBanishTray([])
     setFlyAnims([])
+    setTutorialProgress(EMPTY_TUTORIAL_PROGRESS)
     // Reset auto UX defaults so next start is guided.
     setAutoStyle("step")
     setAutoDelayMs(900)
     processedEventCountRef.current = 0
+    tutorialProcessedCountRef.current = 0
   }, [])
 
   const appendApply = useCallback(
@@ -297,6 +329,8 @@ export default function PlayVsCpuPage() {
     setGame(started.state)
     setEvents(started.events)
     setEngineTurns([{ index: 1, actor: "system", action: { type: "SKIP_INK" } as any, events: started.events }])
+    setTutorialProgress(EMPTY_TUTORIAL_PROGRESS)
+    tutorialProcessedCountRef.current = started.events.length
     savedReplayRef.current = false
     toast({ title: "Partida iniciada", description: "Motor Lorcana activo (MVP): ink, play, quest y challenge." })
   }, [allCards, decks, selectedDeckId, toast])
@@ -739,6 +773,26 @@ export default function PlayVsCpuPage() {
   }, [events, game])
 
   useEffect(() => {
+    if (!tutorialEnabled) return
+    if (!game) return
+    if (events.length <= tutorialProcessedCountRef.current) return
+
+    const newEvents = events.slice(tutorialProcessedCountRef.current)
+    tutorialProcessedCountRef.current = events.length
+
+    setTutorialProgress((prev) => {
+      const next = { ...prev }
+      for (const e of newEvents) {
+        if (e.type === "INKED" && e.player === 0) next.ink = true
+        if (e.type === "CARD_PLAYED" && e.player === 0) next.play = true
+        if ((e.type === "QUEST_LORE" || e.type === "CHALLENGED") && e.player === 0) next.questOrChallenge = true
+        if (e.type === "TURN_END" && e.player === 0) next.endTurn = true
+      }
+      return next
+    })
+  }, [events, game, tutorialEnabled])
+
+  useEffect(() => {
     if (!game || !lockedDeckId || !selectedDeck) return
     if (game.winner === null) return
     if (savedReplayRef.current) return
@@ -908,6 +962,16 @@ export default function PlayVsCpuPage() {
                     : "Tú decides cada acción (entintar, jugar, quest, challenge)."}
                 </p>
 
+                <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={tutorialEnabled}
+                    onChange={(e) => setTutorialEnabled(e.target.checked)}
+                    disabled={deckSelectDisabled}
+                  />
+                  Tutor interactivo (misiones guiadas)
+                </label>
+
                 {playerMode === "auto" && (
                   <div className="grid grid-cols-1 gap-2">
                     <Select
@@ -1028,6 +1092,36 @@ export default function PlayVsCpuPage() {
                     En fase <span className="font-semibold text-foreground">ink</span> puedes entintar 1 carta. En{" "}
                     <span className="font-semibold text-foreground">main</span> solo puedes jugar cartas cuyo coste sea menor o igual a tu ink lista.
                   </div>
+                  {tutorialEnabled && (
+                    <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium">Tutorial interactivo</p>
+                        <Badge variant="secondary">{tutorialPercent}%</Badge>
+                      </div>
+                      <div className="h-2 rounded bg-muted overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-300"
+                          style={{ width: `${tutorialPercent}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Objetivo actual: <span className="font-medium text-foreground">{tutorialNextLabel}</span>
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {tutorialItems.map((item) => (
+                          <div
+                            key={item.key}
+                            className={[
+                              "rounded-md border p-2 text-xs",
+                              item.done ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300" : "text-muted-foreground",
+                            ].join(" ")}
+                          >
+                            {item.done ? "✓" : "•"} {item.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {banishTray.length > 0 && (
                     <div className="rounded-lg border bg-card p-3">

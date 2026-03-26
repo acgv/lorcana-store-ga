@@ -9,6 +9,7 @@ import { Footer } from "@/components/footer"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useUser } from "@/hooks/use-user"
 import { supabase } from "@/lib/db"
 import { ArrowLeft, Sparkles, Shield, Swords } from "lucide-react"
@@ -56,6 +57,9 @@ export default function VsCpuGameDetailsPage() {
   const [turns, setTurns] = useState<Turn[]>([])
   const [allCards, setAllCards] = useState<CatalogCard[]>([])
   const [loading, setLoading] = useState(false)
+  const [replayIndex, setReplayIndex] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [replaySpeed, setReplaySpeed] = useState<0.5 | 1 | 2>(1)
 
   const canLoad = useMemo(() => Boolean(user && id), [user, id])
   const cardById = useMemo(() => {
@@ -111,6 +115,26 @@ export default function VsCpuGameDetailsPage() {
       router.push("/lorcana-tcg/login")
     }
   }, [userLoading, user, router])
+
+  useEffect(() => {
+    // Por defecto mostramos todo el replay para mantener compatibilidad.
+    setReplayIndex(turns.length)
+    setIsPlaying(false)
+  }, [turns.length])
+
+  useEffect(() => {
+    if (!isPlaying) return
+    if (replayIndex >= turns.length) {
+      setIsPlaying(false)
+      return
+    }
+    const baseMs = 1200
+    const tickMs = Math.max(300, Math.floor(baseMs / replaySpeed))
+    const t = window.setTimeout(() => {
+      setReplayIndex((prev) => Math.min(prev + 1, turns.length))
+    }, tickMs)
+    return () => window.clearTimeout(t)
+  }, [isPlaying, replayIndex, replaySpeed, turns.length])
 
   if (userLoading || loading) return null
   if (!user) return null
@@ -207,11 +231,81 @@ export default function VsCpuGameDetailsPage() {
             <CardDescription>{new Date(session.created_at).toLocaleString()}</CardDescription>
           </CardHeader>
           <CardContent>
+            {turns.length > 0 && (
+              <div className="mb-4 rounded-lg border bg-muted/20 p-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setIsPlaying(false)
+                        setReplayIndex(0)
+                      }}
+                    >
+                      Reiniciar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setIsPlaying(false)
+                        setReplayIndex((prev) => Math.max(0, prev - 1))
+                      }}
+                      disabled={replayIndex <= 0}
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (replayIndex >= turns.length) {
+                          setReplayIndex(0)
+                        }
+                        setIsPlaying((prev) => !prev)
+                      }}
+                    >
+                      {isPlaying ? "Pausar" : "Reproducir"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setIsPlaying(false)
+                        setReplayIndex((prev) => Math.min(turns.length, prev + 1))
+                      }}
+                      disabled={replayIndex >= turns.length}
+                    >
+                      Siguiente
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>
+                      Turno visible: <span className="font-medium text-foreground">{Math.min(replayIndex, turns.length)}</span> /{" "}
+                      {turns.length}
+                    </span>
+                    <Select
+                      value={String(replaySpeed)}
+                      onValueChange={(v) => setReplaySpeed(Number(v) as 0.5 | 1 | 2)}
+                    >
+                      <SelectTrigger className="h-8 w-[92px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0.5">x0.5</SelectItem>
+                        <SelectItem value="1">x1</SelectItem>
+                        <SelectItem value="2">x2</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="space-y-3">
               {turns.length === 0 ? (
                 <p className="text-muted-foreground">No hay turnos guardados en este replay.</p>
               ) : (
-                turns.map((t, idx) => (
+                turns.slice(0, replayIndex).map((t, idx) => (
                   <div
                     key={`${t.turn_index}-${t.player_card_id || "p"}-${(t.engine_action as any)?.type || "legacy"}`}
                     className={[
