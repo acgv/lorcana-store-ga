@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useLanguage } from "@/components/language-provider"
@@ -80,6 +81,7 @@ interface GameBadge {
   name: string
   description: string
   rarity: "common" | "rare" | "epic" | "legendary"
+  image?: string
   unlocked: boolean
 }
 
@@ -94,6 +96,8 @@ export default function MyProfilePage() {
   const [phones, setPhones] = useState<UserPhone[]>([])
   const [gameStats, setGameStats] = useState<GameStats | null>(null)
   const [gameBadges, setGameBadges] = useState<GameBadge[]>([])
+  const [lastUnlockedBadge, setLastUnlockedBadge] = useState<GameBadge | null>(null)
+  const [showConfetti, setShowConfetti] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -147,8 +151,33 @@ export default function MyProfilePage() {
         })
         const gameData = await gameRes.json()
         if (gameData.success) {
-          setGameStats(gameData.data.stats || null)
-          setGameBadges(gameData.data.badges || [])
+          const stats = gameData.data.stats || null
+          const badges: GameBadge[] = gameData.data.badges || []
+          setGameStats(stats)
+          setGameBadges(badges)
+
+          // Notifica nuevas insignias desbloqueadas una sola vez por usuario.
+          const unlockedIds = badges.filter((b) => b.unlocked).map((b) => b.id)
+          const storageKey = `lorcana_seen_badges_${user.id}`
+          const seenRaw = localStorage.getItem(storageKey)
+          const seen = seenRaw ? (JSON.parse(seenRaw) as string[]) : []
+          const newIds = unlockedIds.filter((id) => !seen.includes(id))
+          if (newIds.length > 0) {
+            const latest = badges.find((b) => b.id === newIds[newIds.length - 1]) || null
+            if (latest) {
+              setLastUnlockedBadge(latest)
+              setShowConfetti(true)
+              toast({
+                title: "Nueva insignia desbloqueada",
+                description: `${latest.name}`,
+              })
+              window.setTimeout(() => setShowConfetti(false), 1600)
+            }
+          } else {
+            const latestUnlocked = badges.filter((b) => b.unlocked).slice(-1)[0] || null
+            setLastUnlockedBadge(latestUnlocked)
+          }
+          localStorage.setItem(storageKey, JSON.stringify(Array.from(new Set([...seen, ...unlockedIds]))))
         }
       }
     } catch (error) {
@@ -219,6 +248,31 @@ export default function MyProfilePage() {
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
+        {showConfetti && (
+          <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+            {Array.from({ length: 28 }).map((_, i) => {
+              const left = (i * 13) % 100
+              const delay = (i % 8) * 60
+              const colors = ["#f59e0b", "#22d3ee", "#a78bfa", "#34d399", "#fb7185"]
+              return (
+                <span
+                  key={`confetti-${i}`}
+                  style={{
+                    position: "absolute",
+                    left: `${left}%`,
+                    top: "-12px",
+                    width: 8,
+                    height: 14,
+                    borderRadius: 2,
+                    background: colors[i % colors.length],
+                    transform: `rotate(${(i * 29) % 360}deg)`,
+                    animation: `badge-confetti 1400ms ease-out ${delay}ms forwards`,
+                  }}
+                />
+              )
+            })}
+          </div>
+        )}
         <div className="mb-8">
           <h1 className="font-display text-4xl font-bold mb-2">Mi Perfil</h1>
           <p className="text-muted-foreground">
@@ -267,6 +321,23 @@ export default function MyProfilePage() {
                       {gameBadges.filter((b) => b.unlocked).length}/{gameBadges.length}
                     </Badge>
                   </div>
+                  {lastUnlockedBadge && (
+                    <div className="rounded-md border border-primary/40 bg-primary/10 p-3 flex items-center gap-3">
+                      <div className="relative w-12 h-12 rounded-md overflow-hidden border border-primary/40 bg-background/60">
+                        <Image
+                          src={lastUnlockedBadge.image || "/placeholder.svg"}
+                          alt={lastUnlockedBadge.name}
+                          fill
+                          className="object-cover"
+                          sizes="48px"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Última insignia ganada</p>
+                        <p className="font-medium">{lastUnlockedBadge.name}</p>
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {gameBadges.map((b) => (
                       <div
@@ -276,9 +347,20 @@ export default function MyProfilePage() {
                           b.unlocked ? "bg-primary/10 border-primary/40" : "opacity-60",
                         ].join(" ")}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="font-medium text-sm">{b.name}</p>
-                          <span className="text-xs uppercase text-muted-foreground">{b.rarity}</span>
+                        <div className="flex items-center justify-between mb-2 gap-2">
+                          <div className="relative w-10 h-10 rounded-md overflow-hidden border bg-background/60 shrink-0">
+                            <Image
+                              src={b.image || "/placeholder.svg"}
+                              alt={b.name}
+                              fill
+                              className="object-cover"
+                              sizes="40px"
+                            />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm line-clamp-1">{b.name}</p>
+                            <span className="text-xs uppercase text-muted-foreground">{b.rarity}</span>
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground">{b.description}</p>
                         <div className="mt-2">
@@ -427,6 +509,18 @@ export default function MyProfilePage() {
             />
           </TabsContent>
         </Tabs>
+        <style jsx global>{`
+          @keyframes badge-confetti {
+            0% {
+              opacity: 1;
+              transform: translateY(0) rotate(0deg);
+            }
+            100% {
+              opacity: 0;
+              transform: translateY(80vh) rotate(540deg);
+            }
+          }
+        `}</style>
       </main>
       <Footer />
     </div>

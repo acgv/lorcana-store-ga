@@ -16,6 +16,7 @@ export type BadgeDefinition = {
   name: string
   description: string
   rarity: BadgeRarity
+  image: string
   unlock: (stats: PlayerGameStats) => boolean
 }
 
@@ -25,6 +26,7 @@ export const LORCANA_BADGES: BadgeDefinition[] = [
     name: "Primer Destello GA",
     description: "Juega tu primera partida.",
     rarity: "common",
+    image: "/badges/first-spark-ga.svg",
     unlock: (s) => s.totalGames >= 1,
   },
   {
@@ -32,6 +34,7 @@ export const LORCANA_BADGES: BadgeDefinition[] = [
     name: "Aprendiz de Tinta",
     description: "Entinta 50 cartas en total.",
     rarity: "common",
+    image: "/badges/ink-apprentice-ga.svg",
     unlock: (s) => s.inkedCards >= 50,
   },
   {
@@ -39,6 +42,7 @@ export const LORCANA_BADGES: BadgeDefinition[] = [
     name: "Cazador de Lore",
     description: "Gana 10 partidas vs CPU.",
     rarity: "rare",
+    image: "/badges/lore-hunter-ga.svg",
     unlock: (s) => s.wins >= 10,
   },
   {
@@ -46,6 +50,7 @@ export const LORCANA_BADGES: BadgeDefinition[] = [
     name: "Racha Encantada",
     description: "Logra una racha de 3 victorias seguidas.",
     rarity: "epic",
+    image: "/badges/enchanted-streak-ga.svg",
     unlock: (s) => s.bestWinStreak >= 3,
   },
   {
@@ -53,6 +58,7 @@ export const LORCANA_BADGES: BadgeDefinition[] = [
     name: "Estratega Diario",
     description: "Acierta 5 desafíos diarios.",
     rarity: "rare",
+    image: "/badges/daily-strategist-ga.svg",
     unlock: (s) => s.dailyCorrect >= 5,
   },
   {
@@ -60,6 +66,7 @@ export const LORCANA_BADGES: BadgeDefinition[] = [
     name: "Leyenda del Reino",
     description: "Alcanza nivel 10.",
     rarity: "legendary",
+    image: "/badges/realm-legend-ga.svg",
     unlock: (s) => s.level >= 10,
   },
 ]
