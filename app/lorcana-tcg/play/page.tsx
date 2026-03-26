@@ -248,6 +248,9 @@ export default function PlayVsCpuPage() {
     setHighlightInstanceIds({})
     setBanishTray([])
     setFlyAnims([])
+    // Reset auto UX defaults so next start is guided.
+    setAutoStyle("step")
+    setAutoDelayMs(900)
     processedEventCountRef.current = 0
   }, [])
 
@@ -288,6 +291,8 @@ export default function PlayVsCpuPage() {
       return
     }
 
+    // Auto should start guided by default (no runaway autoplay).
+    setAutoStyle("step")
     setLockedDeckId(deck.id)
     setGame(started.state)
     setEvents(started.events)
@@ -347,25 +352,36 @@ export default function PlayVsCpuPage() {
   const chooseOneAutoActionForPlayer = useCallback(
     (s: GameState): GameAction[] => {
       // Devuelve 0..n acciones; preferimos completar un turno de forma entendible.
+      // Importante: devolvemos SOLO acciones legales (probando contra el motor).
+      const firstLegal = (candidates: GameAction[]): GameAction[] => {
+        for (const a of candidates) {
+          const r = applyAction(s, a)
+          if (r.ok) return [a]
+        }
+        return []
+      }
+
       if (s.phase === "ink") {
         // intenta entintar; si no puede, salta
-        for (let i = 0; i < s.players[0].hand.length; i++) {
-          return [{ type: "INK_FROM_HAND", handIndex: i }]
-        }
-        return [{ type: "SKIP_INK" }]
+        const inkCands: GameAction[] = s.players[0].hand.map((_, i) => ({ type: "INK_FROM_HAND", handIndex: i }))
+        const ink = firstLegal(inkCands)
+        if (ink.length) return ink
+        return firstLegal([{ type: "SKIP_INK" }])
       }
 
       if (s.phase === "main") {
         // 1) jugar primera carta legal
-        for (let i = 0; i < s.players[0].hand.length; i++) {
-          return [{ type: "PLAY_FROM_HAND", handIndex: i }]
-        }
+        const playCands: GameAction[] = s.players[0].hand.map((_, i) => ({ type: "PLAY_FROM_HAND", handIndex: i }))
+        const play = firstLegal(playCands)
+        if (play.length) return play
+
         // 2) quest si puede
-        for (let i = 0; i < s.players[0].inPlay.length; i++) {
-          return [{ type: "QUEST", inPlayIndex: i }]
-        }
+        const questCands: GameAction[] = s.players[0].inPlay.map((_, i) => ({ type: "QUEST", inPlayIndex: i }))
+        const quest = firstLegal(questCands)
+        if (quest.length) return quest
+
         // 3) terminar turno
-        return [{ type: "END_MAIN" }]
+        return firstLegal([{ type: "END_MAIN" }])
       }
 
       return []
@@ -375,11 +391,19 @@ export default function PlayVsCpuPage() {
 
   const chooseOneAutoActionForCpu = useCallback(
     (s: GameState): GameAction[] => {
-      if (s.phase === "ink") {
-        for (let i = 0; i < s.players[1].hand.length; i++) {
-          return [{ type: "INK_FROM_HAND", handIndex: i }]
+      const firstLegal = (candidates: GameAction[]): GameAction[] => {
+        for (const a of candidates) {
+          const r = applyAction(s, a)
+          if (r.ok) return [a]
         }
-        return [{ type: "SKIP_INK" }]
+        return []
+      }
+
+      if (s.phase === "ink") {
+        const inkCands: GameAction[] = s.players[1].hand.map((_, i) => ({ type: "INK_FROM_HAND", handIndex: i }))
+        const ink = firstLegal(inkCands)
+        if (ink.length) return ink
+        return firstLegal([{ type: "SKIP_INK" }])
       }
 
       if (s.phase === "main") {
@@ -396,13 +420,16 @@ export default function PlayVsCpuPage() {
             bestIdx = i
           }
         }
-        if (bestIdx !== null && bestLore > 0) return [{ type: "QUEST", inPlayIndex: bestIdx }]
+        if (bestIdx !== null && bestLore > 0) {
+          const q = firstLegal([{ type: "QUEST", inPlayIndex: bestIdx }])
+          if (q.length) return q
+        }
 
         // jugar primera legal
-        for (let i = 0; i < s.players[1].hand.length; i++) {
-          return [{ type: "PLAY_FROM_HAND", handIndex: i }]
-        }
-        return [{ type: "END_MAIN" }]
+        const playCands: GameAction[] = s.players[1].hand.map((_, i) => ({ type: "PLAY_FROM_HAND", handIndex: i }))
+        const play = firstLegal(playCands)
+        if (play.length) return play
+        return firstLegal([{ type: "END_MAIN" }])
       }
 
       return []
