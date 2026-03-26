@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -40,6 +41,12 @@ type Session = {
   created_at: string
 }
 
+type CatalogCard = {
+  id: string | number
+  name?: string | null
+  image?: string | null
+}
+
 export default function VsCpuGameDetailsPage() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
@@ -47,9 +54,17 @@ export default function VsCpuGameDetailsPage() {
 
   const [session, setSession] = useState<Session | null>(null)
   const [turns, setTurns] = useState<Turn[]>([])
+  const [allCards, setAllCards] = useState<CatalogCard[]>([])
   const [loading, setLoading] = useState(false)
 
   const canLoad = useMemo(() => Boolean(user && id), [user, id])
+  const cardById = useMemo(() => {
+    const m = new Map<string, CatalogCard>()
+    for (const c of allCards) {
+      m.set(String(c.id).toLowerCase().trim(), c)
+    }
+    return m
+  }, [allCards])
 
   useEffect(() => {
     let cancelled = false
@@ -70,6 +85,12 @@ export default function VsCpuGameDetailsPage() {
 
         setSession(json.data.session)
         setTurns(json.data.turns || [])
+
+        const cardsRes = await fetch(`/api/cards?t=${Date.now()}`, { cache: "no-store" })
+        const cardsJson = await cardsRes.json()
+        if (cardsJson?.success && !cancelled) {
+          setAllCards(cardsJson.data || [])
+        }
       } catch (e) {
         console.error(e)
         if (!cancelled) {
@@ -105,6 +126,31 @@ export default function VsCpuGameDetailsPage() {
     )
   }
 
+  const getPlayableFromTurn = (t: Turn) => {
+    const definitionId = String((t.engine_action as any)?.definitionId || "").toLowerCase().trim()
+    const fallbackName = (t.engine_action as any)?.definitionId || "Carta"
+    const card = definitionId ? cardById.get(definitionId) : null
+    return {
+      id: definitionId || fallbackName,
+      name: card?.name || fallbackName,
+      image: card?.image || "/placeholder.svg",
+    }
+  }
+
+  const getEventLabel = (e: any) => {
+    const type = e?.type || "EVENT"
+    if (type === "QUEST_LORE") return `Quest +${e?.loreGained ?? 0} lore`
+    if (type === "CARD_BANISHED") return "Banish"
+    if (type === "CHALLENGED") return `Challenge ${e?.attackerDamage ?? 0}/${e?.defenderDamage ?? 0}`
+    if (type === "CARD_PLAYED") return "Carta jugada"
+    if (type === "INKED") return "Entintó"
+    if (type === "DRAW") return "Robo"
+    if (type === "TURN_BEGIN") return "Inicio turno"
+    if (type === "TURN_END") return "Fin turno"
+    if (type === "GAME_OVER") return "Fin de partida"
+    return type
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -137,12 +183,15 @@ export default function VsCpuGameDetailsPage() {
                 <p className="text-muted-foreground">No hay turnos guardados en este replay.</p>
               ) : (
                 turns.map((t) => (
-                  <div key={`${t.turn_index}-${t.player_card_id || "p"}`} className="rounded-lg border p-3">
+                  <div
+                    key={`${t.turn_index}-${t.player_card_id || "p"}-${(t.engine_action as any)?.type || "legacy"}`}
+                    className="rounded-xl border bg-gradient-to-b from-card to-muted/20 p-3"
+                  >
                     <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
-                      <p className="font-medium">Turno {t.turn_index}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="font-semibold">Turno {t.turn_index}</p>
+                      <p className="text-xs">
                         {t.engine_action ? (
-                          <span className="text-foreground">Motor</span>
+                          <span className="text-foreground font-medium">Motor</span>
                         ) : t.action === "illegal_attempt" ? (
                           <span className="text-destructive">Incorrecto</span>
                         ) : t.action === "pass" ? (
@@ -152,7 +201,13 @@ export default function VsCpuGameDetailsPage() {
                         )}{" "}
                         {t.engine_action ? (
                           <span>
-                            · actor: {t.engine_actor || "?"} · acción: {(t.engine_action as any)?.type || "?"}
+                            {" "}
+                            · actor:{" "}
+                            <span className="font-medium text-foreground">
+                              {t.engine_actor === "player" ? "Jugador" : t.engine_actor === "cpu" ? "CPU" : (t.engine_actor || "?")}
+                            </span>
+                            {" "}· acción:{" "}
+                            <span className="font-medium text-foreground">{(t.engine_action as any)?.type || "?"}</span>
                           </span>
                         ) : (
                           <span>
@@ -165,16 +220,39 @@ export default function VsCpuGameDetailsPage() {
                       <p className="text-xs text-destructive mb-2">{t.illegal_reason}</p>
                     )}
                     {t.engine_action ? (
-                      <div className="rounded-md border bg-muted/20 p-2 space-y-2">
-                        <p className="text-sm font-medium">Eventos</p>
+                      <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+                        {(t.engine_action as any)?.type === "PLAY_FROM_HAND" && (
+                          <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">Carta jugada</p>
+                            <div className="flex items-center gap-3 rounded-md border bg-background/50 p-2">
+                              <div className="relative w-14 h-20 rounded-md overflow-hidden border bg-muted shrink-0">
+                                <Image
+                                  src={getPlayableFromTurn(t).image}
+                                  alt={getPlayableFromTurn(t).name}
+                                  fill
+                                  className="object-cover"
+                                  sizes="56px"
+                                  unoptimized={Boolean(getPlayableFromTurn(t).image?.startsWith("http"))}
+                                />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">{getPlayableFromTurn(t).name}</p>
+                                <p className="text-xs text-muted-foreground">Acción: PLAY_FROM_HAND</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <p className="text-sm font-medium">Eventos del turno</p>
                         {Array.isArray(t.engine_events) && t.engine_events.length > 0 ? (
-                          <div className="space-y-1">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {t.engine_events.slice(0, 10).map((e: any, idx: number) => (
-                              <p key={idx} className="text-xs text-muted-foreground">
-                                {e?.type || "EVENT"}{" "}
-                                {e?.player != null ? `P${Number(e.player) + 1}` : ""}
-                                {e?.loreGained != null ? ` (+${e.loreGained} lore)` : ""}
-                              </p>
+                              <div key={idx} className="rounded-md border bg-background/50 p-2">
+                                <p className="text-xs text-muted-foreground">
+                                  {e?.player != null ? (Number(e.player) === 0 ? "Jugador" : "CPU") : "Sistema"}
+                                </p>
+                                <p className="text-sm font-medium">{getEventLabel(e)}</p>
+                              </div>
                             ))}
                           </div>
                         ) : (
