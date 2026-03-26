@@ -23,6 +23,7 @@ type Stats = {
 type WeeklyGoal = {
   id: string
   label: string
+  code?: string
   current: number
   target: number
 }
@@ -30,6 +31,9 @@ type WeeklyGoal = {
 export default function WeeklyEventPage() {
   const { user, loading } = useUser()
   const [stats, setStats] = useState<Stats | null>(null)
+  const [seasonTitle, setSeasonTitle] = useState("Semana activa")
+  const [rewardXp, setRewardXp] = useState(120)
+  const [configuredGoals, setConfiguredGoals] = useState<Array<{ id: string; code: string; label: string; target: number }>>([])
   const [loadingData, setLoadingData] = useState(false)
 
   const load = useCallback(async () => {
@@ -46,6 +50,13 @@ export default function WeeklyEventPage() {
       if (json.success) {
         setStats(json.data.stats)
       }
+      const seasonRes = await fetch("/api/games/weekly-event")
+      const seasonJson = await seasonRes.json()
+      if (seasonJson?.success && seasonJson?.data?.season) {
+        setSeasonTitle(seasonJson.data.season.name || "Semana activa")
+        setRewardXp(Number(seasonJson.data.season.reward_xp || 120))
+        setConfiguredGoals(seasonJson.data.goals || [])
+      }
     } finally {
       setLoadingData(false)
     }
@@ -57,12 +68,22 @@ export default function WeeklyEventPage() {
 
   const goals = useMemo<WeeklyGoal[]>(() => {
     if (!stats) return []
+    if (configuredGoals.length > 0) {
+      return configuredGoals.map((g) => {
+        const current =
+          g.code === "wins" ? stats.wins :
+          g.code === "streak" ? stats.bestWinStreak :
+          g.code === "daily" ? stats.dailyCorrect :
+          0
+        return { id: g.id, code: g.code, label: g.label, current, target: g.target }
+      })
+    }
     return [
-      { id: "g1", label: "Gana 5 partidas", current: stats.wins, target: 5 },
-      { id: "g2", label: "Racha de 3 victorias", current: stats.bestWinStreak, target: 3 },
-      { id: "g3", label: "Acierta 3 desafíos diarios", current: stats.dailyCorrect, target: 3 },
+      { id: "g1", code: "wins", label: "Gana 5 partidas", current: stats.wins, target: 5 },
+      { id: "g2", code: "streak", label: "Racha de 3 victorias", current: stats.bestWinStreak, target: 3 },
+      { id: "g3", code: "daily", label: "Acierta 3 desafíos diarios", current: stats.dailyCorrect, target: 3 },
     ]
-  }, [stats])
+  }, [configuredGoals, stats])
 
   const completed = goals.filter((g) => g.current >= g.target).length
 
@@ -87,7 +108,7 @@ export default function WeeklyEventPage() {
         <Card className="bg-gradient-to-b from-card to-muted/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" /> Semana activa
+              <CalendarDays className="h-4 w-4" /> {seasonTitle}
             </CardTitle>
             <CardDescription>Progreso global del evento semanal.</CardDescription>
           </CardHeader>
@@ -104,8 +125,8 @@ export default function WeeklyEventPage() {
             <div className="rounded-md border p-3 bg-muted/20">
               <p className="text-sm font-medium">Recompensa semanal</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Al completar 3/3 metas desbloqueas la insignia <span className="font-semibold text-foreground">Campeón Semanal</span> y ganas{" "}
-                <span className="font-semibold text-foreground">+120 XP</span>.
+                Al completar {goals.length}/{goals.length} metas desbloqueas la insignia <span className="font-semibold text-foreground">Campeón Semanal</span> y ganas{" "}
+                <span className="font-semibold text-foreground">+{rewardXp} XP</span>.
               </p>
               <div className="mt-2">
                 <Badge variant={stats?.weeklyCompleted ? "default" : "outline"}>
