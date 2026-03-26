@@ -231,6 +231,14 @@ export function Header() {
                       <List className="h-4 w-4" />
                       Mis Mazos
                     </Link>
+                    <Link
+                      href="/lorcana-tcg/my-games"
+                      className="text-base font-sans font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-2 hover:bg-muted rounded-md flex items-center gap-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <FileText className="h-4 w-4" />
+                      Mis Partidas
+                    </Link>
                     {/* TODO: Re-habilitar funcionalidad de Mis Envíos */}
                     {/* <Link
                       href="/lorcana-tcg/my-submissions"
@@ -320,6 +328,10 @@ export function Header() {
                 >
                   <List className="mr-2 h-4 w-4" />
                   Mis Mazos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/lorcana-tcg/my-games")} className="cursor-pointer">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Mis Partidas
                 </DropdownMenuItem>
                 {/* TODO: Re-habilitar funcionalidad de Mis Envíos */}
                 {/* <DropdownMenuItem onClick={() => router.push("/lorcana-tcg/my-submissions")} className="cursor-pointer">
