@@ -4,18 +4,51 @@ import { supabaseAdmin } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
+function secureJson(body: unknown, init?: { status?: number }) {
+  const res = NextResponse.json(body, init)
+  res.headers.set("Cache-Control", "private, no-store, max-age=0")
+  res.headers.set("Pragma", "no-cache")
+  res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+  return res
+}
+
+async function writeAuditLog(params: {
+  sessionId?: string | null
+  userId?: string | null
+  eventType: string
+  token?: string | null
+  ip?: string | null
+  userAgent?: string | null
+  meta?: Record<string, unknown>
+}) {
+  if (!supabaseAdmin) return
+  try {
+    await supabaseAdmin.from("vs_cpu_share_audit_logs").insert({
+      session_id: params.sessionId ?? null,
+      user_id: params.userId ?? null,
+      event_type: params.eventType,
+      token: params.token ?? null,
+      ip: params.ip ?? null,
+      user_agent: params.userAgent ?? null,
+      meta: params.meta ?? null,
+    })
+  } catch (e) {
+    console.error("share audit log insert failed:", e)
+  }
+}
+
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await verifySupabaseSession(request)
   if (!auth.success) {
-    return NextResponse.json({ success: false, error: auth.error }, { status: auth.status })
+    return secureJson({ success: false, error: auth.error }, { status: auth.status })
   }
   if (!supabaseAdmin) {
-    return NextResponse.json({ success: false, error: "Database not configured" }, { status: 503 })
+    return secureJson({ success: false, error: "Database not configured" }, { status: 503 })
   }
 
   const params = await context.params
   const id = String(params?.id || "").trim()
-  if (!id) return NextResponse.json({ success: false, error: "Missing id" }, { status: 400 })
+  if (!id) return secureJson({ success: false, error: "Missing id" }, { status: 400 })
 
   let body: { ttlDays?: number; regenerate?: boolean } = {}
   try {
@@ -35,8 +68,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     .eq("user_id", auth.userId)
     .maybeSingle()
 
-  if (sessionErr) return NextResponse.json({ success: false, error: sessionErr.message }, { status: 500 })
-  if (!sessionRow) return NextResponse.json({ success: false, error: "Session not found" }, { status: 404 })
+  if (sessionErr) return secureJson({ success: false, error: sessionErr.message }, { status: 500 })
+  if (!sessionRow) return secureJson({ success: false, error: "Session not found" }, { status: 404 })
 
   const token = regenerate ? crypto.randomUUID() : (sessionRow.share_token || crypto.randomUUID())
   const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000).toISOString()
@@ -46,9 +79,19 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     .eq("id", id)
     .eq("user_id", auth.userId)
 
-  if (upErr) return NextResponse.json({ success: false, error: upErr.message }, { status: 500 })
+  if (upErr) return secureJson({ success: false, error: upErr.message }, { status: 500 })
 
-  return NextResponse.json({
+  await writeAuditLog({
+    sessionId: sessionRow.id,
+    userId: auth.userId,
+    eventType: regenerate ? "share_regenerated" : "share_created",
+    token,
+    ip: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+    userAgent: request.headers.get("user-agent"),
+    meta: { ttlDays, expiresAt },
+  })
+
+  return secureJson({
     success: true,
     data: {
       token,
@@ -62,15 +105,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
 export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await verifySupabaseSession(_request)
   if (!auth.success) {
-    return NextResponse.json({ success: false, error: auth.error }, { status: auth.status })
+    return secureJson({ success: false, error: auth.error }, { status: auth.status })
   }
   if (!supabaseAdmin) {
-    return NextResponse.json({ success: false, error: "Database not configured" }, { status: 503 })
+    return secureJson({ success: false, error: "Database not configured" }, { status: 503 })
   }
 
   const params = await context.params
   const id = String(params?.id || "").trim()
-  if (!id) return NextResponse.json({ success: false, error: "Missing id" }, { status: 400 })
+  if (!id) return secureJson({ success: false, error: "Missing id" }, { status: 400 })
 
   const { error: upErr } = await supabaseAdmin
     .from("vs_cpu_game_sessions")
@@ -78,6 +121,13 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     .eq("id", id)
     .eq("user_id", auth.userId)
 
-  if (upErr) return NextResponse.json({ success: false, error: upErr.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+  if (upErr) return secureJson({ success: false, error: upErr.message }, { status: 500 })
+  await writeAuditLog({
+    sessionId: id,
+    userId: auth.userId,
+    eventType: "share_revoked",
+    ip: _request.headers.get("x-forwarded-for") || _request.headers.get("x-real-ip"),
+    userAgent: _request.headers.get("user-agent"),
+  })
+  return secureJson({ success: true })
 }

@@ -4,19 +4,27 @@ import { supabaseAdmin } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
+function secureJson(body: unknown, init?: { status?: number }) {
+  const res = NextResponse.json(body, init)
+  res.headers.set("Cache-Control", "private, no-store, max-age=0")
+  res.headers.set("Pragma", "no-cache")
+  res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+  return res
+}
+
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await verifySupabaseSession(request)
   if (!auth.success) {
-    return NextResponse.json({ success: false, error: auth.error }, { status: auth.status })
+    return secureJson({ success: false, error: auth.error }, { status: auth.status })
   }
   if (!supabaseAdmin) {
-    return NextResponse.json({ success: false, error: "Database not configured" }, { status: 503 })
+    return secureJson({ success: false, error: "Database not configured" }, { status: 503 })
   }
 
   const params = await context.params
   const id = String(params?.id || "").trim()
   if (!id) {
-    return NextResponse.json({ success: false, error: "Missing id" }, { status: 400 })
+    return secureJson({ success: false, error: "Missing id" }, { status: 400 })
   }
 
   const { data: sessionRow, error: sessionErr } = await supabaseAdmin
@@ -28,10 +36,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
   if (sessionErr) {
     console.error("vs-cpu session GET:", sessionErr)
-    return NextResponse.json({ success: false, error: sessionErr.message }, { status: 500 })
+    return secureJson({ success: false, error: sessionErr.message }, { status: 500 })
   }
   if (!sessionRow) {
-    return NextResponse.json({ success: false, error: "Session not found" }, { status: 404 })
+    return secureJson({ success: false, error: "Session not found" }, { status: 404 })
   }
 
   const { data: turns, error: turnsErr } = await supabaseAdmin
@@ -44,10 +52,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
   if (turnsErr) {
     console.error("vs-cpu turns GET:", turnsErr)
-    return NextResponse.json({ success: false, error: turnsErr.message }, { status: 500 })
+    return secureJson({ success: false, error: turnsErr.message }, { status: 500 })
   }
 
-  return NextResponse.json({
+  return secureJson({
     success: true,
     data: {
       session: sessionRow,
