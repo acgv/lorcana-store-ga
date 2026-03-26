@@ -41,6 +41,8 @@ type Session = {
   mode: "manual" | "auto"
   result: "player" | "cpu"
   created_at: string
+  is_public?: boolean
+  share_expires_at?: string | null
 }
 
 type CatalogCard = {
@@ -63,6 +65,8 @@ export default function VsCpuGameDetailsPage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [replaySpeed, setReplaySpeed] = useState<0.5 | 1 | 2>(1)
   const [sharedUrl, setSharedUrl] = useState<string | null>(null)
+  const [shareTtlDays, setShareTtlDays] = useState<1 | 7 | 30>(7)
+  const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null)
 
   const canLoad = useMemo(() => Boolean(user && id), [user, id])
   const cardById = useMemo(() => {
@@ -91,6 +95,7 @@ export default function VsCpuGameDetailsPage() {
         if (cancelled) return
 
         setSession(json.data.session)
+        setShareExpiresAt(json.data.session?.share_expires_at || null)
         setTurns(json.data.turns || [])
 
         const cardsRes = await fetch(`/api/cards?t=${Date.now()}`, { cache: "no-store" })
@@ -215,14 +220,21 @@ export default function VsCpuGameDetailsPage() {
     ? `${window.location.origin}/lorcana-tcg/my-games/${session.id}`
     : `/lorcana-tcg/my-games/${session.id}`)
 
-  const ensureSharedUrl = async () => {
-    if (sharedUrl) return sharedUrl
+  const ensureSharedUrl = async (options?: { regenerate?: boolean }) => {
+    if (sharedUrl && !options?.regenerate) return sharedUrl
     const { data } = await supabase.auth.getSession()
     const token = data.session?.access_token
     if (!token) throw new Error("No hay sesión activa")
     const res = await fetch(`/api/games/vs-cpu/${session.id}/share`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ttlDays: shareTtlDays,
+        regenerate: Boolean(options?.regenerate),
+      }),
     })
     const json = await res.json()
     if (!json.success) throw new Error(json.error || "No se pudo generar enlace público")
@@ -230,6 +242,7 @@ export default function VsCpuGameDetailsPage() {
       ? `${window.location.origin}${json.data.url}`
       : json.data.url
     setSharedUrl(nextUrl)
+    setShareExpiresAt(json.data.expiresAt || null)
     return nextUrl
   }
 
@@ -269,6 +282,35 @@ export default function VsCpuGameDetailsPage() {
     }
   }
 
+  const handleRegenerateLink = async () => {
+    try {
+      const finalUrl = await ensureSharedUrl({ regenerate: true })
+      await navigator.clipboard.writeText(finalUrl)
+      toast({ title: "Enlace regenerado", description: "El enlace anterior quedó invalidado." })
+    } catch {
+      toast({ title: "Error", description: "No se pudo regenerar el enlace.", variant: "destructive" })
+    }
+  }
+
+  const handleRevokeLink = async () => {
+    try {
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
+      if (!token) throw new Error("No hay sesión activa")
+      const res = await fetch(`/api/games/vs-cpu/${session.id}/share`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error || "No se pudo revocar")
+      setSharedUrl(null)
+      setShareExpiresAt(null)
+      toast({ title: "Enlace revocado", description: "El replay dejó de ser público." })
+    } catch {
+      toast({ title: "Error", description: "No se pudo revocar el enlace.", variant: "destructive" })
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -287,14 +329,35 @@ export default function VsCpuGameDetailsPage() {
               {session.result === "player" ? "Victoria" : "Derrota"}
             </Badge>
             <Badge variant="secondary">{session.mode === "manual" ? "Manual" : "Auto"}</Badge>
+            <Select value={String(shareTtlDays)} onValueChange={(v) => setShareTtlDays(Number(v) as 1 | 7 | 30)}>
+              <SelectTrigger className="h-8 w-[110px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">24h</SelectItem>
+                <SelectItem value="7">7 días</SelectItem>
+                <SelectItem value="30">30 días</SelectItem>
+              </SelectContent>
+            </Select>
             <Button size="sm" variant="outline" onClick={handleCopyLink}>
               Copiar link
             </Button>
             <Button size="sm" onClick={handleShare}>
               Compartir
             </Button>
+            <Button size="sm" variant="outline" onClick={handleRegenerateLink}>
+              Regenerar
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleRevokeLink}>
+              Revocar
+            </Button>
           </div>
         </div>
+        {shareExpiresAt && (
+          <div className="text-xs text-muted-foreground">
+            Enlace público activo hasta: <span className="font-medium text-foreground">{new Date(shareExpiresAt).toLocaleString()}</span>
+          </div>
+        )}
 
         <Card>
           <CardHeader>

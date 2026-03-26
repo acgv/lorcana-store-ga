@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
   const { data: sessionRow, error: sessionErr } = await supabaseAdmin
     .from("vs_cpu_game_sessions")
-    .select("id, deck_id, deck_name, mode, result, created_at, updated_at")
+    .select("id, deck_id, deck_name, mode, result, created_at, updated_at, is_public, share_expires_at")
     .eq("id", id)
     .eq("user_id", auth.userId)
     .maybeSingle()
