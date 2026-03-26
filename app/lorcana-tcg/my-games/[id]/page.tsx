@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useUser } from "@/hooks/use-user"
 import { supabase } from "@/lib/db"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Sparkles, Shield, Swords } from "lucide-react"
 
 type Turn = {
   turn_index: number
@@ -127,14 +127,43 @@ export default function VsCpuGameDetailsPage() {
   }
 
   const getPlayableFromTurn = (t: Turn) => {
-    const definitionId = String((t.engine_action as any)?.definitionId || "").toLowerCase().trim()
-    const fallbackName = (t.engine_action as any)?.definitionId || "Carta"
+    const actionDef = String((t.engine_action as any)?.definitionId || "").toLowerCase().trim()
+    const fromEvents = Array.isArray(t.engine_events)
+      ? t.engine_events.find((e: any) => typeof e?.definitionId === "string" && e.definitionId)
+      : null
+    const definitionId = actionDef || String(fromEvents?.definitionId || "").toLowerCase().trim()
+    const fallbackName = (t.engine_action as any)?.definitionId || fromEvents?.definitionId || "Carta"
     const card = definitionId ? cardById.get(definitionId) : null
     return {
       id: definitionId || fallbackName,
       name: card?.name || fallbackName,
       image: card?.image || "/placeholder.svg",
     }
+  }
+
+  const getSpotlightCards = (t: Turn) => {
+    const cards: Array<{ key: string; name: string; image: string; tag: string }> = []
+    const seen = new Set<string>()
+    if (!Array.isArray(t.engine_events)) return cards
+    for (const e of t.engine_events as any[]) {
+      const definitionId = typeof e?.definitionId === "string" ? e.definitionId.toLowerCase().trim() : ""
+      if (!definitionId || seen.has(definitionId)) continue
+      const c = cardById.get(definitionId)
+      seen.add(definitionId)
+      cards.push({
+        key: definitionId,
+        name: c?.name || definitionId,
+        image: c?.image || "/placeholder.svg",
+        tag: getEventLabel(e),
+      })
+    }
+    return cards.slice(0, 4)
+  }
+
+  const actorTheme = (actor?: string | null) => {
+    if (actor === "player") return "from-sky-500/15 to-cyan-500/5 border-sky-500/30"
+    if (actor === "cpu") return "from-rose-500/15 to-orange-500/5 border-rose-500/30"
+    return "from-violet-500/15 to-fuchsia-500/5 border-violet-500/30"
   }
 
   const getEventLabel = (e: any) => {
@@ -182,13 +211,25 @@ export default function VsCpuGameDetailsPage() {
               {turns.length === 0 ? (
                 <p className="text-muted-foreground">No hay turnos guardados en este replay.</p>
               ) : (
-                turns.map((t) => (
+                turns.map((t, idx) => (
                   <div
                     key={`${t.turn_index}-${t.player_card_id || "p"}-${(t.engine_action as any)?.type || "legacy"}`}
-                    className="rounded-xl border bg-gradient-to-b from-card to-muted/20 p-3"
+                    className={[
+                      "relative rounded-xl border p-3 overflow-hidden",
+                      "bg-gradient-to-b",
+                      actorTheme(t.engine_actor),
+                    ].join(" ")}
                   >
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/80 to-primary/20" />
                     <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
-                      <p className="font-semibold">Turno {t.turn_index}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold">Turno {t.turn_index}</p>
+                        {idx === 0 && (
+                          <Badge variant="secondary" className="gap-1">
+                            <Sparkles className="h-3 w-3" /> Inicio
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-xs">
                         {t.engine_action ? (
                           <span className="text-foreground font-medium">Motor</span>
@@ -207,7 +248,16 @@ export default function VsCpuGameDetailsPage() {
                               {t.engine_actor === "player" ? "Jugador" : t.engine_actor === "cpu" ? "CPU" : (t.engine_actor || "?")}
                             </span>
                             {" "}· acción:{" "}
-                            <span className="font-medium text-foreground">{(t.engine_action as any)?.type || "?"}</span>
+                            <span className="font-medium text-foreground">{(t.engine_action as any)?.type || "?"}</span>{" "}
+                            {t.engine_actor === "player" ? (
+                              <span className="inline-flex items-center gap-1 ml-1 text-sky-300">
+                                <Shield className="h-3 w-3" /> P
+                              </span>
+                            ) : t.engine_actor === "cpu" ? (
+                              <span className="inline-flex items-center gap-1 ml-1 text-rose-300">
+                                <Swords className="h-3 w-3" /> CPU
+                              </span>
+                            ) : null}
                           </span>
                         ) : (
                           <span>
@@ -239,6 +289,30 @@ export default function VsCpuGameDetailsPage() {
                                 <p className="text-sm font-medium">{getPlayableFromTurn(t).name}</p>
                                 <p className="text-xs text-muted-foreground">Acción: PLAY_FROM_HAND</p>
                               </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {getSpotlightCards(t).length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">Cartas destacadas</p>
+                            <div className="flex gap-2 overflow-x-auto pb-1">
+                              {getSpotlightCards(t).map((c) => (
+                                <div key={c.key} className="w-[96px] shrink-0">
+                                  <div className="relative w-[96px] h-[134px] rounded-md overflow-hidden border bg-muted shadow-sm">
+                                    <Image
+                                      src={c.image}
+                                      alt={c.name}
+                                      fill
+                                      className="object-cover"
+                                      sizes="96px"
+                                      unoptimized={Boolean(c.image?.startsWith("http"))}
+                                    />
+                                  </div>
+                                  <p className="text-[11px] mt-1 line-clamp-1">{c.name}</p>
+                                  <p className="text-[10px] text-muted-foreground line-clamp-1">{c.tag}</p>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         )}
