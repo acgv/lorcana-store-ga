@@ -66,6 +66,7 @@ export default function PlayVsCpuPage() {
   const [allCards, setAllCards] = useState<CatalogCard[]>([])
   const [selectedDeckId, setSelectedDeckId] = useState<string>("")
   const [loadingData, setLoadingData] = useState(false)
+  const [playerMode, setPlayerMode] = useState<"manual" | "auto">("manual")
 
   const [lockedDeckId, setLockedDeckId] = useState<string | null>(null)
   const [game, setGame] = useState<GameState | null>(null)
@@ -340,6 +341,38 @@ export default function PlayVsCpuPage() {
     },
     [applyAndLog, cpuThinking, game, toast]
   )
+
+  const playAutoForPlayer = useCallback(() => {
+    if (!game) return
+    if (game.winner !== null) return
+    if (game.activePlayer !== 0) return
+    if (cpuThinking) return
+
+    // Auto básico: en ink entinta si puede, si no salta; en main juega primera legal, si no, quest si puede; luego termina.
+    if (game.phase === "ink") {
+      const hand = game.players[0].hand
+      for (let i = 0; i < hand.length; i++) {
+        const r = applyAndLog("player", game, { type: "INK_FROM_HAND", handIndex: i })
+        if (r.ok) return
+      }
+      runPlayerSequence([{ type: "SKIP_INK" }])
+      return
+    }
+
+    if (game.phase === "main") {
+      const hand = game.players[0].hand
+      for (let i = 0; i < hand.length; i++) {
+        const r = applyAndLog("player", game, { type: "PLAY_FROM_HAND", handIndex: i })
+        if (r.ok) return
+      }
+      const inPlay = game.players[0].inPlay
+      for (let i = 0; i < inPlay.length; i++) {
+        const r = applyAndLog("player", game, { type: "QUEST", inPlayIndex: i })
+        if (r.ok) return
+      }
+      runPlayerSequence([{ type: "END_MAIN" }])
+    }
+  }, [applyAndLog, cpuThinking, game, runPlayerSequence])
 
   const playerAction = useCallback(
     (action: GameAction) => {
@@ -669,16 +702,16 @@ export default function PlayVsCpuPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-1">
+        {/* Config arriba para dar más espacio a la partida */}
+        <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sword className="h-4 w-4" /> Configuración
               </CardTitle>
               <CardDescription>Elige mazo y pulsa iniciar. El mazo queda fijado hasta reiniciar.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+            <CardContent className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              <div className="lg:col-span-2 space-y-2">
                 <p className="text-sm font-medium flex items-center gap-2">
                   Mazo
                   {deckSelectDisabled && (
@@ -705,25 +738,40 @@ export default function PlayVsCpuPage() {
                     ))}
                   </SelectContent>
                 </Select>
+
+                {selectedDeck && (
+                  <div className="rounded-md border p-3 text-sm text-muted-foreground">
+                    <p>
+                      <span className="font-medium text-foreground">{selectedDeck.name}</span>
+                    </p>
+                    <p>{selectedDeck.cards.length} cartas únicas</p>
+                    <p>{selectedDeck.cards.reduce((acc, c) => acc + c.quantity, 0)} cartas totales</p>
+                  </div>
+                )}
               </div>
 
-              {selectedDeck && (
-                <div className="rounded-md border p-3 text-sm text-muted-foreground">
-                  <p>
-                    <span className="font-medium text-foreground">{selectedDeck.name}</span>
-                  </p>
-                  <p>{selectedDeck.cards.length} cartas únicas</p>
-                  <p>{selectedDeck.cards.reduce((acc, c) => acc + c.quantity, 0)} cartas totales</p>
-                </div>
-              )}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Modo jugador</p>
+                <Select
+                  value={playerMode}
+                  onValueChange={(v) => {
+                    if (!deckSelectDisabled) setPlayerMode(v as any)
+                  }}
+                  disabled={deckSelectDisabled}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Modo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">Manual</SelectItem>
+                    <SelectItem value="auto">Auto (asistente)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="space-y-2 flex flex-col justify-end">
                 {!lockedDeckId ? (
-                  <Button
-                    onClick={startMatch}
-                    disabled={!selectedDeck || loadingData || decks.length === 0}
-                    className="w-full gap-2"
-                  >
+                  <Button onClick={startMatch} disabled={!selectedDeck || loadingData || decks.length === 0} className="w-full gap-2">
                     <Play className="h-4 w-4" /> Iniciar partida
                   </Button>
                 ) : (
@@ -733,35 +781,11 @@ export default function PlayVsCpuPage() {
                   </Button>
                 )}
               </div>
-
-              {game && uiPlayer && uiCpu && (
-                <div className="rounded-lg border p-3 text-sm space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Fase</span>
-                    <span className="font-semibold">{game.phase}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Turno de</span>
-                    <span className="font-semibold">{game.activePlayer === 0 ? "Jugador" : "CPU"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Lore</span>
-                    <span className="font-semibold">
-                      {uiPlayer.lore} - {uiCpu.lore}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Tinta lista</span>
-                    <span className="font-semibold">
-                      {uiPlayer.inkwell.filter((c) => !c.exerted).length} / {uiPlayer.inkwell.length}
-                    </span>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <Card className="lg:col-span-12">
             <CardHeader>
               <CardTitle>Partida</CardTitle>
               <CardDescription>Tu turno: ink → main (play/quest/challenge) → end.</CardDescription>
@@ -793,6 +817,11 @@ export default function PlayVsCpuPage() {
                           onClick={() => playerAction({ type: "SKIP_INK" })}
                         >
                           Saltar tinta
+                        </Button>
+                      )}
+                      {playerMode === "auto" && game.activePlayer === 0 && game.winner === null && (
+                        <Button className="w-full sm:w-auto" onClick={playAutoForPlayer} variant="secondary">
+                          Jugada automática
                         </Button>
                       )}
                       <Button
