@@ -45,6 +45,13 @@ function toLocalDatetime(value: string | null | undefined) {
   return local.toISOString().slice(0, 16)
 }
 
+function formatDateTimeReadable(value: string) {
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return value
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export default function AdminWeeklyEventPage() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
@@ -229,10 +236,10 @@ export default function AdminWeeklyEventPage() {
   }, [goals])
 
   const selectedStartPreview = startsAt
-    ? new Date(startsAt).toLocaleString("es-CL", { dateStyle: "full", timeStyle: "short" })
+    ? formatDateTimeReadable(startsAt)
     : "Se activa inmediatamente al guardarla."
   const selectedEndPreview = endsAt
-    ? new Date(endsAt).toLocaleString("es-CL", { dateStyle: "full", timeStyle: "short" })
+    ? formatDateTimeReadable(endsAt)
     : "Sin fecha de término (queda activa hasta que la desactives o cambies temporada)."
   const dateValidationError =
     startsAt && endsAt && new Date(endsAt).getTime() <= new Date(startsAt).getTime()
@@ -266,7 +273,13 @@ export default function AdminWeeklyEventPage() {
                   <Input
                     type="datetime-local"
                     value={startsAt}
-                    onChange={(e) => setStartsAt(e.target.value)}
+                    onChange={(e) => {
+                      const nextStart = e.target.value
+                      setStartsAt(nextStart)
+                      if (endsAt && new Date(endsAt).getTime() <= new Date(nextStart).getTime()) {
+                        setEndsAt("")
+                      }
+                    }}
                   />
                 </div>
                 <div className="space-y-1">
@@ -276,6 +289,7 @@ export default function AdminWeeklyEventPage() {
                   <Input
                     type="datetime-local"
                     value={endsAt}
+                    min={startsAt || undefined}
                     onChange={(e) => setEndsAt(e.target.value)}
                   />
                 </div>
