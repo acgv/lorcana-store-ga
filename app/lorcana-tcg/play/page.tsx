@@ -38,6 +38,13 @@ type FlyAnim = {
   phase: "start" | "end"
 }
 
+type DeckCoachInsight = {
+  id: string
+  title: string
+  detail: string
+  tone: "good" | "warn" | "tip"
+}
+
 function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms))
 }
@@ -130,6 +137,90 @@ export default function PlayVsCpuPage() {
     if (!uiCpu) return []
     return uiCpu.inPlay.map((c, idx) => ({ c, idx })).filter((x) => !x.c.ready)
   }, [uiCpu])
+
+  const deckCoachInsights = useMemo((): DeckCoachInsight[] => {
+    if (!game || game.winner === null) return []
+
+    const playerTurns = engineTurns.filter((t) =>
+      t.events.some((e) => e.type === "TURN_BEGIN" && e.player === 0)
+    ).length
+    const playerInk = engineTurns.filter((t) => t.actor === "player" && t.action.type === "INK_FROM_HAND").length
+    const playerPlays = engineTurns.filter((t) => t.actor === "player" && t.action.type === "PLAY_FROM_HAND").length
+    const playerQuests = engineTurns.filter((t) => t.actor === "player" && t.action.type === "QUEST").length
+    const playerChallenges = engineTurns.filter((t) => t.actor === "player" && t.action.type === "CHALLENGE").length
+
+    const loreByPlayer = engineTurns.flatMap((t) => t.events).reduce(
+      (acc, e) => {
+        if (e.type === "QUEST_LORE") {
+          if (e.player === 0) acc.player += e.loreGained
+          if (e.player === 1) acc.cpu += e.loreGained
+        }
+        return acc
+      },
+      { player: 0, cpu: 0 }
+    )
+
+    const insights: DeckCoachInsight[] = []
+    const turnsWithoutInk = Math.max(0, playerTurns - playerInk)
+    if (turnsWithoutInk >= 2) {
+      insights.push({
+        id: "ink-consistency",
+        tone: "warn",
+        title: "Consistencia de tinta",
+        detail: `Saltaste tinta en ${turnsWithoutInk} turnos. Entinta más seguido al inicio para no trabarte en costes.`,
+      })
+    } else {
+      insights.push({
+        id: "ink-good",
+        tone: "good",
+        title: "Buen ritmo de inkwell",
+        detail: "Tu curva de tinta fue estable. Eso ayuda a mantener opciones legales en main.",
+      })
+    }
+
+    if (playerQuests === 0 && playerPlays > 0) {
+      insights.push({
+        id: "quest-missing",
+        tone: "warn",
+        title: "Faltó convertir mesa en lore",
+        detail: "Jugaste cartas, pero no hiciste quest. Prioriza cerrar turnos con 1 quest cuando sea seguro.",
+      })
+    } else if (playerQuests > 0) {
+      insights.push({
+        id: "quest-good",
+        tone: "good",
+        title: "Buen enfoque de lore",
+        detail: `Lograste ${playerQuests} quest(s) y sumaste ${loreByPlayer.player} de lore.`,
+      })
+    }
+
+    if (playerChallenges === 0 && loreByPlayer.cpu >= 8) {
+      insights.push({
+        id: "challenge-tip",
+        tone: "tip",
+        title: "Tip de tempo defensivo",
+        detail: "La CPU acumuló bastante lore. Cuando puedas, usa challenge para frenar su mesa exerted.",
+      })
+    } else if (playerChallenges > 0) {
+      insights.push({
+        id: "challenge-good",
+        tone: "good",
+        title: "Interacción correcta",
+        detail: `Hiciste ${playerChallenges} challenge(s), eso evita quest gratis del rival.`,
+      })
+    }
+
+    if (insights.length < 3) {
+      insights.push({
+        id: "next-step",
+        tone: "tip",
+        title: "Siguiente paso recomendado",
+        detail: "Turno ideal: entintar (si conviene) -> jugar -> quest/challenge -> terminar turno.",
+      })
+    }
+
+    return insights.slice(0, 3)
+  }, [engineTurns, game])
 
   const tutorialItems = useMemo(
     () => [
@@ -1117,6 +1208,32 @@ export default function PlayVsCpuPage() {
                             ].join(" ")}
                           >
                             {item.done ? "✓" : "•"} {item.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {game.winner !== null && deckCoachInsights.length > 0 && (
+                    <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">Deck Coach (post-partida)</p>
+                        <Badge variant="secondary">Top 3</Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        {deckCoachInsights.map((ins) => (
+                          <div
+                            key={ins.id}
+                            className={[
+                              "rounded-md border p-2 text-xs",
+                              ins.tone === "good"
+                                ? "border-emerald-500/40 bg-emerald-500/10"
+                                : ins.tone === "warn"
+                                  ? "border-amber-500/40 bg-amber-500/10"
+                                  : "border-sky-500/40 bg-sky-500/10",
+                            ].join(" ")}
+                          >
+                            <p className="font-semibold text-foreground">{ins.title}</p>
+                            <p className="text-muted-foreground mt-1">{ins.detail}</p>
                           </div>
                         ))}
                       </div>
