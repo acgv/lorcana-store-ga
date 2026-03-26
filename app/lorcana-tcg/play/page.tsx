@@ -307,10 +307,22 @@ export default function PlayVsCpuPage() {
 
   const runPlayerSequence = useCallback(
     (actions: GameAction[]) => {
-      if (!game) return
-      if (game.winner !== null) return
-      if (game.activePlayer !== 0) return
-      if (cpuThinking) return
+      if (!game) {
+        toast({ title: "Juego", description: "Aún no hay partida iniciada.", variant: "destructive" })
+        return
+      }
+      if (game.winner !== null) {
+        toast({ title: "Partida terminada", description: "Reinicia para jugar otra.", variant: "destructive" })
+        return
+      }
+      if (game.activePlayer !== 0) {
+        toast({ title: "No es tu turno", description: "Espera a que termine la CPU.", variant: "destructive" })
+        return
+      }
+      if (cpuThinking) {
+        toast({ title: "CPU", description: "La CPU está pensando. Espera un momento.", variant: "destructive" })
+        return
+      }
 
       let s: GameState = game
       for (const a of actions) {
@@ -327,10 +339,22 @@ export default function PlayVsCpuPage() {
 
   const playerAction = useCallback(
     (action: GameAction) => {
-      if (!game) return
-      if (game.winner !== null) return
-      if (game.activePlayer !== 0) return
-      if (cpuThinking) return
+      if (!game) {
+        toast({ title: "Juego", description: "Aún no hay partida iniciada.", variant: "destructive" })
+        return
+      }
+      if (game.winner !== null) {
+        toast({ title: "Partida terminada", description: "Reinicia para jugar otra.", variant: "destructive" })
+        return
+      }
+      if (game.activePlayer !== 0) {
+        toast({ title: "No es tu turno", description: "Espera a que termine la CPU.", variant: "destructive" })
+        return
+      }
+      if (cpuThinking) {
+        toast({ title: "CPU", description: "La CPU está pensando. Espera un momento.", variant: "destructive" })
+        return
+      }
       if (action.type !== "CHALLENGE") {
         setPendingChallengeAttacker(null)
         setPendingChallengeDefender(null)
@@ -351,7 +375,7 @@ export default function PlayVsCpuPage() {
     try {
       let s: GameState = game
       for (let guard = 0; guard < 30; guard++) {
-        if (cpuAbortRef.current) return
+        if (cpuAbortRef.current) break
         if (s.winner !== null) break
         if (s.activePlayer !== 1) break
 
