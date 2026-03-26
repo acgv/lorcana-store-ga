@@ -820,7 +820,7 @@ export default function PlayVsCpuPage() {
                                   unoptimized={Boolean(card?.image?.startsWith("http"))}
                                 />
                               </div>
-                              <div className="p-2 pb-3 space-y-2">
+                              <div className="p-2 space-y-2">
                                 <div className="text-xs font-semibold line-clamp-2">{def?.name || "Carta"}</div>
                                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                                   <span>Coste: {def?.inkCost ?? "?"}</span>
@@ -830,7 +830,7 @@ export default function PlayVsCpuPage() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="flex-1 h-8 px-2 text-xs"
+                                    className="flex-1"
                                     disabled={game.activePlayer !== 0 || game.phase !== "ink" || cpuThinking || game.winner !== null}
                                     onClick={() => playerAction({ type: "INK_FROM_HAND", handIndex: idx })}
                                   >
@@ -838,9 +838,32 @@ export default function PlayVsCpuPage() {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    className="flex-1 h-8 px-2 text-xs"
-                                    disabled={game.activePlayer !== 0 || game.phase !== "main" || cpuThinking || game.winner !== null}
-                                    onClick={() => playerAction({ type: "PLAY_FROM_HAND", handIndex: idx })}
+                                    className="flex-1"
+                                    disabled={game.activePlayer !== 0 || cpuThinking || game.winner !== null}
+                                    title={
+                                      game.activePlayer !== 0
+                                        ? "No es tu turno"
+                                        : cpuThinking
+                                          ? "Espera a la CPU"
+                                          : game.winner !== null
+                                            ? "La partida terminó"
+                                            : game.phase === "ink"
+                                              ? "Si no quieres entintar, puedes jugar igual (saltando tinta automáticamente)"
+                                              : "Jugar carta"
+                                    }
+                                    onClick={() => {
+                                      if (!game) return
+                                      // UX tutor: si estás en ink y quieres jugar, saltamos tinta automáticamente.
+                                      if (game.phase === "ink") {
+                                        playerAction({ type: "SKIP_INK" })
+                                        // playerAction actualiza state async; esperamos microtick y dejamos que el motor bloquee si no corresponde.
+                                        window.setTimeout(() => {
+                                          playerAction({ type: "PLAY_FROM_HAND", handIndex: idx })
+                                        }, 0)
+                                        return
+                                      }
+                                      playerAction({ type: "PLAY_FROM_HAND", handIndex: idx })
+                                    }}
                                   >
                                     Jugar
                                   </Button>
