@@ -820,7 +820,7 @@ export default function PlayVsCpuPage() {
                                   unoptimized={Boolean(card?.image?.startsWith("http"))}
                                 />
                               </div>
-                              <div className="p-2 space-y-2">
+                              <div className="p-2 pb-3 space-y-2">
                                 <div className="text-xs font-semibold line-clamp-2">{def?.name || "Carta"}</div>
                                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                                   <span>Coste: {def?.inkCost ?? "?"}</span>
@@ -830,7 +830,7 @@ export default function PlayVsCpuPage() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="flex-1"
+                                    className="flex-1 h-8 px-2 text-xs"
                                     disabled={game.activePlayer !== 0 || game.phase !== "ink" || cpuThinking || game.winner !== null}
                                     onClick={() => playerAction({ type: "INK_FROM_HAND", handIndex: idx })}
                                   >
@@ -838,7 +838,7 @@ export default function PlayVsCpuPage() {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    className="flex-1"
+                                    className="flex-1 h-8 px-2 text-xs"
                                     disabled={game.activePlayer !== 0 || game.phase !== "main" || cpuThinking || game.winner !== null}
                                     onClick={() => playerAction({ type: "PLAY_FROM_HAND", handIndex: idx })}
                                   >
