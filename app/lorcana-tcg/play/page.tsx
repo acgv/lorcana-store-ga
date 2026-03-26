@@ -101,6 +101,10 @@ export default function PlayVsCpuPage() {
 
   const uiPlayer = game?.players[0] ?? null
   const uiCpu = game?.players[1] ?? null
+  const playerReadyInk = useMemo(() => {
+    if (!uiPlayer) return 0
+    return uiPlayer.inkwell.filter((c) => !c.exerted).length
+  }, [uiPlayer])
 
   const cpuExertedDefenders = useMemo(() => {
     if (!uiCpu) return []
@@ -805,6 +809,13 @@ export default function PlayVsCpuPage() {
                   <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
                     <span className="font-medium text-foreground">Siguiente paso:</span> {phaseHint(game.phase)}
                   </div>
+                  <div className="rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground">
+                    Tutor: fase <span className="font-semibold text-foreground">{game.phase}</span> · Ink lista{" "}
+                    <span className="font-semibold text-foreground">{playerReadyInk}</span>.
+                    {" "}
+                    En fase <span className="font-semibold text-foreground">ink</span> puedes entintar 1 carta. En{" "}
+                    <span className="font-semibold text-foreground">main</span> solo puedes jugar cartas cuyo coste sea menor o igual a tu ink lista.
+                  </div>
 
                   {banishTray.length > 0 && (
                     <div className="rounded-lg border bg-card p-3">
@@ -850,6 +861,26 @@ export default function PlayVsCpuPage() {
                           const inst = game.instances.get(instId)
                           const def = inst ? game.definitions.get(inst.definitionId) : null
                           const card = def ? cardById.get(def.id) : null
+                          const cost = typeof def?.inkCost === "number" ? def.inkCost : 0
+                          const canPlayByCost = cost <= playerReadyInk
+                          const canPlayNow =
+                            game.activePlayer === 0 &&
+                            !cpuThinking &&
+                            game.winner === null &&
+                            (game.phase === "main" || game.phase === "ink") &&
+                            (game.phase !== "main" || canPlayByCost)
+                          const playReason =
+                            game.activePlayer !== 0
+                              ? "No es tu turno"
+                              : cpuThinking
+                                ? "La CPU está pensando"
+                                : game.winner !== null
+                                  ? "La partida terminó"
+                                  : game.phase === "main" && !canPlayByCost
+                                    ? `No alcanza la tinta: coste ${cost}, disponible ${playerReadyInk}`
+                                    : game.phase === "ink"
+                                      ? "Al jugar desde ink, se salta tinta automáticamente"
+                                      : "Jugar carta"
                           return (
                             <div key={instId} className="rounded-lg border overflow-hidden">
                               <div className="relative aspect-[5/7] w-full bg-muted">
@@ -865,9 +896,12 @@ export default function PlayVsCpuPage() {
                               <div className="p-2 space-y-2">
                                 <div className="text-xs font-semibold line-clamp-2">{def?.name || "Carta"}</div>
                                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                  <span>Coste: {def?.inkCost ?? "?"}</span>
+                                  <span>Coste: {cost}</span>
                                   {def?.inkable ? <Badge variant="secondary">Inkable</Badge> : <Badge variant="outline">No ink</Badge>}
                                 </div>
+                                {game.phase === "main" && !canPlayByCost && (
+                                  <p className="text-[11px] text-destructive">No alcanza tinta ({playerReadyInk})</p>
+                                )}
                                 <div className="flex gap-2 pb-0.5">
                                   <Button
                                     size="sm"
@@ -881,18 +915,8 @@ export default function PlayVsCpuPage() {
                                   <Button
                                     size="sm"
                                     className="flex-1 h-8 px-2 text-xs"
-                                    disabled={game.activePlayer !== 0 || cpuThinking || game.winner !== null}
-                                    title={
-                                      game.activePlayer !== 0
-                                        ? "No es tu turno"
-                                        : cpuThinking
-                                          ? "Espera a la CPU"
-                                          : game.winner !== null
-                                            ? "La partida terminó"
-                                            : game.phase === "ink"
-                                              ? "Si no quieres entintar, puedes jugar igual (saltando tinta automáticamente)"
-                                              : "Jugar carta"
-                                    }
+                                    disabled={!canPlayNow}
+                                    title={playReason}
                                     onClick={() => {
                                       if (!game) return
                                       // UX tutor: si estás en ink y quieres jugar, saltamos tinta y jugamos en secuencia (sin depender de renders).
