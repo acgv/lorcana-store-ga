@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Search, ShoppingCart, Sparkles, Menu, User, LogOut, FileText, Shield, Heart, UserCircle, List } from "lucide-react"
+import { Search, ShoppingCart, Sparkles, Menu, User, LogOut, FileText, Shield, Heart, UserCircle, List, Crown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useLanguage } from "@/components/language-provider"
@@ -273,6 +273,14 @@ export function Header() {
                       <Sparkles className="h-4 w-4" />
                       Evento Semanal
                     </Link>
+                    <Link
+                      href="/lorcana-tcg/subscribe"
+                      className="text-base font-sans font-medium text-primary hover:text-primary/80 transition-colors px-2 py-2 hover:bg-primary/10 rounded-md flex items-center gap-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Crown className="h-4 w-4" />
+                      Lorcana Pro
+                    </Link>
                     {/* TODO: Re-habilitar funcionalidad de Mis Envíos */}
                     {/* <Link
                       href="/lorcana-tcg/my-submissions"
@@ -370,6 +378,10 @@ export function Header() {
                 <DropdownMenuItem onClick={() => router.push("/lorcana-tcg/weekly-event")} className="cursor-pointer">
                   <Sparkles className="mr-2 h-4 w-4" />
                   Evento Semanal
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/lorcana-tcg/subscribe")} className="cursor-pointer text-primary">
+                  <Crown className="mr-2 h-4 w-4" />
+                  Lorcana Pro
                 </DropdownMenuItem>
                 {/* TODO: Re-habilitar funcionalidad de Mis Envíos */}
                 {/* <DropdownMenuItem onClick={() => router.push("/lorcana-tcg/my-submissions")} className="cursor-pointer">
