@@ -49,6 +49,7 @@ export default function AdminWeeklyEventPage() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
   const [seasons, setSeasons] = useState<Season[]>([])
   const [goals, setGoals] = useState<Goal[]>([])
   const [editingSeasonId, setEditingSeasonId] = useState<string | null>(null)
@@ -91,11 +92,14 @@ export default function AdminWeeklyEventPage() {
 
   const createSeason = async () => {
     if (!name.trim()) return
+    setFormError(null)
     if (startsAt && endsAt && new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
+      const message = "La fecha de término debe ser posterior a la fecha de inicio."
+      setFormError(message)
       toast({
         variant: "destructive",
         title: "Fechas inválidas",
-        description: "La fecha de término debe ser posterior a la fecha de inicio.",
+        description: message,
       })
       return
     }
@@ -134,10 +138,12 @@ export default function AdminWeeklyEventPage() {
         description: "Los cambios se guardaron correctamente.",
       })
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Error inesperado"
+      setFormError(message)
       toast({
         variant: "destructive",
         title: "Error al guardar",
-        description: error instanceof Error ? error.message : "Error inesperado",
+        description: message,
       })
     } finally {
       setSaving(false)
@@ -228,6 +234,10 @@ export default function AdminWeeklyEventPage() {
   const selectedEndPreview = endsAt
     ? new Date(endsAt).toLocaleString("es-CL", { dateStyle: "full", timeStyle: "short" })
     : "Sin fecha de término (queda activa hasta que la desactives o cambies temporada)."
+  const dateValidationError =
+    startsAt && endsAt && new Date(endsAt).getTime() <= new Date(startsAt).getTime()
+      ? "La fecha de término debe ser posterior a la fecha de inicio."
+      : null
 
   return (
     <AuthGuard>
@@ -333,7 +343,7 @@ export default function AdminWeeklyEventPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <Button onClick={createSeason} disabled={saving}>
+                <Button onClick={createSeason} disabled={saving || Boolean(dateValidationError)}>
                   {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trophy className="h-4 w-4 mr-2" />}
                   {editingSeasonId ? "Guardar cambios" : "Guardar y activar"}
                 </Button>
@@ -343,6 +353,12 @@ export default function AdminWeeklyEventPage() {
                   </Button>
                 )}
               </div>
+              {dateValidationError && (
+                <p className="text-sm text-red-500">{dateValidationError}</p>
+              )}
+              {!dateValidationError && formError && (
+                <p className="text-sm text-red-500">{formError}</p>
+              )}
             </CardContent>
           </Card>
 
