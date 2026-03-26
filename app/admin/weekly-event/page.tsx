@@ -122,8 +122,9 @@ export default function AdminWeeklyEventPage() {
           name: name.trim(),
           description: description.trim(),
           rewardXp: Number(rewardXp || 120),
-          startsAt: startsAt || null,
-          endsAt: endsAt || null,
+          // Send timezone-aware timestamps to avoid server timezone shifting dates
+          startsAt: startsAt ? new Date(startsAt).toISOString() : null,
+          endsAt: endsAt ? new Date(endsAt).toISOString() : null,
           activate: isActive,
           isActive,
           goals: goalDrafts.map((g, idx) => ({
