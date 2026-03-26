@@ -384,7 +384,7 @@ export default function MyProfilePage() {
                           <Lock className="inline h-3 w-3 mr-0.5" />
                           Algunas insignias requieren Pro
                         </p>
-                        <Link href="/lorcana-tcg/my-decks">
+                        <Link href="/lorcana-tcg/subscribe">
                           <Button size="sm" variant="default" className="gap-1 text-xs h-7">
                             <Crown className="h-3 w-3" /> Suscribirme a Pro
                           </Button>

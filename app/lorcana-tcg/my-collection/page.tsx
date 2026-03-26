@@ -559,7 +559,7 @@ function MyCollectionContent() {
                       <div className="text-2xl font-bold text-muted-foreground/40 select-none">
                         $•••••• CLP
                       </div>
-                      <Link href="/lorcana-tcg/my-decks" className="inline-flex items-center gap-1 mt-1 text-xs text-primary hover:underline">
+                      <Link href="/lorcana-tcg/subscribe" className="inline-flex items-center gap-1 mt-1 text-xs text-primary hover:underline">
                         <Crown className="h-3 w-3" /> Desbloquear con Pro
                       </Link>
                     </>
@@ -788,7 +788,7 @@ function MyCollectionContent() {
                     <p className="text-muted-foreground text-center mb-6 max-w-md">
                       Descubre qué cartas te faltan para completar tu colección. Esta herramienta está disponible con Lorcana Pro.
                     </p>
-                    <Link href="/lorcana-tcg/my-decks">
+                    <Link href="/lorcana-tcg/subscribe">
                       <Button className="gap-2">
                         <Crown className="h-4 w-4" /> Suscribirme a Pro
                       </Button>

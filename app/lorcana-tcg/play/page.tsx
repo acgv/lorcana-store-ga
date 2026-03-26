@@ -1027,7 +1027,7 @@ export default function PlayVsCpuPage() {
                     <p className="text-destructive font-semibold">
                       Has alcanzado el limite de {accessInfo?.maxDailyGames ?? 3} partidas diarias (Free).
                     </p>
-                    <Link href="/lorcana-tcg/my-decks">
+                    <Link href="/lorcana-tcg/subscribe">
                       <Button size="sm" variant="default" className="gap-1 text-xs">
                         <Crown className="h-3 w-3" /> Suscribirme a Pro
                       </Button>
@@ -1042,7 +1042,7 @@ export default function PlayVsCpuPage() {
                       partidas hoy{" "}
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Free</Badge>
                     </p>
-                    <Link href="/lorcana-tcg/my-decks" className="text-primary underline underline-offset-2 hover:text-primary/80">
+                    <Link href="/lorcana-tcg/subscribe" className="text-primary underline underline-offset-2 hover:text-primary/80">
                       Suscribirme a Pro
                     </Link>
                   </div>

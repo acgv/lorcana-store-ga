@@ -1607,7 +1607,7 @@ function DeckBuilder() {
                     <Lock className="h-3.5 w-3.5 shrink-0" />
                     Límite Free alcanzado: máximo {accessInfo?.maxDecks ?? 2} mazos.
                   </p>
-                  <Link href="/lorcana-tcg/my-decks#mock-subscription">
+                  <Link href="/lorcana-tcg/subscribe">
                     <Button size="sm" variant="default" className="gap-1 text-xs h-7">
                       <Crown className="h-3 w-3" /> Suscribirme a Pro
                     </Button>
