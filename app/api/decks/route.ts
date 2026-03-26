@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifySupabaseSession } from "@/lib/auth-helpers"
 import { supabaseAdmin } from "@/lib/db"
+import { getUserAccess } from "@/lib/subscription-access"
 
 export const dynamic = "force-dynamic"
+const FREE_DECK_LIMIT = 2
 
 type DeckCardPayload = { cardId: string; quantity: number }
 
@@ -91,6 +93,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { success: false, error: "cards must be a non-empty array of { cardId, quantity (1–4) }" },
       { status: 400 }
+    )
+  }
+
+  const [access, countRes] = await Promise.all([
+    getUserAccess(auth.userId),
+    supabaseAdmin.from("user_decks").select("id", { head: true, count: "exact" }).eq("user_id", auth.userId),
+  ])
+  if (countRes.error) {
+    console.error("user_decks count POST:", countRes.error)
+    return NextResponse.json({ success: false, error: countRes.error.message }, { status: 500 })
+  }
+
+  const maxDecks = access.maxDecks ?? null
+  const currentDecks = Number(countRes.count || 0)
+  if (!access.isPro && maxDecks != null && currentDecks >= maxDecks) {
+    return NextResponse.json(
+      {
+        success: false,
+        code: "FREE_DECK_LIMIT_REACHED",
+        error: `Plan Free: máximo ${FREE_DECK_LIMIT} mazos. Suscríbete para mazos ilimitados.`,
+        data: { maxDecks, currentDecks, isPro: access.isPro, source: access.source },
+      },
+      { status: 403 }
     )
   }
 

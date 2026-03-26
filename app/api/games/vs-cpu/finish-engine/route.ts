@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifySupabaseSession } from "@/lib/auth-helpers"
 import { supabaseAdmin } from "@/lib/db"
+import { getUserAccess } from "@/lib/subscription-access"
 
 export const dynamic = "force-dynamic"
 
@@ -81,6 +82,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Invalid engineTurns payload" }, { status: 400 })
   }
 
+  const access = await getUserAccess(auth.userId)
+  if (!access.isPro && access.maxDailyGames != null) {
+    const startOfDay = new Date()
+    startOfDay.setHours(0, 0, 0, 0)
+    const { count, error: countErr } = await supabaseAdmin
+      .from("vs_cpu_game_sessions")
+      .select("id", { head: true, count: "exact" })
+      .eq("user_id", auth.userId)
+      .gte("created_at", startOfDay.toISOString())
+    if (countErr) {
+      return NextResponse.json({ success: false, error: countErr.message }, { status: 500 })
+    }
+    const todayGames = Number(count || 0)
+    if (todayGames >= access.maxDailyGames) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "FREE_DAILY_GAMES_LIMIT_REACHED",
+          error: `Plan Free: máximo ${access.maxDailyGames} partidas por día. Suscríbete para ilimitado.`,
+          data: { todayGames, maxDailyGames: access.maxDailyGames, isPro: access.isPro },
+        },
+        { status: 403 }
+      )
+    }
+  }
+
   const { data: sessionRow, error: sessionErr } = await supabaseAdmin
     .from("vs_cpu_game_sessions")
     .insert({
@@ -110,6 +137,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: turnsErr.message }, { status: 500 })
   }
 
-  return NextResponse.json({ success: true, data: { id: sessionRow.id } })
+  return NextResponse.json({ success: true, data: { id: sessionRow.id, access } })
 }
 

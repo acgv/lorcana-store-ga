@@ -115,6 +115,9 @@ function DeckBuilder() {
   const [aiColors, setAiColors] = useState<string[]>([])
   const [generatingDeck, setGeneratingDeck] = useState(false)
   const [aiMissing, setAiMissing] = useState<any[]>([])
+  const [mockMode, setMockMode] = useState<"free" | "pro" | "off">("off")
+  const [accessInfo, setAccessInfo] = useState<{ isPro: boolean; maxDecks: number | null; source: string } | null>(null)
+  const [changingMock, setChangingMock] = useState(false)
 
   const savedDecks = useMemo(() => {
     const lookup = buildCardLookup(allCardsCatalog)
@@ -310,6 +313,61 @@ function DeckBuilder() {
       cancelled = true
     }
   }, [user?.id, getAuthHeaders, toast])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadMock() {
+      if (!user?.id) return
+      try {
+        const headers = await getAuthHeaders()
+        if (!headers?.Authorization) return
+        const res = await fetch("/api/subscription/mock", { headers })
+        const json = await res.json()
+        if (!cancelled && json?.success) {
+          setMockMode((json.data?.mode || "off") as "free" | "pro" | "off")
+          setAccessInfo(json.data?.access || null)
+        }
+      } catch {
+        // ignore mock load errors in UI
+      }
+    }
+    void loadMock()
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id, getAuthHeaders])
+
+  const setMockSubscriptionMode = async (mode: "free" | "pro" | "off") => {
+    try {
+      setChangingMock(true)
+      const headers = await getAuthHeaders()
+      if (!headers?.Authorization) return
+      const res = await fetch("/api/subscription/mock", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      })
+      const json = await res.json()
+      if (!json?.success) {
+        throw new Error(json?.error || "No se pudo cambiar el modo mock")
+      }
+      setMockMode((json.data?.mode || "off") as "free" | "pro" | "off")
+      setAccessInfo(json.data?.access || null)
+      toast({
+        title: "Mock suscripción actualizado",
+        description:
+          mode === "off" ? "Mock desactivado" : mode === "pro" ? "Ahora estás en modo Pro mock" : "Ahora estás en modo Free mock",
+      })
+    } catch (e) {
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "No se pudo actualizar mock",
+        variant: "destructive",
+      })
+    } finally {
+      setChangingMock(false)
+    }
+  }
 
   // Cargar cartas disponibles de la colección
   useEffect(() => {
@@ -757,6 +815,7 @@ function DeckBuilder() {
           throw new Error(json.error || "No se pudo guardar")
         }
         setSavedDecksRaw((prev) => [json.data as DeckRow, ...prev])
+        if (json?.access) setAccessInfo(json.access)
       }
 
       toast({
@@ -833,6 +892,33 @@ function DeckBuilder() {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Panel izquierdo: Cartas disponibles */}
       <div className="lg:col-span-2 space-y-4">
+        <Card className="border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-base">Mock Suscripción (temporal)</CardTitle>
+            <CardDescription>
+              Simula Free/Pro mientras integramos Lemon Squeezy.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-2">
+            <Button variant={mockMode === "free" ? "default" : "outline"} size="sm" disabled={changingMock} onClick={() => setMockSubscriptionMode("free")}>
+              Modo Free
+            </Button>
+            <Button variant={mockMode === "pro" ? "default" : "outline"} size="sm" disabled={changingMock} onClick={() => setMockSubscriptionMode("pro")}>
+              Modo Pro
+            </Button>
+            <Button variant={mockMode === "off" ? "secondary" : "outline"} size="sm" disabled={changingMock} onClick={() => setMockSubscriptionMode("off")}>
+              Mock Off
+            </Button>
+            <div className="text-xs text-muted-foreground ml-2">
+              {accessInfo
+                ? accessInfo.isPro
+                  ? `Acceso Pro (${accessInfo.source})`
+                  : `Acceso Free (${accessInfo.source}) • límite ${accessInfo.maxDecks ?? 2} mazos`
+                : "Cargando acceso..."}
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Cartas Disponibles</CardTitle>

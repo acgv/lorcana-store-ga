@@ -17,7 +17,7 @@ import type { Card as CatalogCard } from "@/lib/types"
 import type { DeckRow } from "@/lib/deck-hydration"
 import type { ApplyResult, GameAction, GameEvent, GameState } from "@/lib/lorcana-game"
 import { applyAction, buildDefinitionMap, startGame } from "@/lib/lorcana-game"
-import { Bot, Lock, Play, RotateCcw, Sword, User2 } from "lucide-react"
+import { Bot, Crown, Lock, Play, RotateCcw, Sword, User2 } from "lucide-react"
 
 type DeckForGame = {
   id: string
@@ -43,6 +43,12 @@ type DeckCoachInsight = {
   title: string
   detail: string
   tone: "good" | "warn" | "tip"
+}
+
+type AccessInfo = {
+  isPro: boolean
+  source: string
+  maxDailyGames: number | null
 }
 
 function sleep(ms: number) {
@@ -92,6 +98,9 @@ export default function PlayVsCpuPage() {
   const [autoDelayMs, setAutoDelayMs] = useState(900)
   const [tutorialEnabled, setTutorialEnabled] = useState(true)
   const [tutorialProgress, setTutorialProgress] = useState<TutorialProgress>(EMPTY_TUTORIAL_PROGRESS)
+  const [accessInfo, setAccessInfo] = useState<AccessInfo | null>(null)
+  const [todayGames, setTodayGames] = useState(0)
+  const [remainingDailyGames, setRemainingDailyGames] = useState<number | null>(null)
 
   const [lockedDeckId, setLockedDeckId] = useState<string | null>(null)
   const [game, setGame] = useState<GameState | null>(null)
@@ -313,13 +322,15 @@ export default function PlayVsCpuPage() {
         const token = session.data.session?.access_token
         if (!token) throw new Error("No hay sesión activa")
 
-        const [decksRes, cardsRes] = await Promise.all([
+        const [decksRes, cardsRes, quotaRes] = await Promise.all([
           fetch("/api/decks", { headers: { Authorization: `Bearer ${token}` } }),
           fetch(`/api/cards?t=${Date.now()}`, { cache: "no-store" }),
+          fetch("/api/games/vs-cpu/quota", { headers: { Authorization: `Bearer ${token}` } }),
         ])
 
         const decksJson = await decksRes.json()
         const cardsJson = await cardsRes.json()
+        const quotaJson = await quotaRes.json()
 
         if (!decksJson.success) throw new Error(decksJson.error || "No se pudieron cargar mazos")
         if (!cardsJson.success) throw new Error(cardsJson.error || "No se pudo cargar catálogo")
@@ -336,6 +347,13 @@ export default function PlayVsCpuPage() {
         )
         setAllCards(cardsJson.data || [])
         if (loadedDecks.length > 0) setSelectedDeckId((prev) => prev || loadedDecks[0].id)
+        if (quotaJson?.success) {
+          setAccessInfo(quotaJson.data?.access || null)
+          setTodayGames(Number(quotaJson.data?.todayGames || 0))
+          setRemainingDailyGames(
+            quotaJson.data?.remainingDailyGames == null ? null : Number(quotaJson.data.remainingDailyGames || 0)
+          )
+        }
       } catch (e) {
         console.error(e)
         if (!cancelled) {
@@ -916,7 +934,16 @@ export default function PlayVsCpuPage() {
         })
 
         const json = await res.json()
-        if (!json.success) throw new Error(json.error || "No se pudo guardar el replay")
+        if (!json.success) {
+          const msg =
+            json.code === "FREE_DAILY_GAMES_LIMIT_REACHED"
+              ? `${json.error} Suscribete a Pro para partidas ilimitadas.`
+              : json.error || "No se pudo guardar el replay"
+          throw new Error(msg)
+        }
+        if (json?.data?.access) setAccessInfo(json.data.access)
+        setTodayGames((prev) => prev + 1)
+        setRemainingDailyGames((prev) => (prev == null ? null : Math.max(0, prev - 1)))
         toast({ title: "Replay guardado", description: "Puedes verlo en Mis Partidas." })
       } catch (e) {
         console.error(e)
@@ -989,6 +1016,38 @@ export default function PlayVsCpuPage() {
               <CardDescription>Elige mazo y pulsa iniciar. El mazo queda fijado hasta reiniciar.</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+              <div className="md:col-span-12 rounded-md border bg-muted/20 p-3 text-xs space-y-2">
+                {accessInfo?.isPro ? (
+                  <p>
+                    <span className="font-semibold text-foreground">Lorcana Pro activo</span> · partidas diarias ilimitadas.
+                  </p>
+                ) : remainingDailyGames != null && remainingDailyGames <= 0 ? (
+                  /* Cuota agotada */
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <p className="text-destructive font-semibold">
+                      Has alcanzado el limite de {accessInfo?.maxDailyGames ?? 3} partidas diarias (Free).
+                    </p>
+                    <Link href="/lorcana-tcg/my-decks">
+                      <Button size="sm" variant="default" className="gap-1 text-xs">
+                        <Crown className="h-3 w-3" /> Suscribirme a Pro
+                      </Button>
+                    </Link>
+                  </div>
+                ) : (
+                  /* Cuota disponible */
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <p>
+                      Te quedan{" "}
+                      <span className="font-semibold text-foreground">{remainingDailyGames ?? "..."}</span>{" "}
+                      partidas hoy{" "}
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Free</Badge>
+                    </p>
+                    <Link href="/lorcana-tcg/my-decks" className="text-primary underline underline-offset-2 hover:text-primary/80">
+                      Suscribirme a Pro
+                    </Link>
+                  </div>
+                )}
+              </div>
               <div className="md:col-span-6 space-y-2">
                 <p className="text-sm font-medium flex items-center gap-2">
                   Mazo
@@ -1104,7 +1163,7 @@ export default function PlayVsCpuPage() {
 
               <div className="md:col-span-3 space-y-2 flex flex-col justify-end">
                 {!lockedDeckId ? (
-                  <Button onClick={startMatch} disabled={!selectedDeck || loadingData || decks.length === 0} className="w-full gap-2">
+                  <Button onClick={startMatch} disabled={!selectedDeck || loadingData || decks.length === 0 || (remainingDailyGames != null && remainingDailyGames <= 0 && !accessInfo?.isPro)} className="w-full gap-2">
                     <Play className="h-4 w-4" /> Iniciar partida
                   </Button>
                 ) : (

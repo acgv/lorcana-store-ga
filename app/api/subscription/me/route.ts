@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifySupabaseSession } from "@/lib/auth-helpers"
 import { supabaseAdmin } from "@/lib/db"
+import { getUserAccess } from "@/lib/subscription-access"
 
 export const dynamic = "force-dynamic"
 
@@ -56,12 +57,14 @@ export async function GET(request: NextRequest) {
   const row = rows?.[0] ?? null
   const status = row?.status ?? null
   const active = status != null && ACTIVE_LIKE.has(String(status))
+  const access = await getUserAccess(auth.userId)
 
   return NextResponse.json({
     success: true,
     data: {
       active,
       subscription: row,
+      access,
     },
   })
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { verifySupabaseSession } from "@/lib/auth-helpers"
 import { supabaseAdmin } from "@/lib/db"
 import { computeXp, evaluateBadges, type PlayerGameStats } from "@/lib/lorcana-badges"
+import { getUserAccess } from "@/lib/subscription-access"
 
 export const dynamic = "force-dynamic"
 
@@ -91,13 +92,23 @@ export async function GET(request: NextRequest) {
       xp: xpInfo.xp,
       level: xpInfo.level,
     }
-    const badges = evaluateBadges(stats)
+    const access = await getUserAccess(auth.userId)
+    const rawBadges = evaluateBadges(stats)
+    const badges = access.isPro
+      ? rawBadges
+      : rawBadges.map((b) => ({
+          ...b,
+          unlocked: false,
+          requiresPro: true,
+          wouldUnlock: b.unlocked,
+        }))
 
     return NextResponse.json({
       success: true,
       data: {
         stats,
         badges,
+        access,
       },
     })
   } catch (e) {

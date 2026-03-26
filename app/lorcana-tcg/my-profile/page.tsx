@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -19,7 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { 
   User, MapPin, Phone, Loader2, Plus, Edit2, Trash2, Save, X, 
-  Home, Briefcase, Smartphone, Building, Sparkles, Trophy, Flame
+  Home, Briefcase, Smartphone, Building, Sparkles, Trophy, Flame, Crown, Lock
 } from "lucide-react"
 import {
   Dialog,
@@ -84,6 +85,8 @@ interface GameBadge {
   rarity: "common" | "rare" | "epic" | "legendary"
   image?: string
   unlocked: boolean
+  requiresPro?: boolean
+  wouldUnlock?: boolean
 }
 
 export default function MyProfilePage() {
@@ -374,6 +377,20 @@ export default function MyProfilePage() {
                         {gameBadges.filter((b) => b.unlocked).length}/{gameBadges.length}
                       </Badge>
                     </div>
+                    {/* CTA Pro si el usuario es Free y hay insignias bloqueadas por plan */}
+                    {gameBadges.some((b) => b.requiresPro) && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-muted-foreground">
+                          <Lock className="inline h-3 w-3 mr-0.5" />
+                          Algunas insignias requieren Pro
+                        </p>
+                        <Link href="/lorcana-tcg/my-decks">
+                          <Button size="sm" variant="default" className="gap-1 text-xs h-7">
+                            <Crown className="h-3 w-3" /> Suscribirme a Pro
+                          </Button>
+                        </Link>
+                      </div>
+                    )}
                   </div>
                   {lastUnlockedBadge && (
                     <div className="rounded-md border border-primary/40 bg-primary/10 p-3 flex items-center gap-3">
@@ -413,7 +430,11 @@ export default function MyProfilePage() {
                         }}
                         className={[
                           "rounded-md border p-3 cursor-pointer select-none transition hover:scale-[1.01]",
-                          b.unlocked ? "bg-primary/10 border-primary/40" : "opacity-60",
+                          b.unlocked
+                            ? "bg-primary/10 border-primary/40"
+                            : b.requiresPro && b.wouldUnlock
+                              ? "opacity-80 border-amber-500/40 bg-amber-500/5"
+                              : "opacity-60",
                         ].join(" ")}
                       >
                         <div className="flex items-center justify-between mb-2 gap-2">
@@ -437,9 +458,15 @@ export default function MyProfilePage() {
                           </div>
                         </div>
                         <p className="text-xs text-muted-foreground">{b.description}</p>
-                        <div className="mt-2">
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
                           {b.unlocked ? (
                             <Badge className="gap-1"><Trophy className="h-3 w-3" /> Desbloqueada</Badge>
+                          ) : b.requiresPro && b.wouldUnlock ? (
+                            <>
+                              <Badge variant="outline" className="gap-1 border-amber-500/60 text-amber-600 dark:text-amber-400">
+                                <Crown className="h-3 w-3" /> Desbloquéala con Pro
+                              </Badge>
+                            </>
                           ) : (
                             <Badge variant="outline" className="gap-1"><Flame className="h-3 w-3" /> Bloqueada</Badge>
                           )}

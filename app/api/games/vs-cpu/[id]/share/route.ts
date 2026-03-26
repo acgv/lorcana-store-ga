@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifySupabaseSession } from "@/lib/auth-helpers"
 import { supabaseAdmin } from "@/lib/db"
+import { getUserAccess } from "@/lib/subscription-access"
 
 export const dynamic = "force-dynamic"
 
@@ -44,6 +45,19 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   }
   if (!supabaseAdmin) {
     return secureJson({ success: false, error: "Database not configured" }, { status: 503 })
+  }
+
+  const access = await getUserAccess(auth.userId)
+  if (!access.isPro) {
+    return secureJson(
+      {
+        success: false,
+        code: "PRO_REQUIRED_REPLAY_SHARE",
+        error: "Compartir replay por link es una función Pro. Suscríbete para habilitarla.",
+        data: { isPro: false, source: access.source },
+      },
+      { status: 403 }
+    )
   }
 
   const params = await context.params
