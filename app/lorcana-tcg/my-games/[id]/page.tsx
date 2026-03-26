@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
 import { useUser } from "@/hooks/use-user"
 import { supabase } from "@/lib/db"
 import { ArrowLeft, Sparkles, Shield, Swords } from "lucide-react"
@@ -52,6 +53,7 @@ export default function VsCpuGameDetailsPage() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
   const { user, loading: userLoading } = useUser()
+  const { toast } = useToast()
 
   const [session, setSession] = useState<Session | null>(null)
   const [turns, setTurns] = useState<Turn[]>([])
@@ -204,6 +206,49 @@ export default function VsCpuGameDetailsPage() {
     return type
   }
 
+  const shareSummary = `Lorcana Replay: ${session.deck_name || "Mazo"} · ${
+    session.result === "player" ? "Victoria" : "Derrota"
+  } · ${turns.length} turnos · modo ${session.mode}`
+
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/lorcana-tcg/my-games/${session.id}`
+      : `/lorcana-tcg/my-games/${session.id}`
+
+  const handleShare = async () => {
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({
+          title: "Replay Lorcana",
+          text: shareSummary,
+          url: shareUrl,
+        })
+        return
+      }
+      await navigator.clipboard.writeText(`${shareSummary}\n${shareUrl}`)
+      toast({
+        title: "Replay copiado",
+        description: "Se copió el texto para compartir.",
+      })
+    } catch (e) {
+      console.error(e)
+      toast({
+        title: "No se pudo compartir",
+        description: "Intenta copiar manualmente el enlace.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      toast({ title: "Enlace copiado", description: "Listo para compartir." })
+    } catch {
+      toast({ title: "Error", description: "No se pudo copiar el enlace.", variant: "destructive" })
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -222,6 +267,12 @@ export default function VsCpuGameDetailsPage() {
               {session.result === "player" ? "Victoria" : "Derrota"}
             </Badge>
             <Badge variant="secondary">{session.mode === "manual" ? "Manual" : "Auto"}</Badge>
+            <Button size="sm" variant="outline" onClick={handleCopyLink}>
+              Copiar link
+            </Button>
+            <Button size="sm" onClick={handleShare}>
+              Compartir
+            </Button>
           </div>
         </div>
 

@@ -115,6 +115,12 @@ export function Header() {
               Desafío Diario
             </Link>
             <Link
+              href="/lorcana-tcg/weekly-event"
+              className="text-sm font-sans font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:scale-105"
+            >
+              Evento Semanal
+            </Link>
+            <Link
               href="/lorcana-tcg/contact"
               className="text-sm font-sans font-medium text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-105"
             >
@@ -186,6 +192,13 @@ export function Header() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Desafío Diario
+                </Link>
+                <Link
+                  href="/lorcana-tcg/weekly-event"
+                  className="text-base font-sans font-medium text-primary hover:text-primary/80 transition-colors px-2 py-2 hover:bg-muted rounded-md"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Evento Semanal
                 </Link>
                 <Link
                   href="/lorcana-tcg/contact"
