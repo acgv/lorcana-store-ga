@@ -62,6 +62,7 @@ export default function VsCpuGameDetailsPage() {
   const [replayIndex, setReplayIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [replaySpeed, setReplaySpeed] = useState<0.5 | 1 | 2>(1)
+  const [sharedUrl, setSharedUrl] = useState<string | null>(null)
 
   const canLoad = useMemo(() => Boolean(user && id), [user, id])
   const cardById = useMemo(() => {
@@ -210,22 +211,40 @@ export default function VsCpuGameDetailsPage() {
     session.result === "player" ? "Victoria" : "Derrota"
   } · ${turns.length} turnos · modo ${session.mode}`
 
-  const shareUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/lorcana-tcg/my-games/${session.id}`
-      : `/lorcana-tcg/my-games/${session.id}`
+  const shareUrl = sharedUrl || (typeof window !== "undefined"
+    ? `${window.location.origin}/lorcana-tcg/my-games/${session.id}`
+    : `/lorcana-tcg/my-games/${session.id}`)
+
+  const ensureSharedUrl = async () => {
+    if (sharedUrl) return sharedUrl
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    if (!token) throw new Error("No hay sesión activa")
+    const res = await fetch(`/api/games/vs-cpu/${session.id}/share`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error || "No se pudo generar enlace público")
+    const nextUrl = typeof window !== "undefined"
+      ? `${window.location.origin}${json.data.url}`
+      : json.data.url
+    setSharedUrl(nextUrl)
+    return nextUrl
+  }
 
   const handleShare = async () => {
     try {
+      const finalUrl = await ensureSharedUrl()
       if (typeof navigator !== "undefined" && navigator.share) {
         await navigator.share({
           title: "Replay Lorcana",
           text: shareSummary,
-          url: shareUrl,
+          url: finalUrl,
         })
         return
       }
-      await navigator.clipboard.writeText(`${shareSummary}\n${shareUrl}`)
+      await navigator.clipboard.writeText(`${shareSummary}\n${finalUrl}`)
       toast({
         title: "Replay copiado",
         description: "Se copió el texto para compartir.",
@@ -242,7 +261,8 @@ export default function VsCpuGameDetailsPage() {
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(shareUrl)
+      const finalUrl = await ensureSharedUrl()
+      await navigator.clipboard.writeText(finalUrl)
       toast({ title: "Enlace copiado", description: "Listo para compartir." })
     } catch {
       toast({ title: "Error", description: "No se pudo copiar el enlace.", variant: "destructive" })
