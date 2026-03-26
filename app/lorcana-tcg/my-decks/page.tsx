@@ -1633,7 +1633,6 @@ function DeckBuilder() {
                 </Button>
               </div>
             </div>
-            </div>
           </CardContent>
         </Card>
 
