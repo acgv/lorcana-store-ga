@@ -305,6 +305,26 @@ export default function PlayVsCpuPage() {
     []
   )
 
+  const runPlayerSequence = useCallback(
+    (actions: GameAction[]) => {
+      if (!game) return
+      if (game.winner !== null) return
+      if (game.activePlayer !== 0) return
+      if (cpuThinking) return
+
+      let s: GameState = game
+      for (const a of actions) {
+        const res = applyAndLog("player", s, a)
+        if (!res.ok) {
+          toast({ title: "Movimiento inválido", description: res.error, variant: "destructive" })
+          return
+        }
+        s = res.state
+      }
+    },
+    [applyAndLog, cpuThinking, game, toast]
+  )
+
   const playerAction = useCallback(
     (action: GameAction) => {
       if (!game) return
@@ -316,9 +336,7 @@ export default function PlayVsCpuPage() {
         setPendingChallengeDefender(null)
       }
       const res = applyAndLog("player", game, action)
-      if (!res.ok) {
-        toast({ title: "Movimiento inválido", description: res.error, variant: "destructive" })
-      }
+      if (!res.ok) toast({ title: "Movimiento inválido", description: res.error, variant: "destructive" })
     },
     [applyAndLog, cpuThinking, game, toast]
   )
@@ -826,11 +844,11 @@ export default function PlayVsCpuPage() {
                                   <span>Coste: {def?.inkCost ?? "?"}</span>
                                   {def?.inkable ? <Badge variant="secondary">Inkable</Badge> : <Badge variant="outline">No ink</Badge>}
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 pb-0.5">
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="flex-1"
+                                    className="flex-1 h-8 px-2 text-xs"
                                     disabled={game.activePlayer !== 0 || game.phase !== "ink" || cpuThinking || game.winner !== null}
                                     onClick={() => playerAction({ type: "INK_FROM_HAND", handIndex: idx })}
                                   >
@@ -838,7 +856,7 @@ export default function PlayVsCpuPage() {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    className="flex-1"
+                                    className="flex-1 h-8 px-2 text-xs"
                                     disabled={game.activePlayer !== 0 || cpuThinking || game.winner !== null}
                                     title={
                                       game.activePlayer !== 0
@@ -853,16 +871,15 @@ export default function PlayVsCpuPage() {
                                     }
                                     onClick={() => {
                                       if (!game) return
-                                      // UX tutor: si estás en ink y quieres jugar, saltamos tinta automáticamente.
+                                      // UX tutor: si estás en ink y quieres jugar, saltamos tinta y jugamos en secuencia (sin depender de renders).
                                       if (game.phase === "ink") {
-                                        playerAction({ type: "SKIP_INK" })
-                                        // playerAction actualiza state async; esperamos microtick y dejamos que el motor bloquee si no corresponde.
-                                        window.setTimeout(() => {
-                                          playerAction({ type: "PLAY_FROM_HAND", handIndex: idx })
-                                        }, 0)
+                                        runPlayerSequence([
+                                          { type: "SKIP_INK" },
+                                          { type: "PLAY_FROM_HAND", handIndex: idx },
+                                        ])
                                         return
                                       }
-                                      playerAction({ type: "PLAY_FROM_HAND", handIndex: idx })
+                                      runPlayerSequence([{ type: "PLAY_FROM_HAND", handIndex: idx }])
                                     }}
                                   >
                                     Jugar
