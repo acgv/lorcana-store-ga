@@ -21,7 +21,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { SlidersHorizontal } from "lucide-react"
 import { 
   Loader2, Lock, Package, Trash2, ExternalLink, 
-  TrendingUp, Plus, Minus, Check, List, Sparkles, ShoppingCart, AlertCircle, RefreshCw
+  TrendingUp, Plus, Minus, Check, List, Sparkles, ShoppingCart, AlertCircle, RefreshCw,
+  Crown, Download
 } from "lucide-react"
 import type { Card as CardType } from "@/lib/types"
 
@@ -50,6 +51,7 @@ function MyCollectionContent() {
   
   const [allCards, setAllCards] = useState<CardType[]>([])
   const [loadingCards, setLoadingCards] = useState(true)
+  const [isPro, setIsPro] = useState(false)
   
   // Leer tab y filtros desde URL o usar defaults
   const tabFromUrl = searchParams.get("tab") as "all" | "owned" | "missing" | null
@@ -149,12 +151,25 @@ function MyCollectionContent() {
     return () => document.removeEventListener('click', handleClick, true)
   }, [])
 
-  // Load all cards
+  // Load all cards + subscription access
   useEffect(() => {
     if (user) {
       loadAllCards()
+      loadAccess()
     }
   }, [user])
+
+  const loadAccess = async () => {
+    try {
+      const headers = await getAuthHeaders()
+      if (!headers) return
+      const res = await fetch("/api/subscription/me", { headers })
+      const json = await res.json()
+      if (json?.success) {
+        setIsPro(json.data?.access?.isPro === true)
+      }
+    } catch {}
+  }
 
   const loadAllCards = async () => {
     try {
@@ -442,21 +457,68 @@ function MyCollectionContent() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
               <h1 className="text-4xl font-bold">{t("myCollection")}</h1>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  refresh()
-                  toast({
-                    title: "Actualizando...",
-                    description: "Recargando tu colección desde la base de datos",
-                  })
-                }}
-                disabled={loading}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                Actualizar
-              </Button>
+              <div className="flex items-center gap-2">
+                {isPro ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const rows = groupedOwnedItems.map((g) => ({
+                        nombre: g.card.name,
+                        set: g.card.set || "",
+                        numero: g.card.number || "",
+                        rareza: g.card.rarity || "",
+                        tipo: g.card.type || "",
+                        normal: g.normalQuantity,
+                        foil: g.foilQuantity,
+                        precio_normal: g.card.price || 0,
+                        precio_foil: g.card.foilPrice || 0,
+                      }))
+                      const header = Object.keys(rows[0] || {}).join(",")
+                      const csv = [header, ...rows.map((r) => Object.values(r).join(","))].join("\n")
+                      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement("a")
+                      a.href = url
+                      a.download = `lorcana-coleccion-${new Date().toISOString().slice(0, 10)}.csv`
+                      a.click()
+                      URL.revokeObjectURL(url)
+                      toast({ title: "Exportado", description: "Tu colección se descargó como CSV." })
+                    }}
+                    disabled={groupedOwnedItems.length === 0}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Exportar CSV
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled
+                    title="Exportar colección requiere Pro"
+                    className="gap-1"
+                  >
+                    <Download className="h-4 w-4" />
+                    Exportar
+                    <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-1">Pro</Badge>
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    refresh()
+                    toast({
+                      title: "Actualizando...",
+                      description: "Recargando tu colección desde la base de datos",
+                    })
+                  }}
+                  disabled={loading}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                  Actualizar
+                </Button>
+              </div>
             </div>
             <p className="text-muted-foreground">{t("myCollectionDesc")}</p>
           </div>
@@ -477,18 +539,31 @@ function MyCollectionContent() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className={!isPro ? "relative overflow-hidden" : ""}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">{t("collectionValue")}</CardTitle>
                   <TrendingUp className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-primary">
-                    ${Math.floor(collectionValue).toLocaleString()} CLP
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("ownedCards")}
-                  </p>
+                  {isPro ? (
+                    <>
+                      <div className="text-2xl font-bold text-primary">
+                        ${Math.floor(collectionValue).toLocaleString()} CLP
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t("ownedCards")}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-2xl font-bold text-muted-foreground/40 select-none">
+                        $•••••• CLP
+                      </div>
+                      <Link href="/lorcana-tcg/my-decks" className="inline-flex items-center gap-1 mt-1 text-xs text-primary hover:underline">
+                        <Crown className="h-3 w-3" /> Desbloquear con Pro
+                      </Link>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -518,9 +593,14 @@ function MyCollectionContent() {
                 <Package className="h-4 w-4" />
                 {t("owned")} ({totalOwnedCards})
               </TabsTrigger>
-              <TabsTrigger value="missing" className="gap-2">
-                <AlertCircle className="h-4 w-4" />
-                Me faltan ({totalMissingCards})
+              <TabsTrigger value="missing" className="gap-2" disabled={!isPro}>
+                {isPro ? (
+                  <AlertCircle className="h-4 w-4" />
+                ) : (
+                  <Lock className="h-4 w-4" />
+                )}
+                Me faltan {isPro ? `(${totalMissingCards})` : ""}
+                {!isPro && <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-1">Pro</Badge>}
               </TabsTrigger>
             </TabsList>
 
@@ -582,16 +662,17 @@ function MyCollectionContent() {
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                       {sortedCards.map((card) => (
-                        <AllCardsCard 
-                          key={card.id} 
-                          card={card} 
-                          t={t} 
+                        <AllCardsCard
+                          key={card.id}
+                          card={card}
+                          t={t}
                           user={user}
                           collection={collection}
                           isInCollection={isInCollection}
                           addToCollection={addToCollection}
                           removeFromCollection={removeFromCollection}
                           refresh={refresh}
+                          isPro={isPro}
                         />
                       ))}
                     </div>
@@ -685,6 +766,7 @@ function MyCollectionContent() {
                             ownedFoil={group.hasFoil}
                             ownedNormalQuantity={group.normalQuantity}
                             ownedFoilQuantity={group.foilQuantity}
+                            isPro={isPro}
                           />
                         ))}
                       </div>
@@ -694,46 +776,61 @@ function MyCollectionContent() {
               </div>
             </TabsContent>
 
-            {/* Tab 3: Missing Cards */}
+            {/* Tab 3: Missing Cards (Pro only) */}
             <TabsContent value="missing">
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* Filters - Desktop */}
-                <div className="hidden lg:block">
-                  <CardFilters
-                    filters={filters}
-                    setFilters={setFilters}
-                    sortBy={sortBy}
-                    setSortBy={setSortBy}
-                    viewMode={viewMode}
-                    setViewMode={setViewMode}
-                  />
-                </div>
-
-                {/* Missing Cards Grid */}
-                <div className="lg:col-span-3">
-                  {loadingCards ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      {t("loadingCards")}
+              {!isPro ? (
+                <Card className="border-dashed">
+                  <CardContent className="flex flex-col items-center justify-center py-16">
+                    <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mb-4">
+                      <Lock className="h-8 w-8 text-amber-500" />
                     </div>
-                  ) : (
-                    <>
-                      <div className="mb-4 text-sm text-muted-foreground">
-                        {missingCards.length} {missingCards.length === 1 ? t("cardFound") : t("cardsFound")} {t("foundText")}
+                    <h3 className="text-xl font-semibold mb-2">Función Pro</h3>
+                    <p className="text-muted-foreground text-center mb-6 max-w-md">
+                      Descubre qué cartas te faltan para completar tu colección. Esta herramienta está disponible con Lorcana Pro.
+                    </p>
+                    <Link href="/lorcana-tcg/my-decks">
+                      <Button className="gap-2">
+                        <Crown className="h-4 w-4" /> Suscribirme a Pro
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                  <div className="hidden lg:block">
+                    <CardFilters
+                      filters={filters}
+                      setFilters={setFilters}
+                      sortBy={sortBy}
+                      setSortBy={setSortBy}
+                      viewMode={viewMode}
+                      setViewMode={setViewMode}
+                    />
+                  </div>
+                  <div className="lg:col-span-3">
+                    {loadingCards ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        {t("loadingCards")}
                       </div>
-                      <div className="bg-card/50 backdrop-blur-sm border border-primary/20 rounded-xl p-4 md:p-6">
-                        <div className="mb-4 flex items-center justify-between">
-                          <h2 className="text-xl font-semibold">Cartas que me faltan</h2>
+                    ) : (
+                      <>
+                        <div className="mb-4 text-sm text-muted-foreground">
+                          {missingCards.length} {missingCards.length === 1 ? t("cardFound") : t("cardsFound")} {t("foundText")}
                         </div>
-                        {/* Reutilizamos el mismo render que "Todas" (grid/list) */}
-                        <div className="mt-4">
-                          {/* @ts-ignore: CardGrid acepta CardType compatible */}
-                          <CardGrid cards={missingCards as any} viewMode={viewMode} />
+                        <div className="bg-card/50 backdrop-blur-sm border border-primary/20 rounded-xl p-4 md:p-6">
+                          <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-xl font-semibold">Cartas que me faltan</h2>
+                          </div>
+                          <div className="mt-4">
+                            {/* @ts-ignore: CardGrid acepta CardType compatible */}
+                            <CardGrid cards={missingCards as any} viewMode={viewMode} />
+                          </div>
                         </div>
-                      </div>
-                    </>
-                  )}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </TabsContent>
 
           </Tabs>
@@ -770,7 +867,8 @@ function AllCardsCard({
   ownedNormal,
   ownedFoil,
   ownedNormalQuantity,
-  ownedFoilQuantity
+  ownedFoilQuantity,
+  isPro = false,
 }: { 
   card: CardType
   t: (key: string) => string
@@ -784,6 +882,7 @@ function AllCardsCard({
   ownedFoil?: boolean
   ownedNormalQuantity?: number
   ownedFoilQuantity?: number
+  isPro?: boolean
 }) {
   const { toast } = useToast()
   const { addToCart } = useCart()
@@ -970,8 +1069,14 @@ function AllCardsCard({
             </Button>
           )}
 
-          {/* Foil Owned */}
-          {hasFoilOwned ? (
+          {/* Foil Owned (Pro only for Free users) */}
+          {!isPro ? (
+            <div className="flex items-center gap-1.5 p-2 bg-muted/40 rounded-md border border-dashed opacity-70">
+              <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground flex-1">{t("foil")}</span>
+              <Badge variant="secondary" className="text-[10px] px-1 py-0">Pro</Badge>
+            </div>
+          ) : hasFoilOwned ? (
             <div className="flex items-center gap-1 p-2 bg-green-500/10 rounded-md border border-green-500/20">
               <Button
                 variant="ghost"
