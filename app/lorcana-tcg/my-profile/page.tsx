@@ -98,8 +98,39 @@ export default function MyProfilePage() {
   const [gameBadges, setGameBadges] = useState<GameBadge[]>([])
   const [lastUnlockedBadge, setLastUnlockedBadge] = useState<GameBadge | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
+  const [spinningBadgeId, setSpinningBadgeId] = useState<string | null>(null)
+  const [badgeTheme, setBadgeTheme] = useState<"classic" | "arcane">("arcane")
+  const [soundEnabled, setSoundEnabled] = useState(true)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+
+  const badgeImageSrc = (b: GameBadge | null) => {
+    if (!b) return "/placeholder.svg"
+    if (badgeTheme === "arcane") return `/badges/arcane/${b.id}.svg`
+    return b.image || "/placeholder.svg"
+  }
+
+  const playBadgeFlipSound = () => {
+    if (!soundEnabled) return
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const now = audioCtx.currentTime
+      const osc = audioCtx.createOscillator()
+      const gain = audioCtx.createGain()
+      osc.type = "triangle"
+      osc.frequency.setValueAtTime(980, now)
+      osc.frequency.exponentialRampToValueAtTime(620, now + 0.12)
+      gain.gain.setValueAtTime(0.0001, now)
+      gain.gain.exponentialRampToValueAtTime(0.07, now + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16)
+      osc.connect(gain)
+      gain.connect(audioCtx.destination)
+      osc.start(now)
+      osc.stop(now + 0.17)
+    } catch {
+      // Ignore audio errors silently.
+    }
+  }
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -317,15 +348,37 @@ export default function MyProfilePage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">Insignias</p>
-                    <Badge variant="secondary">
-                      {gameBadges.filter((b) => b.unlocked).length}/{gameBadges.length}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={badgeTheme}
+                        onValueChange={(v) => setBadgeTheme(v as "classic" | "arcane")}
+                      >
+                        <SelectTrigger className="h-8 w-[120px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="classic">Classic</SelectItem>
+                          <SelectItem value="arcane">Arcane</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <label className="inline-flex items-center gap-1 text-xs text-muted-foreground border rounded px-2 py-1">
+                        <input
+                          type="checkbox"
+                          checked={soundEnabled}
+                          onChange={(e) => setSoundEnabled(e.target.checked)}
+                        />
+                        sonido
+                      </label>
+                      <Badge variant="secondary">
+                        {gameBadges.filter((b) => b.unlocked).length}/{gameBadges.length}
+                      </Badge>
+                    </div>
                   </div>
                   {lastUnlockedBadge && (
                     <div className="rounded-md border border-primary/40 bg-primary/10 p-3 flex items-center gap-3">
                       <div className="relative w-12 h-12 rounded-md overflow-hidden border border-primary/40 bg-background/60">
                         <Image
-                          src={lastUnlockedBadge.image || "/placeholder.svg"}
+                          src={badgeImageSrc(lastUnlockedBadge)}
                           alt={lastUnlockedBadge.name}
                           fill
                           className="object-cover"
@@ -342,15 +395,35 @@ export default function MyProfilePage() {
                     {gameBadges.map((b) => (
                       <div
                         key={b.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          playBadgeFlipSound()
+                          setSpinningBadgeId(b.id)
+                          window.setTimeout(() => setSpinningBadgeId((prev) => (prev === b.id ? null : prev)), 750)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            playBadgeFlipSound()
+                            setSpinningBadgeId(b.id)
+                            window.setTimeout(() => setSpinningBadgeId((prev) => (prev === b.id ? null : prev)), 750)
+                          }
+                        }}
                         className={[
-                          "rounded-md border p-3",
+                          "rounded-md border p-3 cursor-pointer select-none transition hover:scale-[1.01]",
                           b.unlocked ? "bg-primary/10 border-primary/40" : "opacity-60",
                         ].join(" ")}
                       >
                         <div className="flex items-center justify-between mb-2 gap-2">
-                          <div className="relative w-10 h-10 rounded-md overflow-hidden border bg-background/60 shrink-0">
+                          <div
+                            className={[
+                              "relative w-10 h-10 rounded-md overflow-hidden border bg-background/60 shrink-0 badge-coin",
+                              spinningBadgeId === b.id ? "badge-coin-spin" : "",
+                            ].join(" ")}
+                          >
                             <Image
-                              src={b.image || "/placeholder.svg"}
+                              src={badgeImageSrc(b)}
                               alt={b.name}
                               fill
                               className="object-cover"
@@ -519,6 +592,27 @@ export default function MyProfilePage() {
               opacity: 0;
               transform: translateY(80vh) rotate(540deg);
             }
+          }
+          @keyframes badge-coin-spin {
+            0% {
+              transform: perspective(400px) rotateY(0deg) scale(1);
+              box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+            }
+            40% {
+              transform: perspective(400px) rotateY(180deg) scale(1.15);
+              box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+            }
+            100% {
+              transform: perspective(400px) rotateY(360deg) scale(1);
+              box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+            }
+          }
+          .badge-coin {
+            transform-style: preserve-3d;
+            will-change: transform;
+          }
+          .badge-coin-spin {
+            animation: badge-coin-spin 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
           }
         `}</style>
       </main>
