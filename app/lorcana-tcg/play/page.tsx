@@ -67,6 +67,8 @@ export default function PlayVsCpuPage() {
   const [selectedDeckId, setSelectedDeckId] = useState<string>("")
   const [loadingData, setLoadingData] = useState(false)
   const [playerMode, setPlayerMode] = useState<"manual" | "auto">("manual")
+  const [autoStyle, setAutoStyle] = useState<"step" | "continuous">("step")
+  const [autoDelayMs, setAutoDelayMs] = useState(900)
 
   const [lockedDeckId, setLockedDeckId] = useState<string | null>(null)
   const [game, setGame] = useState<GameState | null>(null)
@@ -342,52 +344,139 @@ export default function PlayVsCpuPage() {
     [applyAndLog, cpuThinking, game, toast]
   )
 
+  const chooseOneAutoActionForPlayer = useCallback(
+    (s: GameState): GameAction[] => {
+      // Devuelve 0..n acciones; preferimos completar un turno de forma entendible.
+      if (s.phase === "ink") {
+        // intenta entintar; si no puede, salta
+        for (let i = 0; i < s.players[0].hand.length; i++) {
+          return [{ type: "INK_FROM_HAND", handIndex: i }]
+        }
+        return [{ type: "SKIP_INK" }]
+      }
+
+      if (s.phase === "main") {
+        // 1) jugar primera carta legal
+        for (let i = 0; i < s.players[0].hand.length; i++) {
+          return [{ type: "PLAY_FROM_HAND", handIndex: i }]
+        }
+        // 2) quest si puede
+        for (let i = 0; i < s.players[0].inPlay.length; i++) {
+          return [{ type: "QUEST", inPlayIndex: i }]
+        }
+        // 3) terminar turno
+        return [{ type: "END_MAIN" }]
+      }
+
+      return []
+    },
+    []
+  )
+
+  const chooseOneAutoActionForCpu = useCallback(
+    (s: GameState): GameAction[] => {
+      if (s.phase === "ink") {
+        for (let i = 0; i < s.players[1].hand.length; i++) {
+          return [{ type: "INK_FROM_HAND", handIndex: i }]
+        }
+        return [{ type: "SKIP_INK" }]
+      }
+
+      if (s.phase === "main") {
+        // quest primero (mayor lore)
+        let bestIdx: number | null = null
+        let bestLore = -1
+        for (let i = 0; i < s.players[1].inPlay.length; i++) {
+          const c = s.players[1].inPlay[i]
+          if (c.drying || !c.ready) continue
+          const def = s.definitions.get(c.definitionId)
+          const lore = def && typeof def.lore === "number" ? def.lore : 0
+          if (lore > bestLore) {
+            bestLore = lore
+            bestIdx = i
+          }
+        }
+        if (bestIdx !== null && bestLore > 0) return [{ type: "QUEST", inPlayIndex: bestIdx }]
+
+        // jugar primera legal
+        for (let i = 0; i < s.players[1].hand.length; i++) {
+          return [{ type: "PLAY_FROM_HAND", handIndex: i }]
+        }
+        return [{ type: "END_MAIN" }]
+      }
+
+      return []
+    },
+    []
+  )
+
+  const runAutoTurn = useCallback(
+    (actor: "player" | "cpu", start: GameState): GameState => {
+      // Ejecuta acciones hasta que cambie el turno (activePlayer) o termine la partida.
+      let s = start
+      const targetPlayer = actor === "player" ? 0 : 1
+      for (let guard = 0; guard < 50; guard++) {
+        if (s.winner !== null) break
+        if (s.activePlayer !== targetPlayer) break
+
+        const actions =
+          actor === "player" ? chooseOneAutoActionForPlayer(s) : chooseOneAutoActionForCpu(s)
+        if (actions.length === 0) break
+
+        for (const a of actions) {
+          const res = applyAndLog(actor, s, a)
+          if (!res.ok) return s
+          s = res.state
+        }
+      }
+      return s
+    },
+    [applyAndLog, chooseOneAutoActionForCpu, chooseOneAutoActionForPlayer]
+  )
+
+  const advanceAuto = useCallback(() => {
+    if (!game) return
+    if (game.winner !== null) return
+    if (cpuThinking) return
+    if (playerMode !== "auto") return
+
+    // Avanza 1 turno completo del jugador activo.
+    if (game.activePlayer === 0) {
+      runAutoTurn("player", game)
+      return
+    }
+    if (game.activePlayer === 1) {
+      runAutoTurn("cpu", game)
+    }
+  }, [cpuThinking, game, playerMode, runAutoTurn])
+
   const playAutoForPlayer = useCallback(() => {
     if (!game) return
     if (game.winner !== null) return
     if (game.activePlayer !== 0) return
     if (cpuThinking) return
 
-    // Auto básico: en ink entinta si puede, si no salta; en main juega primera legal, si no, quest si puede; luego termina.
-    if (game.phase === "ink") {
-      const hand = game.players[0].hand
-      for (let i = 0; i < hand.length; i++) {
-        const r = applyAndLog("player", game, { type: "INK_FROM_HAND", handIndex: i })
-        if (r.ok) return
-      }
-      runPlayerSequence([{ type: "SKIP_INK" }])
-      return
-    }
-
-    if (game.phase === "main") {
-      const hand = game.players[0].hand
-      for (let i = 0; i < hand.length; i++) {
-        const r = applyAndLog("player", game, { type: "PLAY_FROM_HAND", handIndex: i })
-        if (r.ok) return
-      }
-      const inPlay = game.players[0].inPlay
-      for (let i = 0; i < inPlay.length; i++) {
-        const r = applyAndLog("player", game, { type: "QUEST", inPlayIndex: i })
-        if (r.ok) return
-      }
-      runPlayerSequence([{ type: "END_MAIN" }])
-    }
-  }, [applyAndLog, cpuThinking, game, runPlayerSequence])
+    // Mantener compatibilidad: acción “única” (usada por botón manual si lo dejamos).
+    const actions = chooseOneAutoActionForPlayer(game)
+    if (actions.length === 0) return
+    runPlayerSequence(actions)
+  }, [chooseOneAutoActionForPlayer, cpuThinking, game, runPlayerSequence])
 
   // Auto-play: si el modo del jugador es auto, ejecuta jugadas solo en tu turno.
   useEffect(() => {
     if (playerMode !== "auto") return
+    if (autoStyle !== "continuous") return
     if (!game) return
     if (game.winner !== null) return
     if (cpuThinking) return
-    if (game.activePlayer !== 0) return
+    // En continuo avanzamos por turno: jugador -> cpu -> jugador...
 
     const t = window.setTimeout(() => {
-      playAutoForPlayer()
-    }, 300)
+      advanceAuto()
+    }, Math.max(250, Math.floor(autoDelayMs)))
 
     return () => window.clearTimeout(t)
-  }, [cpuThinking, game, playAutoForPlayer, playerMode])
+  }, [advanceAuto, autoDelayMs, autoStyle, cpuThinking, game, playerMode])
 
   const playerAction = useCallback(
     (action: GameAction) => {
@@ -422,6 +511,8 @@ export default function PlayVsCpuPage() {
     if (game.winner !== null) return
     if (game.activePlayer !== 1) return
     if (cpuThinking) return
+    // Si estamos en auto guiado (step), no ejecutamos la CPU sola.
+    if (playerMode === "auto" && autoStyle === "step") return
 
     setCpuThinking(true)
     try {
@@ -501,7 +592,7 @@ export default function PlayVsCpuPage() {
     } finally {
       setCpuThinking(false)
     }
-  }, [applyAndLog, cpuThinking, game])
+  }, [applyAndLog, autoStyle, cpuThinking, game, playerMode])
 
   useEffect(() => {
     void cpuTurn()
@@ -784,9 +875,49 @@ export default function PlayVsCpuPage() {
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   {playerMode === "auto"
-                    ? "El asistente ejecuta tus jugadas automáticamente en tu turno."
+                    ? autoStyle === "step"
+                      ? "Modo guiado: pulsa Avanzar para ejecutar el siguiente turno."
+                      : "Modo continuo: el asistente avanza turnos automáticamente (más lento)."
                     : "Tú decides cada acción (entintar, jugar, quest, challenge)."}
                 </p>
+
+                {playerMode === "auto" && (
+                  <div className="grid grid-cols-1 gap-2">
+                    <Select
+                      value={autoStyle}
+                      onValueChange={(v) => {
+                        if (!deckSelectDisabled) setAutoStyle(v as any)
+                      }}
+                      disabled={deckSelectDisabled}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Estilo auto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="step">Paso a paso (Avanzar)</SelectItem>
+                        <SelectItem value="continuous">Continuo (lento)</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {autoStyle === "continuous" && (
+                      <div className="rounded-md border p-2 text-xs text-muted-foreground">
+                        Velocidad: {autoDelayMs}ms por turno
+                        <div className="mt-2">
+                          <input
+                            type="range"
+                            min={350}
+                            max={2000}
+                            step={50}
+                            value={autoDelayMs}
+                            onChange={(e) => setAutoDelayMs(Number(e.target.value))}
+                            className="w-full"
+                            disabled={deckSelectDisabled}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="md:col-span-3 space-y-2 flex flex-col justify-end">
@@ -839,9 +970,14 @@ export default function PlayVsCpuPage() {
                           Saltar tinta
                         </Button>
                       )}
-                      {playerMode === "auto" && game.activePlayer === 0 && game.winner === null && (
-                        <Button className="w-full sm:w-auto" onClick={playAutoForPlayer} variant="secondary">
-                          Jugada automática
+                      {playerMode === "auto" && game.winner === null && (
+                        <Button
+                          className="w-full sm:w-auto"
+                          onClick={advanceAuto}
+                          variant="secondary"
+                          disabled={cpuThinking}
+                        >
+                          Avanzar
                         </Button>
                       )}
                       <Button
