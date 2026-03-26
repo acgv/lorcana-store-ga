@@ -67,6 +67,18 @@ export async function POST(request: NextRequest) {
 
   if (!name) return NextResponse.json({ success: false, error: "name is required" }, { status: 400 })
   if (!goals.length) return NextResponse.json({ success: false, error: "at least one goal is required" }, { status: 400 })
+  if (Number.isNaN(new Date(startsAt).getTime())) {
+    return NextResponse.json({ success: false, error: "start date is invalid" }, { status: 400 })
+  }
+  if (endsAt && Number.isNaN(new Date(endsAt).getTime())) {
+    return NextResponse.json({ success: false, error: "end date is invalid" }, { status: 400 })
+  }
+  if (endsAt && new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
+    return NextResponse.json(
+      { success: false, error: "end date must be later than start date" },
+      { status: 400 }
+    )
+  }
 
   const userId = await getUserIdFromRequest(request)
 
@@ -154,6 +166,19 @@ export async function PUT(request: NextRequest) {
   if (!seasonId) return NextResponse.json({ success: false, error: "seasonId required" }, { status: 400 })
   if (!name) return NextResponse.json({ success: false, error: "name is required" }, { status: 400 })
   if (!goals.length) return NextResponse.json({ success: false, error: "at least one goal is required" }, { status: 400 })
+  if (startsAt && Number.isNaN(new Date(startsAt).getTime())) {
+    return NextResponse.json({ success: false, error: "start date is invalid" }, { status: 400 })
+  }
+  if (endsAt && Number.isNaN(new Date(endsAt).getTime())) {
+    return NextResponse.json({ success: false, error: "end date is invalid" }, { status: 400 })
+  }
+  const effectiveStart = startsAt || new Date().toISOString()
+  if (endsAt && new Date(endsAt).getTime() <= new Date(effectiveStart).getTime()) {
+    return NextResponse.json(
+      { success: false, error: "end date must be later than start date" },
+      { status: 400 }
+    )
+  }
 
   if (isActive === true) {
     await supabaseAdmin.from("weekly_event_seasons").update({ is_active: false }).neq("id", seasonId)

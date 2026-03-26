@@ -16,12 +16,34 @@ export async function GET(request: NextRequest) {
       throw new Error("Supabase admin not configured")
     }
 
-    // Get all users from auth.users
-    const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers()
+    // Get all users from auth.users (paginated)
+    const allUsers: Array<{
+      id: string
+      email?: string | null
+      user_metadata?: Record<string, any>
+      app_metadata?: Record<string, any>
+      created_at?: string
+      last_sign_in_at?: string | null
+    }> = []
+    const perPage = 200
+    let page = 1
+    let hasMore = true
 
-    if (usersError) {
-      console.error("Error fetching users:", usersError)
-      throw usersError
+    while (hasMore) {
+      const { data: pageData, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage,
+      })
+
+      if (usersError) {
+        console.error("Error fetching users:", usersError)
+        throw usersError
+      }
+
+      const batch = pageData?.users || []
+      allUsers.push(...batch)
+      hasMore = batch.length === perPage
+      page += 1
     }
 
     // Get all user roles
@@ -35,11 +57,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user_profiles (RUT / document) for all users
-    const userIds = users.users.map((u) => u.id)
-    const { data: profiles } = await supabaseAdmin
+    const userIds = allUsers.map((u) => u.id)
+    const { data: profiles, error: profilesError } = await supabaseAdmin
       .from("user_profiles")
       .select("user_id, document_type, document_number")
       .in("user_id", userIds)
+
+    if (profilesError) {
+      console.error("Error fetching user_profiles:", profilesError)
+      throw profilesError
+    }
 
     const profileByUserId = new Map(
       (profiles || []).map((p: { user_id: string; document_type: string | null; document_number: string | null }) => [
@@ -53,9 +80,11 @@ export async function GET(request: NextRequest) {
     )
 
     // Combine users with their roles and profile (RUT)
-    const usersWithRoles = users.users.map((user) => {
+    const usersWithRoles = allUsers.map((user) => {
       const userRole = roles?.find((r) => r.user_id === user.id)
       const profile = profileByUserId.get(user.id)
+      const profileDoc = profile?.documentNumber?.trim() || null
+      const profileType = profile?.documentType?.trim().toUpperCase() || null
       return {
         id: user.id,
         email: user.email,
@@ -66,9 +95,9 @@ export async function GET(request: NextRequest) {
         roleAssignedAt: userRole?.created_at || null,
         createdAt: user.created_at,
         lastSignIn: user.last_sign_in_at,
-        rut: profile?.rut ?? profile?.documentNumber ?? null,
-        documentType: profile?.documentType ?? null,
-        documentNumber: profile?.documentNumber ?? null,
+        rut: profileDoc,
+        documentType: profileType,
+        documentNumber: profileDoc,
       }
     })
 

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { CalendarDays, Info, Loader2, Pencil, Trash2, Trophy } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 type Season = {
   id: string
@@ -45,6 +46,7 @@ function toLocalDatetime(value: string | null | undefined) {
 }
 
 export default function AdminWeeklyEventPage() {
+  const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [seasons, setSeasons] = useState<Season[]>([])
@@ -89,10 +91,18 @@ export default function AdminWeeklyEventPage() {
 
   const createSeason = async () => {
     if (!name.trim()) return
+    if (startsAt && endsAt && new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
+      toast({
+        variant: "destructive",
+        title: "Fechas inválidas",
+        description: "La fecha de término debe ser posterior a la fecha de inicio.",
+      })
+      return
+    }
     setSaving(true)
     try {
       const method = editingSeasonId ? "PUT" : "POST"
-      await fetch("/api/admin/weekly-event", {
+      const response = await fetch("/api/admin/weekly-event", {
         method,
         headers: { "Content-Type": "application/json", ...(authHeaders() || {}) },
         credentials: "include",
@@ -113,8 +123,22 @@ export default function AdminWeeklyEventPage() {
           })),
         }),
       })
+      const json = await response.json()
+      if (!response.ok || !json?.success) {
+        throw new Error(json?.error || "No se pudo guardar la temporada")
+      }
       await load()
       resetForm()
+      toast({
+        title: "Temporada guardada",
+        description: "Los cambios se guardaron correctamente.",
+      })
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error al guardar",
+        description: error instanceof Error ? error.message : "Error inesperado",
+      })
     } finally {
       setSaving(false)
     }
