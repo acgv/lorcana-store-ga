@@ -739,13 +739,18 @@ export default function PlayVsCpuPage() {
                       {game.winner !== null && <Badge>Ganador: {game.winner === 0 ? "Jugador" : "CPU"}</Badge>}
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto sm:justify-end">
                       {game.phase === "ink" && game.activePlayer === 0 && (
-                        <Button variant="secondary" onClick={() => playerAction({ type: "SKIP_INK" })}>
+                        <Button
+                          className="w-full sm:w-auto"
+                          variant="secondary"
+                          onClick={() => playerAction({ type: "SKIP_INK" })}
+                        >
                           Saltar tinta
                         </Button>
                       )}
                       <Button
+                        className="w-full sm:w-auto"
                         variant="outline"
                         disabled={game.activePlayer !== 0 || game.phase !== "main" || cpuThinking || game.winner !== null}
                         onClick={() => playerAction({ type: "END_MAIN" })}
