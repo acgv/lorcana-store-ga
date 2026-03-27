@@ -127,6 +127,21 @@ UPDATE public.vs_cpu_game_turns SET cpu_card_id = REPLACE(cpu_card_id, 'fabled-'
 UPDATE public.vs_cpu_game_turns SET cpu_card_id = REPLACE(cpu_card_id, 'whispersInTheWell-', 'whi-') WHERE cpu_card_id LIKE 'whispersInTheWell-%';
 UPDATE public.vs_cpu_game_turns SET cpu_card_id = REPLACE(cpu_card_id, 'winterspell-', 'win-') WHERE cpu_card_id LIKE 'winterspell-%';
 
+-- =============================================
+-- 6. Tabla: products — columna metadata->>'set' (JSONB)
+-- =============================================
+UPDATE public.products SET metadata = jsonb_set(metadata, '{set}', '"tfc"') WHERE metadata->>'set' = 'firstChapter';
+UPDATE public.products SET metadata = jsonb_set(metadata, '{set}', '"rof"') WHERE metadata->>'set' = 'riseOfFloodborn';
+UPDATE public.products SET metadata = jsonb_set(metadata, '{set}', '"ink"') WHERE metadata->>'set' = 'intoInklands';
+UPDATE public.products SET metadata = jsonb_set(metadata, '{set}', '"urs"') WHERE metadata->>'set' = 'ursulaReturn';
+UPDATE public.products SET metadata = jsonb_set(metadata, '{set}', '"ssk"') WHERE metadata->>'set' = 'shimmering';
+UPDATE public.products SET metadata = jsonb_set(metadata, '{set}', '"azs"') WHERE metadata->>'set' = 'azurite';
+UPDATE public.products SET metadata = jsonb_set(metadata, '{set}', '"ari"') WHERE metadata->>'set' = 'archazia';
+UPDATE public.products SET metadata = jsonb_set(metadata, '{set}', '"roj"') WHERE metadata->>'set' = 'reignOfJafar';
+UPDATE public.products SET metadata = jsonb_set(metadata, '{set}', '"fab"') WHERE metadata->>'set' = 'fabled';
+UPDATE public.products SET metadata = jsonb_set(metadata, '{set}', '"whi"') WHERE metadata->>'set' = 'whispersInTheWell';
+UPDATE public.products SET metadata = jsonb_set(metadata, '{set}', '"win"') WHERE metadata->>'set' = 'winterspell';
+
 COMMIT;
 
 -- ============================================
