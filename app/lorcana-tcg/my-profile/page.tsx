@@ -379,10 +379,10 @@ export default function MyProfilePage() {
                     </div>
                     {/* CTA Pro si el usuario es Free y hay insignias bloqueadas por plan */}
                     {gameBadges.some((b) => b.requiresPro) && (
-                      <div className="flex items-center gap-2 mt-1">
-                        <p className="text-xs text-muted-foreground">
-                          <Lock className="inline h-3 w-3 mr-0.5" />
-                          Algunas insignias requieren Pro
+                      <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2.5 flex flex-col sm:flex-row sm:items-center gap-2 text-xs mt-2">
+                        <p className="text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1">
+                          <Lock className="h-3.5 w-3.5 shrink-0" />
+                          Algunas insignias requieren Pro para desbloquearse.
                         </p>
                         <Link href="/lorcana-tcg/subscribe">
                           <Button size="sm" variant="default" className="gap-1 text-xs h-7">

@@ -1016,34 +1016,35 @@ export default function PlayVsCpuPage() {
               <CardDescription>Elige mazo y pulsa iniciar. El mazo queda fijado hasta reiniciar.</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-              <div className="md:col-span-12 rounded-md border bg-muted/20 p-3 text-xs space-y-2">
+              <div className="md:col-span-12">
                 {accessInfo?.isPro ? (
-                  <p>
-                    <span className="font-semibold text-foreground">Lorcana Pro activo</span> · partidas diarias ilimitadas.
-                  </p>
+                  <div className="rounded-md border bg-muted/20 p-3 text-xs">
+                    <p>
+                      <span className="font-semibold text-foreground">Lorcana Pro activo</span> · partidas diarias ilimitadas.
+                    </p>
+                  </div>
                 ) : remainingDailyGames != null && remainingDailyGames <= 0 ? (
-                  /* Cuota agotada */
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <p className="text-destructive font-semibold">
-                      Has alcanzado el limite de {accessInfo?.maxDailyGames ?? 3} partidas diarias (Free).
+                  <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2.5 flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
+                    <p className="text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1">
+                      <Lock className="h-3.5 w-3.5 shrink-0" />
+                      Límite Free alcanzado: máximo {accessInfo?.maxDailyGames ?? 3} partidas diarias.
                     </p>
                     <Link href="/lorcana-tcg/subscribe">
-                      <Button size="sm" variant="default" className="gap-1 text-xs">
+                      <Button size="sm" variant="default" className="gap-1 text-xs h-7">
                         <Crown className="h-3 w-3" /> Suscribirme a Pro
                       </Button>
                     </Link>
                   </div>
                 ) : (
-                  /* Cuota disponible */
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <p>
-                      Te quedan{" "}
-                      <span className="font-semibold text-foreground">{remainingDailyGames ?? "..."}</span>{" "}
-                      partidas hoy{" "}
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Free</Badge>
+                  <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2.5 flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
+                    <p className="text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1">
+                      <Lock className="h-3.5 w-3.5 shrink-0" />
+                      Plan Free · te quedan <span className="font-bold">{remainingDailyGames ?? "..."}</span> partidas hoy.
                     </p>
-                    <Link href="/lorcana-tcg/subscribe" className="text-primary underline underline-offset-2 hover:text-primary/80">
-                      Suscribirme a Pro
+                    <Link href="/lorcana-tcg/subscribe">
+                      <Button size="sm" variant="default" className="gap-1 text-xs h-7">
+                        <Crown className="h-3 w-3" /> Suscribirme a Pro
+                      </Button>
                     </Link>
                   </div>
                 )}

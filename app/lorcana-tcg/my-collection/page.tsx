@@ -491,17 +491,17 @@ function MyCollectionContent() {
                     Exportar CSV
                   </Button>
                 ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    title="Exportar colección requiere Pro"
-                    className="gap-1"
-                  >
-                    <Download className="h-4 w-4" />
-                    Exportar
-                    <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-1">Pro</Badge>
-                  </Button>
+                  <Link href="/lorcana-tcg/subscribe">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 border-amber-500/40 bg-amber-500/5 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
+                    >
+                      <Lock className="h-3.5 w-3.5" />
+                      Exportar
+                      <Crown className="h-3 w-3" />
+                    </Button>
+                  </Link>
                 )}
                 <Button
                   variant="outline"
@@ -559,9 +559,17 @@ function MyCollectionContent() {
                       <div className="text-2xl font-bold text-muted-foreground/40 select-none">
                         $•••••• CLP
                       </div>
-                      <Link href="/lorcana-tcg/subscribe" className="inline-flex items-center gap-1 mt-1 text-xs text-primary hover:underline">
-                        <Crown className="h-3 w-3" /> Desbloquear con Pro
-                      </Link>
+                      <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 flex flex-col sm:flex-row sm:items-center gap-2 text-xs mt-2">
+                        <p className="text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1">
+                          <Lock className="h-3.5 w-3.5 shrink-0" />
+                          Función exclusiva Pro.
+                        </p>
+                        <Link href="/lorcana-tcg/subscribe">
+                          <Button size="sm" variant="default" className="gap-1 text-xs h-7">
+                            <Crown className="h-3 w-3" /> Suscribirme a Pro
+                          </Button>
+                        </Link>
+                      </div>
                     </>
                   )}
                 </CardContent>
@@ -593,14 +601,14 @@ function MyCollectionContent() {
                 <Package className="h-4 w-4" />
                 {t("owned")} ({totalOwnedCards})
               </TabsTrigger>
-              <TabsTrigger value="missing" className="gap-2" disabled={!isPro}>
+              <TabsTrigger value="missing" className={`gap-2 ${!isPro ? "border border-amber-500/40 text-amber-700 dark:text-amber-400" : ""}`} disabled={!isPro}>
                 {isPro ? (
                   <AlertCircle className="h-4 w-4" />
                 ) : (
-                  <Lock className="h-4 w-4" />
+                  <Lock className="h-3.5 w-3.5" />
                 )}
                 Me faltan {isPro ? `(${totalMissingCards})` : ""}
-                {!isPro && <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-1">Pro</Badge>}
+                {!isPro && <Crown className="h-3 w-3 ml-1" />}
               </TabsTrigger>
             </TabsList>
 
@@ -788,11 +796,17 @@ function MyCollectionContent() {
                     <p className="text-muted-foreground text-center mb-6 max-w-md">
                       Descubre qué cartas te faltan para completar tu colección. Esta herramienta está disponible con Lorcana Pro.
                     </p>
-                    <Link href="/lorcana-tcg/subscribe">
-                      <Button className="gap-2">
-                        <Crown className="h-4 w-4" /> Suscribirme a Pro
-                      </Button>
-                    </Link>
+                    <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2.5 flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
+                      <p className="text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1">
+                        <Lock className="h-3.5 w-3.5 shrink-0" />
+                        Función exclusiva Pro.
+                      </p>
+                      <Link href="/lorcana-tcg/subscribe">
+                        <Button size="sm" variant="default" className="gap-1 text-xs h-7">
+                          <Crown className="h-3 w-3" /> Suscribirme a Pro
+                        </Button>
+                      </Link>
+                    </div>
                   </CardContent>
                 </Card>
               ) : (
@@ -1071,11 +1085,13 @@ function AllCardsCard({
 
           {/* Foil Owned (Pro only for Free users) */}
           {!isPro ? (
-            <div className="flex items-center gap-1.5 p-2 bg-muted/40 rounded-md border border-dashed opacity-70">
-              <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground flex-1">{t("foil")}</span>
-              <Badge variant="secondary" className="text-[10px] px-1 py-0">Pro</Badge>
-            </div>
+            <Link href="/lorcana-tcg/subscribe" className="block">
+              <div className="flex items-center gap-1.5 p-2 rounded-md border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer">
+                <Lock className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span className="text-xs text-amber-700 dark:text-amber-400 font-medium flex-1">{t("foil")}</span>
+                <Crown className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+              </div>
+            </Link>
           ) : hasFoilOwned ? (
             <div className="flex items-center gap-1 p-2 bg-green-500/10 rounded-md border border-green-500/20">
               <Button
