@@ -51,6 +51,7 @@ export default function SubscribePage() {
 
   const [access, setAccess] = useState<AccessInfo | null>(null)
   const [loadingAccess, setLoadingAccess] = useState(true)
+  const [subscribing, setSubscribing] = useState(false)
   const [changingMock, setChangingMock] = useState(false)
 
   useEffect(() => {
@@ -70,6 +71,44 @@ export default function SubscribePage() {
     }
   }
 
+  const handleSubscribe = async () => {
+    try {
+      setSubscribing(true)
+      const headers = await getAuthHeaders()
+      if (!headers) {
+        toast({ variant: "destructive", title: "Error", description: "Inicia sesión primero." })
+        return
+      }
+
+      const res = await fetch("/api/subscription/checkout", {
+        method: "POST",
+        headers,
+      })
+      const json = await res.json()
+
+      if (json?.success && json.data?.checkoutUrl) {
+        window.location.href = json.data.checkoutUrl
+        return
+      }
+
+      if (res.status === 503) {
+        // Lemon Squeezy no configurado — fallback a mock para dev
+        await setMockMode("pro")
+        return
+      }
+
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: json?.error || "No se pudo iniciar el checkout.",
+      })
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Error de conexión." })
+    } finally {
+      setSubscribing(false)
+    }
+  }
+
   const setMockMode = async (mode: "free" | "pro") => {
     try {
       setChangingMock(true)
@@ -84,9 +123,9 @@ export default function SubscribePage() {
       if (json?.success) {
         setAccess(json.data?.access ?? null)
         toast({
-          title: mode === "pro" ? "Pro activado" : "Free activado",
+          title: mode === "pro" ? "Pro activado (mock)" : "Free activado",
           description: mode === "pro"
-            ? "Ahora tienes acceso a todas las funciones."
+            ? "Lemon Squeezy no configurado. Se activó Pro en modo mock."
             : "Estás en plan Free con limitaciones.",
         })
       }
@@ -98,6 +137,7 @@ export default function SubscribePage() {
   }
 
   const isPro = access?.isPro === true
+  const isMockSource = access?.source === "mock"
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -153,7 +193,7 @@ export default function SubscribePage() {
                     </li>
                   ))}
                 </ul>
-                {isPro && (
+                {isPro && isMockSource && (
                   <Button
                     variant="outline"
                     className="w-full mt-8"
@@ -161,7 +201,7 @@ export default function SubscribePage() {
                     disabled={changingMock}
                   >
                     {changingMock ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Cambiar a Free
+                    Cambiar a Free (mock)
                   </Button>
                 )}
               </CardContent>
@@ -198,10 +238,10 @@ export default function SubscribePage() {
                   user ? (
                     <Button
                       className="w-full mt-8 gap-2"
-                      onClick={() => setMockMode("pro")}
-                      disabled={changingMock}
+                      onClick={handleSubscribe}
+                      disabled={subscribing}
                     >
-                      {changingMock ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
+                      {subscribing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
                       Suscribirme a Pro
                     </Button>
                   ) : (
@@ -212,10 +252,21 @@ export default function SubscribePage() {
                     </Button>
                   )
                 ) : (
-                  <div className="mt-8 text-center text-sm text-muted-foreground">
-                    Ya tienes Pro activo
-                    {access?.source === "mock" && (
-                      <span className="block text-xs mt-1">(modo mock)</span>
+                  <div className="mt-8 space-y-2 text-center">
+                    <p className="text-sm text-green-600 font-medium flex items-center justify-center gap-1">
+                      <Check className="h-4 w-4" /> Pro activo
+                      {isMockSource && <Badge variant="secondary" className="text-[10px] ml-1">mock</Badge>}
+                    </p>
+                    {isMockSource && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMockMode("free")}
+                        disabled={changingMock}
+                      >
+                        {changingMock ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        Volver a Free
+                      </Button>
                     )}
                   </div>
                 )}
@@ -269,7 +320,7 @@ export default function SubscribePage() {
               />
               <FaqItem
                 q="¿Qué métodos de pago aceptan?"
-                a="Aceptaremos tarjetas de crédito/débito y otros métodos a través de Lemon Squeezy. (Integración próximamente)"
+                a="Aceptamos tarjetas de crédito/débito y otros métodos de pago internacionales a través de Lemon Squeezy."
               />
               <FaqItem
                 q="¿El tracking de colección Free tiene límite de cartas?"
