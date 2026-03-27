@@ -1,36 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/db"
 
-// Mapeo de sets - TODOS los sets de Lorcana (1-9)
-const setMap: Record<string, string> = {
-  'The First Chapter': 'firstChapter',
-  'Rise of the Floodborn': 'riseOfFloodborn',
-  'Into the Inklands': 'intoInklands',
-  "Ursula's Return": 'ursulaReturn',
-  'Shimmering Skies': 'shimmering',
-  'Azurite Sea': 'azurite',
-  "Archazia's Island": 'archazia',
-  'Reign of Jafar': 'reignOfJafar',
-  'Fabled': 'fabled',
-  'Chapter 1': 'firstChapter',
-  'Chapter 2': 'riseOfFloodborn',
-  'Chapter 3': 'intoInklands',
-  'Chapter 4': 'ursulaReturn',
-  'Chapter 5': 'shimmering',
-  'Chapter 6': 'azurite',
-  'Chapter 7': 'archazia',
-  'Chapter 8': 'reignOfJafar',
-  'Chapter 9': 'fabled',
-  'Set 1': 'firstChapter',
-  'Set 2': 'riseOfFloodborn',
-  'Set 3': 'intoInklands',
-  'Set 4': 'ursulaReturn',
-  'Set 5': 'shimmering',
-  'Set 6': 'azurite',
-  'Set 7': 'archazia',
-  'Set 8': 'reignOfJafar',
-  'Set 9': 'fabled',
-}
+// Set se toma dinámicamente del Set_ID de la API (ej: TFC, ROF, WIN)
+// No necesita mapeo manual — sets nuevos se importan automáticamente
 
 // Mapeo de rareza
 const rarityMap: Record<string, string> = {
@@ -67,18 +39,13 @@ interface LorcanaCard {
 
 function transformCard(lorcanaCard: LorcanaCard) {
   const rarity = rarityMap[lorcanaCard.Rarity] || 'common'
-  
-  // Mapear set - si no existe, usar Set_ID como fallback
-  let mappedSet = setMap[lorcanaCard.Set_Name]
-  if (!mappedSet) {
-    mappedSet = lorcanaCard.Set_ID ? lorcanaCard.Set_ID.toLowerCase() : 'unknown'
-  }
+  const setId = (lorcanaCard.Set_ID || 'unknown').toLowerCase()
 
   return {
-    id: `${lorcanaCard.Set_ID}-${lorcanaCard.Card_Num}`.toLowerCase(),
+    id: `${setId}-${lorcanaCard.Card_Num}`,
     name: lorcanaCard.Name + (lorcanaCard.Title ? ` - ${lorcanaCard.Title}` : ''),
     image: lorcanaCard.Image || '/placeholder.svg',
-    set: mappedSet,
+    set: setId,
     rarity: rarity,
     type: typeMap[lorcanaCard.Type] || 'character',
     number: lorcanaCard.Card_Num,
