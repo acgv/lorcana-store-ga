@@ -17,6 +17,7 @@ import { ArrowLeft, Loader2, Save } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import type { CardSubmission } from "@/lib/types"
+import { LORCANA_SETS } from "@/lib/lorcana-sets"
 
 export default function EditSubmissionPage() {
   const { t } = useLanguage()
@@ -219,16 +220,9 @@ export default function EditSubmissionPage() {
                             <SelectValue placeholder={t("selectSet")} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="firstChapter">1. {t("firstChapter")}</SelectItem>
-                            <SelectItem value="riseOfFloodborn">2. {t("riseOfFloodborn")}</SelectItem>
-                            <SelectItem value="intoInklands">3. {t("intoInklands")}</SelectItem>
-                            <SelectItem value="ursulaReturn">4. {t("ursulaReturn")}</SelectItem>
-                            <SelectItem value="shimmering">5. {t("shimmering")}</SelectItem>
-                            <SelectItem value="azurite">6. {t("azurite")}</SelectItem>
-                            <SelectItem value="archazia">7. {t("archazia")}</SelectItem>
-                            <SelectItem value="reignOfJafar">8. {t("reignOfJafar")}</SelectItem>
-                            <SelectItem value="fabled">9. {t("fabled")}</SelectItem>
-                            <SelectItem value="whi">10. {t("whispersInTheWell")}</SelectItem>
+                            {LORCANA_SETS.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>{s.num}. {t(s.tKey)}</SelectItem>
+                            ))}
                             <SelectItem value="unknown">{t("unknown")}</SelectItem>
                           </SelectContent>
                         </Select>

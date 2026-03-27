@@ -42,6 +42,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import type { Card as CardType } from "@/lib/types"
+import { getSetLabelI18n } from "@/lib/lorcana-sets"
 import type { DeckRow, SavedDeck, DeckCard } from "@/lib/deck-hydration"
 import {
   hydrateDeckRows,
@@ -56,47 +57,9 @@ function DeckBuilder() {
   const { collection, loading: collectionLoading, getAuthHeaders } = useCollection()
   const { toast } = useToast()
 
-  const setOrder = useMemo(() => {
-    return [
-      "firstChapter",
-      "riseOfFloodborn",
-      "intoInklands",
-      "ursulaReturn",
-      "shimmering",
-      "azurite",
-      "archazia",
-      "reignOfJafar",
-      "fabled",
-      "whi",
-    ] as const
-  }, [])
-
-  const setOrderIndex = useMemo(() => {
-    const m = new Map<string, number>()
-    setOrder.forEach((s, i) => m.set(s, i + 1))
-    return m
-  }, [setOrder])
-
   const formatSetLabel = useMemo(() => {
-    return (setValue: string) => {
-      const n = setOrderIndex.get(setValue)
-      if (!n) return setValue
-      const labelKey =
-        setValue === "whi"
-          ? "whispersInTheWell"
-          : (setValue as
-              | "firstChapter"
-              | "riseOfFloodborn"
-              | "intoInklands"
-              | "ursulaReturn"
-              | "shimmering"
-              | "azurite"
-              | "archazia"
-              | "reignOfJafar"
-              | "fabled")
-      return `${n}. ${t(labelKey)}`
-    }
-  }, [setOrderIndex, t])
+    return (setValue: string) => getSetLabelI18n(setValue, t)
+  }, [t])
   
   const [currentDeck, setCurrentDeck] = useState<DeckCard[]>([])
   const [savedDecksRaw, setSavedDecksRaw] = useState<DeckRow[]>([])

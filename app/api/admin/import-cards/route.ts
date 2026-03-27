@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/db"
-
-// Set se toma dinámicamente del Set_ID de la API (ej: TFC, ROF, WIN)
-// No necesita mapeo manual — sets nuevos se importan automáticamente
+import { SET_MAP } from "@/lib/lorcana-sets"
 
 // Mapeo de rareza
 const rarityMap: Record<string, string> = {
@@ -154,6 +152,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Detectar sets importados que no están registrados en lorcana-sets.ts
+    const setsInImport = new Set(transformedCards.map((c) => c.set))
+    const unregisteredSets = Array.from(setsInImport).filter((s) => !SET_MAP.has(s))
+
     return NextResponse.json({
       success: true,
       message: `Successfully imported ${imported} new cards. ${skippedCards} existing cards preserved.`,
@@ -164,7 +166,8 @@ export async function POST(request: NextRequest) {
         imported: imported,
         skipped: skippedCards,
         errors: errors,
-      }
+      },
+      unregisteredSets: unregisteredSets.length > 0 ? unregisteredSets : undefined,
     })
 
   } catch (error) {

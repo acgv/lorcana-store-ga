@@ -40,6 +40,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import { calculateFinalPrice } from "@/lib/price-calculator"
+import { LORCANA_SETS, getSetLabel } from "@/lib/lorcana-sets"
 
 interface ComparisonResult {
   cardId: string
@@ -90,7 +91,7 @@ export default function ComparePricesPage() {
   const [data, setData] = useState<ComparisonData | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterRarity, setFilterRarity] = useState<string>("all")
-  const [filterSet, setFilterSet] = useState<string>("firstChapter") // Por defecto set 1
+  const [filterSet, setFilterSet] = useState<string>("tfc")
   const [filterStock, setFilterStock] = useState<string>("all")
   const [filterPrice, setFilterPrice] = useState<string>("all")
   const [activeTab, setActiveTab] = useState("comparison")
@@ -633,7 +634,7 @@ export default function ComparePricesPage() {
       const requestBody = {
         cardId: comp.cardId,
         cardName: comp.cardName,
-        setId: comp.set, // El set viene en formato de BD (ej: "firstChapter")
+        setId: comp.set,
         cardNumber: comp.number,
         setName: comp.set, // Podríamos mapear esto mejor
         ...currentParams,
@@ -944,20 +945,7 @@ export default function ComparePricesPage() {
 
   // Función para revertir precios de un set
   const revertSetPrices = async (set: string) => {
-    const setNames: Record<string, string> = {
-      firstChapter: '1. El Primer Capítulo',
-      riseOfFloodborn: '2. Ascenso de los Floodborn',
-      intoInklands: '3. Hacia las Inklands',
-      ursulaReturn: '4. El Regreso de Úrsula',
-      shimmering: '5. Cielos Brillantes',
-      azurite: '6. Mar Azurita',
-      archazia: '7. Isla de Archazia',
-      reignOfJafar: '8. Reinado de Jafar',
-      fabled: '9. Fabled',
-      whi: '10. Whispers in the Well',
-    }
-    
-    const setName = setNames[set] || set
+    const setName = getSetLabel(set)
     
     const confirmed = window.confirm(
       `¿Estás seguro de revertir TODOS los precios del ${setName} a valores estándar?\n\nEsto restaurará los precios basándose en la rareza de cada carta.\n\nEsta acción NO se puede deshacer.`
@@ -1087,36 +1075,6 @@ export default function ComparePricesPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterSet, priceParamsLoaded])
-
-  // Mapeo de sets normalizados a nombres legibles
-  const setDisplayNames: Record<string, string> = {
-    'firstChapter': 'The First Chapter',
-    'riseOfFloodborn': 'Rise of the Floodborn',
-    'intoInklands': 'Into the Inklands',
-    'ursulaReturn': "Ursula's Return",
-    'shimmering': 'Shimmering Skies',
-    'azurite': 'Azurite Sea',
-    'archazia': "Archazia's Island",
-    'reignOfJafar': 'Reign of Jafar',
-    'fabled': 'Fabled',
-    'whi': 'Whispers in the Well',
-    'whisper': 'Whispers in the Well',
-  }
-
-  // Orden de sets por lanzamiento (1-10)
-  const setOrder: Record<string, number> = {
-    'firstChapter': 1,
-    'riseOfFloodborn': 2,
-    'intoInklands': 3,
-    'ursulaReturn': 4,
-    'shimmering': 5,
-    'azurite': 6,
-    'archazia': 7,
-    'reignOfJafar': 8,
-    'fabled': 9,
-    'whi': 10,
-    'whisper': 10,
-  }
 
   // Filtrar comparaciones (exactamente igual que en catálogo y mi colección)
   const filteredComparisons = useMemo(() => {
@@ -1544,16 +1502,9 @@ export default function ComparePricesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos los sets</SelectItem>
-                      <SelectItem value="firstChapter">1. El Primer Capítulo</SelectItem>
-                      <SelectItem value="riseOfFloodborn">2. Ascenso de los Floodborn</SelectItem>
-                      <SelectItem value="intoInklands">3. Hacia las Inklands</SelectItem>
-                      <SelectItem value="ursulaReturn">4. El Regreso de Úrsula</SelectItem>
-                      <SelectItem value="shimmering">5. Cielos Brillantes</SelectItem>
-                      <SelectItem value="azurite">6. Mar Azurita</SelectItem>
-                      <SelectItem value="archazia">7. Isla de Archazia</SelectItem>
-                      <SelectItem value="reignOfJafar">8. Reinado de Jafar</SelectItem>
-                      <SelectItem value="fabled">9. Fabled</SelectItem>
-                      <SelectItem value="whi">10. Whispers in the Well</SelectItem>
+                      {LORCANA_SETS.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.num}. {s.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Select value={filterStock} onValueChange={setFilterStock}>

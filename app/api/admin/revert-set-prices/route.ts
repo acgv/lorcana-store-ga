@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     if (!set) {
       return NextResponse.json(
-        { success: false, error: "Set is required (e.g., 'firstChapter')" },
+        { success: false, error: "Set is required (e.g., 'tfc', 'rof', 'win')" },
         { status: 400 }
       )
     }

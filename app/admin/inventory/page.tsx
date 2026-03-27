@@ -17,6 +17,7 @@ import Image from "next/image"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { calculateStandardFoilPrice, ensureFoilPriceGreater } from "@/lib/price-utils"
+import { SET_MAP } from "@/lib/lorcana-sets"
 
 interface InventoryItem {
   id: string
@@ -70,7 +71,7 @@ export default function InventoryPage() {
   })
   const [newCard, setNewCard] = useState({
     name: "",
-    set: "firstChapter",
+    set: "tfc",
     type: "character" as "character" | "action" | "item" | "song",
     rarity: "common" as "common" | "uncommon" | "rare" | "superRare" | "legendary" | "enchanted",
     number: 0,
@@ -174,6 +175,16 @@ export default function InventoryPage() {
       }
     }
   }
+
+  const setOptions = useMemo(() => {
+    const setsInDb = Array.from(new Set(inventory.map((item) => item.set).filter(Boolean)))
+    const withMeta = setsInDb.map((s) => {
+      const meta = SET_MAP.get(s!)
+      return { value: s!, num: meta?.num ?? 99, label: meta ? `${meta.num}. ${meta.label}` : s! }
+    })
+    withMeta.sort((a, b) => a.num - b.num)
+    return withMeta
+  }, [inventory])
 
   const handleStockChange = (cardId: string, type: 'normal' | 'foil', value: string) => {
     const numValue = parseInt(value) || 0
@@ -425,11 +436,18 @@ export default function InventoryPage() {
 
       if (data.success) {
         toast({
-          title: "✅ Import Successful",
-          description: `Imported ${data.stats.imported} NEW cards. ${data.stats.skipped} existing cards preserved (not modified).`,
+          title: "✅ Importación exitosa",
+          description: `${data.stats.imported} cartas nuevas importadas. ${data.stats.skipped} cartas existentes preservadas.`,
         })
+
+        if (data.unregisteredSets?.length > 0) {
+          toast({
+            variant: "destructive",
+            title: "⚠️ Sets no registrados detectados",
+            description: `Los sets [${data.unregisteredSets.join(", ")}] no están en lib/lorcana-sets.ts. No aparecerán en los selectores hasta que se registren.`,
+          })
+        }
         
-        // Refresh inventory sin mostrar loading para no bloquear UI
         fetchInventory(false)
       } else {
         toast({
@@ -477,7 +495,7 @@ export default function InventoryPage() {
 
       // Campos específicos por tipo
       if (newProduct.productType === "booster") {
-        productData.set = newProduct.set || "firstChapter"
+        productData.set = newProduct.set || "tfc"
         productData.cardsPerPack = newProduct.cardsPerPack || 12
       } else if (newProduct.productType === "playmat") {
         productData.material = newProduct.material || ""
@@ -629,7 +647,7 @@ export default function InventoryPage() {
         // Reset form
         setNewCard({
           name: "",
-          set: "firstChapter",
+          set: "tfc",
           type: "character",
           rarity: "common",
           number: 0,
@@ -846,16 +864,9 @@ export default function InventoryPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t("allSets")}</SelectItem>
-                  <SelectItem value="firstChapter">1. {t("firstChapter")}</SelectItem>
-                  <SelectItem value="riseOfFloodborn">2. {t("riseOfFloodborn")}</SelectItem>
-                  <SelectItem value="intoInklands">3. {t("intoInklands")}</SelectItem>
-                  <SelectItem value="ursulaReturn">4. {t("ursulaReturn")}</SelectItem>
-                  <SelectItem value="shimmering">5. {t("shimmering")}</SelectItem>
-                  <SelectItem value="azurite">6. {t("azurite")}</SelectItem>
-                  <SelectItem value="archazia">7. {t("archazia")}</SelectItem>
-                  <SelectItem value="reignOfJafar">8. {t("reignOfJafar")}</SelectItem>
-                  <SelectItem value="fabled">9. {t("fabled")}</SelectItem>
-                  <SelectItem value="whi">10. {t("whispersInTheWell")}</SelectItem>
+                  {setOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1012,16 +1023,9 @@ export default function InventoryPage() {
                           <SelectValue placeholder="Seleccionar Set" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="firstChapter">1. {t("firstChapter")}</SelectItem>
-                          <SelectItem value="riseOfFloodborn">2. {t("riseOfFloodborn")}</SelectItem>
-                          <SelectItem value="intoInklands">3. {t("intoInklands")}</SelectItem>
-                          <SelectItem value="ursulaReturn">4. {t("ursulaReturn")}</SelectItem>
-                          <SelectItem value="shimmering">5. {t("shimmering")}</SelectItem>
-                          <SelectItem value="azurite">6. {t("azurite")}</SelectItem>
-                          <SelectItem value="archazia">7. {t("archazia")}</SelectItem>
-                          <SelectItem value="reignOfJafar">8. {t("reignOfJafar")}</SelectItem>
-                          <SelectItem value="fabled">9. {t("fabled")}</SelectItem>
-                          <SelectItem value="whi">10. {t("whispersInTheWell")}</SelectItem>
+                          {setOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1242,16 +1246,9 @@ export default function InventoryPage() {
                             <SelectValue placeholder="Seleccionar Set" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="firstChapter">1. {t("firstChapter")}</SelectItem>
-                            <SelectItem value="riseOfFloodborn">2. {t("riseOfFloodborn")}</SelectItem>
-                            <SelectItem value="intoInklands">3. {t("intoInklands")}</SelectItem>
-                            <SelectItem value="ursulaReturn">4. {t("ursulaReturn")}</SelectItem>
-                            <SelectItem value="shimmering">5. {t("shimmering")}</SelectItem>
-                            <SelectItem value="azurite">6. {t("azurite")}</SelectItem>
-                            <SelectItem value="archazia">7. {t("archazia")}</SelectItem>
-                            <SelectItem value="reignOfJafar">8. {t("reignOfJafar")}</SelectItem>
-                            <SelectItem value="fabled">9. {t("fabled")}</SelectItem>
-                            <SelectItem value="whi">10. {t("whispersInTheWell")}</SelectItem>
+                            {setOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -1368,16 +1365,9 @@ export default function InventoryPage() {
                             <SelectValue placeholder="Seleccionar Set" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="firstChapter">1. {t("firstChapter")}</SelectItem>
-                            <SelectItem value="riseOfFloodborn">2. {t("riseOfFloodborn")}</SelectItem>
-                            <SelectItem value="intoInklands">3. {t("intoInklands")}</SelectItem>
-                            <SelectItem value="ursulaReturn">4. {t("ursulaReturn")}</SelectItem>
-                            <SelectItem value="shimmering">5. {t("shimmering")}</SelectItem>
-                            <SelectItem value="azurite">6. {t("azurite")}</SelectItem>
-                            <SelectItem value="archazia">7. {t("archazia")}</SelectItem>
-                            <SelectItem value="reignOfJafar">8. {t("reignOfJafar")}</SelectItem>
-                            <SelectItem value="fabled">9. {t("fabled")}</SelectItem>
-                            <SelectItem value="whi">10. {t("whispersInTheWell")}</SelectItem>
+                            {setOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>

@@ -80,38 +80,6 @@ function getStandardPriceUSD(rarity: string): number {
   return standardPricesUSD[rarity] || 0.50
 }
 
-// Mapeo de sets (igual que en el script)
-const setMap: Record<string, string> = {
-  'The First Chapter': 'firstChapter',
-  'Rise of the Floodborn': 'riseOfFloodborn',
-  'Into the Inklands': 'intoInklands',
-  "Ursula's Return": 'ursulaReturn',
-  'Shimmering Skies': 'shimmering',
-  'Azurite Sea': 'azurite',
-  "Archazia's Island": 'archazia',
-  'Reign of Jafar': 'reignOfJafar',
-  'Fabled': 'fabled',
-  'Whispers in the Well': 'whi',
-  'Chapter 1': 'firstChapter',
-  'Chapter 2': 'riseOfFloodborn',
-  'Chapter 3': 'intoInklands',
-  'Chapter 4': 'ursulaReturn',
-  'Chapter 5': 'shimmering',
-  'Chapter 6': 'azurite',
-  'Chapter 7': 'archazia',
-  'Chapter 8': 'reignOfJafar',
-  'Chapter 9': 'fabled',
-  'Set 1': 'firstChapter',
-  'Set 2': 'riseOfFloodborn',
-  'Set 3': 'intoInklands',
-  'Set 4': 'ursulaReturn',
-  'Set 5': 'shimmering',
-  'Set 6': 'azurite',
-  'Set 7': 'archazia',
-  'Set 8': 'reignOfJafar',
-  'Set 9': 'fabled',
-}
-
 const rarityMap: Record<string, string> = {
   'Common': 'common',
   'Uncommon': 'uncommon',
@@ -121,28 +89,8 @@ const rarityMap: Record<string, string> = {
   'Enchanted': 'enchanted',
 }
 
-// Generar ID de carta igual que en el script de importación
-// El script usa Set_ID (ej: "TFC") no el nombre del set
-function generateCardId(setName: string, cardNum: number, setId?: string): string {
-  // Si tenemos Set_ID, usarlo directamente (como en el script de importación)
-  if (setId) {
-    return `${setId}-${cardNum}`.toLowerCase()
-  }
-  // Fallback: mapear nombre del set a Set_ID conocido
-  const setIdMap: Record<string, string> = {
-    'The First Chapter': 'tfc',
-    'Rise of the Floodborn': 'rof',
-    'Into the Inklands': 'iti',
-    "Ursula's Return": 'ur',
-    'Shimmering Skies': 'ss',
-    'Azurite Sea': 'as',
-    "Archazia's Island": 'ai',
-    'Reign of Jafar': 'roj',
-    'Fabled': 'f',
-    'Whispers in the Well': 'wiw',
-  }
-  const mappedSetId = setIdMap[setName] || setName.toLowerCase().replace(/\s+/g, '')
-  return `${mappedSetId}-${cardNum}`.toLowerCase()
+function generateCardId(setId: string, cardNum: number): string {
+  return `${setId}-${cardNum}`.toLowerCase()
 }
 
 export async function GET(request: NextRequest) {
@@ -295,22 +243,10 @@ export async function GET(request: NextRequest) {
         !card.Image?.includes("/promo3/")
     )
     
-      // Filtrar por set si se especifica (mapear el valor del filtro al nombre del set en la API)
       if (filterSet && filterSet !== "all") {
-        // Buscar el nombre del set en la API que corresponde al valor del filtro
-        const setNamesInAPI = Object.keys(setMap).filter(key => setMap[key] === filterSet)
-        console.log(`🔍 Buscando mapeo para set: ${filterSet}`, { setNamesInAPI, setMapKeys: Object.keys(setMap) })
-        
-        if (setNamesInAPI.length > 0) {
-          const setNameInAPI = setNamesInAPI[0]
-          const beforeFilter = nonPromoCards.length
-          nonPromoCards = nonPromoCards.filter(card => card.Set_Name === setNameInAPI)
-          console.log(`✅ Filtrando por set: ${filterSet} (${setNameInAPI}) - ${beforeFilter} → ${nonPromoCards.length} cartas`)
-        } else {
-          console.warn(`⚠️ No se encontró mapeo para el set: ${filterSet}`)
-        }
-      } else {
-        console.log(`ℹ️ No se aplicó filtro de set (filterSet: ${filterSet})`)
+        const beforeFilter = nonPromoCards.length
+        nonPromoCards = nonPromoCards.filter(card => card.Set_ID.toLowerCase() === filterSet)
+        console.log(`✅ Filtrando por set: ${filterSet} - ${beforeFilter} → ${nonPromoCards.length} cartas`)
       }
     
     const totalCards = nonPromoCards.length
@@ -331,8 +267,7 @@ export async function GET(request: NextRequest) {
     
     // Procesar todas las cartas (sin buscar precios de TCGPlayer automáticamente)
     for (const apiCard of cardsToProcess) {
-      // Usar Set_ID para generar el ID (igual que en el script de importación)
-      const cardId = generateCardId(apiCard.Set_Name, apiCard.Card_Num, apiCard.Set_ID)
+      const cardId = generateCardId(apiCard.Set_ID, apiCard.Card_Num)
       const dbCard = dbCardsMap.get(cardId)
 
       const rarity = rarityMap[apiCard.Rarity] || "common"

@@ -63,56 +63,13 @@ export async function POST(request: NextRequest) {
     
     console.log(`📊 Parámetros parseados:`, customParams)
 
-    // Buscar precio en TCGPlayer usando set y número (más exacto)
     const cardNameToSearch = cardName || card.name
-    const setIdFromDB = setId || card.set // El set viene de BD como "firstChapter" (camelCase)
+    const setIdFromDB = setId || card.set
     const cardNumberToUse = cardNumber || card.number
 
-    console.log(`🔍 Datos de la carta desde BD:`, {
-      cardId: card.id,
-      name: card.name,
-      set: card.set,
-      number: card.number,
-      setIdFromDB,
-      cardNumberToUse,
-    })
-
-    // Mapear set de BD a Set_ID de API
-    // El set en BD viene como "firstChapter" (camelCase), necesitamos "TFC" para la API
-    const setToIdMap: Record<string, string> = {
-      'firstchapter': 'TFC',
-      'firstChapter': 'TFC', // También camelCase
-      'riseoffloodborn': 'ROF',
-      'riseOfFloodborn': 'ROF',
-      'intoinklands': 'ITI',
-      'intoInklands': 'ITI',
-      'ursulareturn': 'UR',
-      'ursulaReturn': 'UR',
-      'shimmering': 'SS',
-      'azurite': 'AS',
-      'archazia': 'AI',
-      'reignofjafar': 'ROJ',
-      'reignOfJafar': 'ROJ',
-      'fabled': 'F',
-      'whi': 'WIW',
-      'whisper': 'WIW',
-    }
-
-    // Mapear set de BD a Set_ID de API
-    let apiSetId: string | undefined = undefined
-    if (setIdFromDB) {
-      const setIdLower = setIdFromDB.toLowerCase()
-      // Buscar en el mapa (tanto minúsculas como camelCase)
-      if (setToIdMap[setIdLower] || setToIdMap[setIdFromDB]) {
-        apiSetId = setToIdMap[setIdLower] || setToIdMap[setIdFromDB]
-      } else if (setIdFromDB.length <= 4 && setIdFromDB === setIdFromDB.toUpperCase()) {
-        // Ya está en formato API (ej: "TFC", "ROF")
-        apiSetId = setIdFromDB
-      } else {
-        // Intentar usar el valor tal cual
-        apiSetId = setIdFromDB
-      }
-    }
+    // El set en BD ya viene como Set_ID nativo (ej: "tfc", "rof", "win")
+    // La API externa lo espera en uppercase
+    const apiSetId = setIdFromDB ? setIdFromDB.toUpperCase() : undefined
 
     console.log(`🔍 Buscando precio TCGPlayer con:`, {
       apiSetId,

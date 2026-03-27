@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useLanguage } from "@/components/language-provider"
+import { LORCANA_SETS } from "@/lib/lorcana-sets"
 import { Grid, List } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -98,16 +99,11 @@ export function CardFilters({ filters, setFilters, sortBy, setSortBy, viewMode, 
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("allSets")}</SelectItem>
-            <SelectItem value="firstChapter">1. {t("firstChapter")}</SelectItem>
-            <SelectItem value="riseOfFloodborn">2. {t("riseOfFloodborn")}</SelectItem>
-            <SelectItem value="intoInklands">3. {t("intoInklands")}</SelectItem>
-            <SelectItem value="ursulaReturn">4. {t("ursulaReturn")}</SelectItem>
-            <SelectItem value="shimmering">5. {t("shimmering")}</SelectItem>
-            <SelectItem value="azurite">6. {t("azurite")}</SelectItem>
-            <SelectItem value="archazia">7. {t("archazia")}</SelectItem>
-            <SelectItem value="reignOfJafar">8. {t("reignOfJafar")}</SelectItem>
-            <SelectItem value="fabled">9. {t("fabled")}</SelectItem>
-            <SelectItem value="whi">10. {t("whispersInTheWell")}</SelectItem>
+            {LORCANA_SETS.map((s) => (
+              <SelectItem key={s.value} value={s.value}>
+                {s.num}. {t(s.tKey)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

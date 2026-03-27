@@ -453,10 +453,9 @@ export async function POST(request: NextRequest) {
     
     if (supabase) {
       try {
-      // Generar ID consistente para cartas (formato: set-number, ej: firstChapter-205)
       let cardId = product.id
       if (!cardId && productType === "card") {
-        const setCode = product.set || "firstChapter"
+        const setCode = product.set || "unknown"
         const cardNum = product.number || product.cardNumber?.split("/")[0] || Date.now()
         cardId = `${setCode}-${cardNum}`.toLowerCase()
       } else if (!cardId) {
@@ -496,7 +495,7 @@ export async function POST(request: NextRequest) {
         description: product.description ?? null,
         status: product.status ?? "approved",
         // Campos específicos de cartas (requeridos por schema NOT NULL)
-        set: product.set ?? (productType === "card" ? "firstChapter" : null),
+        set: product.set ?? (productType === "card" ? "unknown" : null),
         rarity: product.rarity ?? (productType === "card" ? "common" : null),
         type: product.type ?? (productType === "card" ? "character" : null),
         number: product.number ?? 0,
