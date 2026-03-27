@@ -107,18 +107,26 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Transformed ${transformedCards.length} cards`)
 
-    // ⚠️ IMPORTANTE: Solo insertar cartas NUEVAS, NO actualizar existentes
-    // Paso 1: Obtener IDs de todas las cartas existentes
-    const { data: existingCards, error: fetchError } = await supabaseAdmin
-      .from('cards')
-      .select('id')
+    // Paso 1: Obtener IDs de TODAS las cartas existentes (paginado para superar límite de 1000)
+    const existingIds = new Set<string>()
+    let page = 0
+    const pageSize = 1000
+    while (true) {
+      const { data, error: fetchError } = await supabaseAdmin
+        .from('cards')
+        .select('id')
+        .range(page * pageSize, (page + 1) * pageSize - 1)
 
-    if (fetchError) {
-      console.error('Error fetching existing cards:', fetchError)
-      throw new Error('Failed to fetch existing cards')
+      if (fetchError) {
+        console.error('Error fetching existing cards:', fetchError)
+        throw new Error('Failed to fetch existing cards')
+      }
+
+      if (!data || data.length === 0) break
+      data.forEach(c => existingIds.add(c.id))
+      if (data.length < pageSize) break
+      page++
     }
-
-    const existingIds = new Set(existingCards?.map(c => c.id) || [])
     console.log(`📋 Found ${existingIds.size} existing cards in database`)
 
     // Paso 2: Filtrar solo las cartas NUEVAS (que no existen)
